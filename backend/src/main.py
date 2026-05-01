@@ -14,18 +14,13 @@ else:
     app = Flask(__name__, static_folder=static_dir, static_url_path="")
     print("Currently using static-hosting configuration")
 
-@app.route("/", defaults={"path": ""})
-@app.route("/<path:path>")
+@app.route("/")
 def index(path):
     return send_from_directory(static_dir, "index.html")
 
 @app.route("/ping")
 def ping():
     return jsonify("Pong!")
-
-@app.route("/api/papers")
-def get_papers():
-    ... # past papers, tbc
 
 if __name__ == "__main__":
     app.run()
