@@ -2,6 +2,8 @@
 
 **tppr** *(Thribhu's Past Paper Repository)* is a repository that holds NESA past papers. This is my Year 12 Software Engineering Major Project for 2026, and was requested by my math tutor to be made. 
 
+The project uses both <font color="red"><u>***PYTHON***</u></font> (looking at you Mr Jones) for the backend and `Typescript/React` for a beautiful frontend. 
+
 ## to run online
 ~~This website is online at [placeholder_link](https://google.com)~~
 This website is currently in development and not able to be hosted yet. Try running this locally with your own files if you wish with the provided steps. 
