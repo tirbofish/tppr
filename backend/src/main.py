@@ -2,8 +2,10 @@ from flask import Flask, send_from_directory, jsonify
 import os
 import sys
 
-static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../frontend/dist"))
-assets_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../assets"))
+static_dir = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "../../frontend/dist"))
+assets_dir = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "../assets"))
 
 api_only = "--api-only" in sys.argv
 
@@ -14,13 +16,24 @@ else:
     app = Flask(__name__, static_folder=static_dir, static_url_path="")
     print("Currently using static-hosting configuration")
 
-@app.route("/")
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
 def index(path):
-    return send_from_directory(static_dir, "index.html")
+    if api_only:
+        # serve the API-only html file
+        return send_from_directory(assets_dir, 'missing.html')
+    if path and os.path.isfile(os.path.join(app.static_folder, path)):
+        # try to serve the frontend
+        return send_from_directory(app.static_folder, path)
+    # otherwise serve whatever is in here
+    return send_from_directory(app.static_folder, 'index.html')
+
 
 @app.route("/ping")
 def ping():
     return jsonify("Pong!")
+
 
 if __name__ == "__main__":
     app.run()
