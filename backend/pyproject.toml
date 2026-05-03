@@ -1,7 +1,7 @@
 [project]
 name = "tppr-backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "backend for Thribhus Past Paper Repository (tppr)"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

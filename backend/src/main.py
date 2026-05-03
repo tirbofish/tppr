@@ -1,3 +1,4 @@
+import auth
 from flask import Flask, send_from_directory, jsonify
 import os
 import sys
@@ -32,8 +33,14 @@ def index(path):
 
 @app.route("/ping")
 def ping():
-    return jsonify("Pong!")
+    return jsonify("tppr says \"Pong!\"")
 
+
+# --- blueprint registration ---
+
+app.register_blueprint(auth.auth_bp)
+
+# --- do not add code any further than this line, or else...👻👻👻 ---
 
 if __name__ == "__main__":
     app.run()
