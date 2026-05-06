@@ -36,3 +36,5 @@ dist-ssr
 
 .env
 database.db
+.pytest_cache
+output.*

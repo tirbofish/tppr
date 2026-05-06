@@ -127,15 +127,16 @@ def login():
     password = data.get("password")
 
     if not email or not password:
-        return jsonify({'message': 'Email and password required'}), 400
+        return jsonify({'message': 'Email or username, and password required'}), 400
 
     conn = None
     try:
         conn = get_db(row_factory=True)
         cur = conn.cursor()
+        # Try email first, then username
         cur.execute(
-            "SELECT user_id, username, email, password_hash, totp_secret, totp_enabled FROM users WHERE email = ?",
-            (email,)
+            "SELECT user_id, username, email, password_hash, totp_secret, totp_enabled FROM users WHERE email = ? OR username = ?",
+            (email, email)
         )
         user = cur.fetchone()
     except Exception as e:
@@ -146,49 +147,27 @@ def login():
             conn.close()
 
     if not user or not bcrypt.checkpw(password.encode(), user['password_hash'].encode()):
-        return jsonify({'message': 'Invalid email or password'}), 401
+        return jsonify({'message': 'Invalid credentials'}), 401
 
-    if user['totp_enabled']:
-        return jsonify({
-            'message': 'Password correct, please enter 2FA code.',
+    token = create_access_token(
+        identity=str(user['user_id']),
+        additional_claims={
+            'email': user['email'], 'username': user['username']}
+    )
+    response = jsonify({
+        'message': 'Login successful',
+        'requires_2fa': False,
+        'user': {
             'user_id': user['user_id'],
-            'requires_2fa': True
-        }), 200
-    else:
-        conn = None
-        try:
-            conn = get_db()
-            cur = conn.cursor()
-            cur.execute(
-                "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?",
-                (user['user_id'],)
-            )
-            conn.commit()
-        except Exception:
-            pass
-        finally:
-            if conn:
-                conn.close()
-
-        token = create_access_token(
-            identity=str(user['user_id']),
-            additional_claims={
-                'email': user['email'], 'username': user['username']}
-        )
-        response = jsonify({
-            'message': 'Login successful',
-            'requires_2fa': False,
-            'user': {
-                'user_id': user['user_id'],
-                'username': user['username'],
-                'email': user['email']
-            }
-        })
-        response.set_cookie(
-            'access_token_cookie', token,
-            httponly=True, secure=False, samesite='Lax', max_age=86400
-        )
-        return response, 200
+            'username': user['username'],
+            'email': user['email']
+        }
+    })
+    response.set_cookie(
+        'access_token_cookie', token,
+        httponly=True, secure=False, samesite='Lax', max_age=86400
+    )
+    return response, 200
 
 
 @account_bp.route('/api/whoami', methods=['GET'])
