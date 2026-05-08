@@ -34,14 +34,15 @@ class TPPRExtractor:
 
     def extract(self) -> dict:
         logger.info("Starting TPPR extraction")
-        pages = []
+        pages: list[dict[str, str | int]] = []
         for i, page in enumerate(self.pdf.pages):
-            extracted = page.extract_text()
-            if extracted:
-                pages.append({"page": i + 1, "text": extracted})
+            page_text = page.extract_text()
+            if page_text:
+                pages.append({"page": i + 1, "text": page_text})
 
         questions = QuestionExtractor(self.pdf, self._visual).extract()
-        metadata = self._extract_metadata(pages[0]["text"] if pages else "")
+        first_page_text = str(pages[0]["text"]) if pages else ""
+        metadata = self._extract_metadata(first_page_text)
         logger.info("Finished TPPR extraction with %d questions", len(questions))
 
         return {

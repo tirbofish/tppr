@@ -19,7 +19,6 @@ from .text import (
     clean_text,
     fraction_latex,
     is_axis_only_option,
-    is_axis_or_tick_label,
     is_page_footer,
     looks_like_graphical_options,
     option_latex,
@@ -41,12 +40,13 @@ class QuestionExtractor:
     def extract_section_i(self) -> list[dict]:
         """Extract Section I questions using page coordinates."""
         section_pages = self._section_i_page_range()
+        question_limit = self._section_i_question_limit()
         logger.debug("Extracting Section I questions from pages: %s", sorted(section_pages))
         page_starts = []
         for page_idx, page in enumerate(self.pdf.pages):
             if section_pages and page_idx + 1 not in section_pages:
                 continue
-            starts = self._question_starts(page.extract_words())
+            starts = self._question_starts(page.extract_words(), question_limit)
             if starts:
                 logger.debug(
                     "Found %d question starts on page %d", len(starts), page_idx + 1
@@ -90,7 +90,7 @@ class QuestionExtractor:
         logger.info("Extracted %d Section I questions", len(questions))
         return sorted(questions, key=lambda q: q["number"])
 
-    def _question_starts(self, words: list[dict]) -> list[dict]:
+    def _question_starts(self, words: list[dict], question_limit: int) -> list[dict]:
         starts = []
         seen = set()
         for word in words:
@@ -98,7 +98,7 @@ class QuestionExtractor:
             if not re.fullmatch(r"\d{1,2}", text):
                 continue
             number = int(text)
-            if not 1 <= number <= 10:
+            if not 1 <= number <= question_limit:
                 continue
             if not 55 <= word["x0"] <= 85:
                 continue
@@ -126,6 +126,17 @@ class QuestionExtractor:
             return set()
         start, end = (int(match.group(1)), int(match.group(2)))
         return set(range(start, end + 1))
+
+    def _section_i_question_limit(self) -> int:
+        first_page_text = self.pdf.pages[0].extract_text() if self.pdf.pages else ""
+        match = re.search(
+            r"Section\s+I\s*[–—-]\s*(\d+)\s*marks",
+            first_page_text or "",
+        )
+        if not match:
+            logger.warning("Section I mark count was not found; allowing questions 1-30")
+            return 30
+        return int(match.group(1))
 
     def _page_content_bottom(self, page: pdfplumber.page.Page) -> float:
         words = page.extract_words()
@@ -213,15 +224,20 @@ class QuestionExtractor:
         if inside_count / len(line_words) >= 0.5:
             return True
 
-        line_text = " ".join(clean_text(word["text"]) for word in line_words)
         line_rect = union_rects([
             (word["x0"], word["top"], word["x1"], word["bottom"])
             for word in line_words
         ])
+        stimulus_text_clip = self._stimulus_text_clip(stimulus_clip)
+        line_mid_y = (line_rect[1] + line_rect[3]) / 2
         return (
-            rect_intersects(line_rect, stimulus_clip)
-            and all(is_axis_or_tick_label(word) for word in line_text.split())
+            rect_intersects(line_rect, stimulus_text_clip)
+            and stimulus_text_clip[1] <= line_mid_y <= stimulus_text_clip[3]
         )
+
+    def _stimulus_text_clip(self, stimulus_clip: Rect) -> Rect:
+        x0, top, x1, bottom = stimulus_clip
+        return (x0 - 24, top, x1 + 24, bottom)
 
     def _extract_options(self, lines: list[str]) -> list[dict]:
         if not lines:

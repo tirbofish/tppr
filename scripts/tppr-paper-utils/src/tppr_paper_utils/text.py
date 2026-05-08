@@ -75,8 +75,9 @@ def option_latex(value: str) -> str:
     if re.fullmatch(r"\d+(?:\.\d+)?", value):
         return f"${value}$"
 
-    if re.fullmatch(r"\d+%", value):
-        return f"${value[:-1]}\\%$"
+    percent_match = re.fullmatch(r"(\d+(?:\.\d+)?)%", value)
+    if percent_match:
+        return f"${percent_match.group(1)}\\%$"
 
     interval_match = re.fullmatch(r"\(?\s*(-?\d+),\s*(-?\d+)\s*\)?", value)
     if interval_match:
@@ -110,6 +111,44 @@ def sqrt_option_latex(value: str) -> str:
 def is_axis_or_tick_label(text: str) -> bool:
     text = clean_text(text)
     return bool(re.fullmatch(r"(?:x|y|O|-?\d+(?:\.\d+)?)", text))
+
+
+def looks_like_stimulus_text(text: str) -> bool:
+    text = clean_text(text)
+    tokens = text.split()
+    if not tokens:
+        return False
+
+    if all(is_axis_or_tick_label(token) for token in tokens):
+        return True
+
+    if re.search(r"\b\d{1,2}\s*(?:am|pm)\b", text, re.IGNORECASE):
+        return True
+
+    lower_text = text.lower()
+    if "time" in lower_text and (
+        "number" in lower_text or "rebmun" in lower_text or " fo " in f" {lower_text} "
+    ):
+        return True
+
+    digit_tokens = [
+        token
+        for token in tokens
+        if re.search(r"\d", token) and not re.search(r"[A-Za-z]{3,}", token)
+    ]
+    long_word_tokens = [token for token in tokens if re.search(r"[A-Za-z]{4,}", token)]
+    short_tokens = [token for token in tokens if len(token.strip(".,:;()")) <= 4]
+
+    if len(digit_tokens) >= 2 and len(digit_tokens) >= len(tokens) / 2:
+        return True
+
+    return (
+        len(tokens) >= 3
+        and len(short_tokens) / len(tokens) >= 0.75
+        and bool(digit_tokens)
+        and len(long_word_tokens) <= 1
+        and not text.endswith("?")
+    )
 
 
 def looks_like_graphical_options(text: str, matches: list[re.Match]) -> bool:

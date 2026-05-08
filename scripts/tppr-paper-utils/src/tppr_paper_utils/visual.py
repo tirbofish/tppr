@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import logging
+import re
 
 import pdfplumber
 import pymupdf as fitz
@@ -33,7 +34,9 @@ class VisualExtractor:
         question_clip: Rect,
     ) -> Rect | None:
         if not self._fitz_doc:
-            logger.debug("Skipping stimulus detection because no image backend is available")
+            logger.debug(
+                "Skipping stimulus detection because no image backend is available"
+            )
             return None
 
         _, q_top, _, q_bottom = question_clip
@@ -59,7 +62,9 @@ class VisualExtractor:
             and not self._is_glyph_like_drawing(rect)
         ]
         if not candidates:
-            logger.debug("No stimulus drawing candidates found on page %d", page_idx + 1)
+            logger.debug(
+                "No stimulus drawing candidates found on page %d", page_idx + 1
+            )
             return None
 
         candidates = self._largest_visual_cluster(candidates)
@@ -80,12 +85,15 @@ class VisualExtractor:
             for word in words
             if q_top <= word["top"] <= min(option_top, q_bottom)
             and word["top"] > prompt_bottom + 2
+            and word["top"] <= visual_rect[3] + 12
             and self._is_visual_label(word, visual_rect, page)
         ]
         if nearby_word_rects:
             visual_rect = union_rects([visual_rect, *nearby_word_rects])
 
-        visual_rect = self._trim_before_followup_text(visual_rect, words, option_top)
+        visual_rect = self._sandwich_visual_rect(
+            visual_rect, words, q_top, prompt_bottom, option_top, page
+        )
         clip = expand_rect(visual_rect, 3, 3, page)
         logger.debug("Found stimulus clip on page %d: %s", page_idx + 1, clip)
         return clip
@@ -97,7 +105,11 @@ class VisualExtractor:
         question_clip: Rect,
         options: list[dict],
     ) -> None:
-        if not self._fitz_doc or not options or any(option["text"] for option in options):
+        if (
+            not self._fitz_doc
+            or not options
+            or any(option["text"] for option in options)
+        ):
             return
 
         option_clips = self._option_image_clips(page_idx, page, question_clip)
@@ -119,9 +131,7 @@ class VisualExtractor:
         pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
         return pix.tobytes("png")
 
-    def render_region(
-        self, page_num: int, clip: Rect, zoom: float = 2.0
-    ) -> bytes:
+    def render_region(self, page_num: int, clip: Rect, zoom: float = 2.0) -> bytes:
         """Render a cropped region as PNG bytes. clip = (x0, y0, x1, y1)."""
         page = self._fitz_doc[page_num]
         rect = fitz.Rect(*clip)
@@ -230,6 +240,96 @@ class VisualExtractor:
                 return (visual_rect[0], visual_rect[1], visual_rect[2], line_top - 4)
 
         return visual_rect
+
+    def _sandwich_visual_rect(
+        self,
+        visual_rect: Rect,
+        words: list[dict],
+        question_top: float,
+        prompt_bottom: float,
+        option_top: float,
+        page: pdfplumber.page.Page,
+    ) -> Rect:
+        top = (
+            self._prompt_block_bottom(
+                words, question_top, visual_rect[1], prompt_bottom
+            )
+            + 2
+        )
+        bottom = self._followup_text_top(visual_rect, words, option_top) - 4
+        bottom = max(bottom, top + 20)
+
+        band_rect = (0, top, page.width, min(option_top, bottom))
+        band_word_rects = [
+            (word["x0"], word["top"], word["x1"], word["bottom"])
+            for word in words
+            if rect_intersects(
+                (word["x0"], word["top"], word["x1"], word["bottom"]),
+                band_rect,
+            )
+        ]
+        rect = (
+            union_rects([visual_rect, *band_word_rects])
+            if band_word_rects
+            else visual_rect
+        )
+        return (rect[0], top, rect[2], min(option_top - 2, bottom))
+
+    def _prompt_block_bottom(
+        self,
+        words: list[dict],
+        question_top: float,
+        visual_top: float,
+        fallback: float,
+    ) -> float:
+        prompt_line_bottoms = []
+        for line_words in group_words_by_line(words):
+            line_top = min(word["top"] for word in line_words)
+            if question_top <= line_top < visual_top - 4:
+                prompt_line_bottoms.append(max(word["bottom"] for word in line_words))
+        return max(prompt_line_bottoms, default=fallback)
+
+    def _followup_text_top(
+        self, visual_rect: Rect, words: list[dict], option_top: float
+    ) -> float:
+        for line_words in group_words_by_line(words):
+            line_top = min(word["top"] for word in line_words)
+            if not visual_rect[3] + 2 < line_top < option_top:
+                continue
+
+            line_text = " ".join(clean_text(word["text"]) for word in line_words)
+            line_rect = union_rects(
+                [
+                    (word["x0"], word["top"], word["x1"], word["bottom"])
+                    for word in line_words
+                ]
+            )
+            if self._is_visual_annotation_line(line_text, line_rect, visual_rect):
+                continue
+
+            return line_top
+
+        return option_top
+
+    def _is_visual_annotation_line(
+        self, line_text: str, line_rect: Rect, visual_rect: Rect
+    ) -> bool:
+        lower_text = clean_text(line_text).lower()
+        tokens = lower_text.split()
+        expanded_visual_rect = (
+            visual_rect[0] - 40,
+            visual_rect[1] - 20,
+            visual_rect[2] + 40,
+            visual_rect[3] + 60,
+        )
+        if not rect_intersects(line_rect, expanded_visual_rect):
+            return False
+
+        if any(re.fullmatch(r"\d{1,2}\s*(?:am|pm)", token) for token in tokens):
+            return True
+        if all(is_axis_or_tick_label(token) for token in tokens):
+            return True
+        return lower_text in {"time", "number of bees", "fo rebmun", "fo rebmun time"}
 
     def _largest_visual_cluster(self, rects: list[Rect]) -> list[Rect]:
         clusters = []

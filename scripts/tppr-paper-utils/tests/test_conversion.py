@@ -5,16 +5,25 @@ from pathlib import Path
 from PIL import Image
 
 import tppr_paper_utils
+from tppr_paper_utils.text import looks_like_stimulus_text
 
 TEST_DIR = Path(__file__).parent
 PDF_PATH = TEST_DIR / "2025-hsc-maths-advanced.pdf"
 OUTPUT_PATH = TEST_DIR / f"{PDF_PATH.stem}.json"
 
+extracted: dict | None = None
+
 
 def extract_test_paper():
+    global extracted
+
+    if extracted is not None:
+        return extracted
+
     with open(PDF_PATH, "rb") as pdf:
         with tppr_paper_utils.TPPRExtractor(pdf) as extractor:
-            return extractor.extract()
+            extracted = extractor.extract()
+            return extracted
 
 
 def assert_transparent_png(encoded: str):
@@ -117,3 +126,26 @@ def test_extraction():
                 continue
 
             assert_transparent_png(option["image"])
+
+
+def test_stimulus_text_detection():
+    assert looks_like_stimulus_text("1 2 4 3")
+    assert looks_like_stimulus_text("EID 35 6 47 5 6")
+    assert looks_like_stimulus_text("fo rebmuN 8 am 9 am 10 am 11 am 12 pm Time")
+    assert looks_like_stimulus_text("fo rebmuN Time")
+
+    assert not looks_like_stimulus_text(
+        "The sum of the two numbers obtained is the score."
+    )
+    assert not looks_like_stimulus_text(
+        "The table of scores below is partially completed."
+    )
+    assert not looks_like_stimulus_text(
+        "What is the probability of getting a score of 7 or more?"
+    )
+
+
+def test_section_i_question_limit():
+    data = extract_test_paper()
+
+    assert len(data["questions"]) == data["metadata"]["sections"][0]["marks"]
