@@ -56,8 +56,8 @@ class VisualExtractor:
             for rect in self._drawing_rects(page_idx)
             if rect_intersects(rect, question_clip)
             and q_top <= rect[1] <= q_bottom
-            and rect[1] > prompt_bottom + 2
-            and rect[3] < option_top - 4
+            and rect[1] > prompt_bottom
+            and rect[3] < option_top - 2
             and not self._is_page_rule(rect, page)
             and not self._is_glyph_like_drawing(rect)
         ]
@@ -94,7 +94,7 @@ class VisualExtractor:
         visual_rect = self._sandwich_visual_rect(
             visual_rect, words, q_top, prompt_bottom, option_top, page
         )
-        clip = expand_rect(visual_rect, 3, 3, page)
+        clip = expand_rect(visual_rect, 6, 6, page)
         logger.debug("Found stimulus clip on page %d: %s", page_idx + 1, clip)
         return clip
 
@@ -148,7 +148,7 @@ class VisualExtractor:
         width, height = image.size
         for x in range(width):
             for y in range(height):
-                red, green, blue, alpha = pixels[x, y]
+                red, green, blue = pixels[x, y][:3]
                 if red > 245 and green > 245 and blue > 245:
                     pixels[x, y] = (red, green, blue, 0)
 
@@ -188,10 +188,10 @@ class VisualExtractor:
         x_split = page.width / 2
         y_split = min(labels["C"]["top"], labels["D"]["top"]) - 4
         cells = {
-            "A": (labels["A"]["x1"] + 2, labels["A"]["top"] - 6, x_split, y_split),
-            "B": (labels["B"]["x1"] + 2, labels["B"]["top"] - 6, q_x1, y_split),
-            "C": (labels["C"]["x1"] + 2, labels["C"]["top"] - 6, x_split, q_bottom),
-            "D": (labels["D"]["x1"] + 2, labels["D"]["top"] - 6, q_x1, q_bottom),
+            "A": (labels["A"]["x0"] - 2, labels["A"]["top"] - 10, x_split, y_split),
+            "B": (labels["B"]["x0"] - 2, labels["B"]["top"] - 10, q_x1, y_split),
+            "C": (labels["C"]["x0"] - 2, labels["C"]["top"] - 10, x_split, q_bottom),
+            "D": (labels["D"]["x0"] - 2, labels["D"]["top"] - 10, q_x1, q_bottom),
         }
 
         drawing_rects = self._drawing_rects(page_idx)
@@ -221,7 +221,7 @@ class VisualExtractor:
             if nearby_word_rects:
                 visual_rect = union_rects([visual_rect, *nearby_word_rects])
 
-            clips[label] = expand_rect(visual_rect, 3, 3, page)
+            clips[label] = expand_rect(visual_rect, 6, 6, page)
 
         return clips
 
@@ -254,10 +254,10 @@ class VisualExtractor:
             self._prompt_block_bottom(
                 words, question_top, visual_rect[1], prompt_bottom
             )
-            + 2
+            + 1
         )
-        bottom = self._followup_text_top(visual_rect, words, option_top) - 4
-        bottom = max(bottom, top + 20)
+        bottom = self._followup_text_top(visual_rect, words, option_top) - 2
+        bottom = max(bottom, top + 26)
 
         band_rect = (0, top, page.width, min(option_top, bottom))
         band_word_rects = [

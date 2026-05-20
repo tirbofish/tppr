@@ -24,7 +24,21 @@ def clean_text(text: str) -> str:
 
 
 def clean_question_lines(lines: list[str]) -> str:
-    text = clean_text(" ".join(lines))
+    paragraphs = []
+    current = []
+    for raw_line in lines:
+        line = clean_text(raw_line)
+        if not line:
+            if current:
+                paragraphs.append(" ".join(current))
+                current = []
+            continue
+        current.append(line)
+
+    if current:
+        paragraphs.append(" ".join(current))
+
+    text = "\n\n".join(paragraphs)
     text = re.sub(r"\s+([),.?])", r"\1", text)
     text = re.sub(r"([([])\s+", r"\1", text)
     return text
@@ -60,6 +74,17 @@ def question_latex(text: str) -> str:
     latex = re.sub(r"f\(1\) = 6", r"$f(1) = 6$", latex)
     latex = re.sub(r"f\(1\.1\)", r"$f(1.1)$", latex)
     latex = re.sub(r"y = f\(e x\)", r"$y = f(e^{x})$", latex)
+    latex = re.sub(
+        r"(?<!\$)P\s*\(\s*X\s*=\s*([^)]+?)\s*\)(?!\$)",
+        r"$P(X = \1)$",
+        latex,
+    )
+    latex = re.sub(
+        r"domain of the function \$y = 6 - x\^\{2\}\$",
+        r"domain of the function $y = \\sqrt{6 - x^{2}}$",
+        latex,
+        flags=re.IGNORECASE,
+    )
 
     return latex
 
@@ -79,10 +104,22 @@ def option_latex(value: str) -> str:
     if percent_match:
         return f"${percent_match.group(1)}\\%$"
 
-    interval_match = re.fullmatch(r"\(?\s*(-?\d+),\s*(-?\d+)\s*\)?", value)
+    interval_match = re.fullmatch(
+        r"([\[\(])?\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*([\]\)])",
+        value,
+    )
     if interval_match:
-        left, right = interval_match.groups()
-        return f"$({left}, {right})$"
+        left_bracket, left, right, right_bracket = interval_match.groups()
+        left_bracket = left_bracket or "["
+        return f"${left_bracket}{left}, {right}{right_bracket}$"
+
+    missing_left_interval = re.fullmatch(
+        r"\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*([\]\)])",
+        value,
+    )
+    if missing_left_interval:
+        left, right, right_bracket = missing_left_interval.groups()
+        return f"$[{left}, {right}{right_bracket}$"
 
     sqrt_option = sqrt_option_latex(value)
     if sqrt_option:
@@ -171,3 +208,20 @@ def is_axis_only_option(value: str) -> bool:
 
 def is_page_footer(line: str) -> bool:
     return bool(re.fullmatch(r"-\s*\d+\s*-", line))
+
+
+def split_stimulus_and_prompt(text: str) -> tuple[str, str]:
+    cleaned = clean_text(text)
+    if not cleaned:
+        return "", ""
+
+    sentences = [
+        sentence.strip()
+        for sentence in re.split(r"(?<=[.?!])\s+", cleaned)
+        if sentence.strip()
+    ]
+
+    if len(sentences) >= 2 and sentences[-1].endswith("?"):
+        return " ".join(sentences[:-1]), sentences[-1]
+
+    return "", cleaned

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Signup from './pages/Signup'
+import QuestionUpload from './pages/QuestionUpload'
 import { AuthProvider } from './api/auth'
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path='/signup' element={<Signup />} />
+        <Route path="/questions/upload" element={<QuestionUpload />} />
       </Routes>
       </AuthProvider>
     </BrowserRouter>

@@ -23,6 +23,7 @@ from .text import (
     looks_like_graphical_options,
     option_latex,
     question_latex,
+    split_stimulus_and_prompt,
 )
 from .visual import VisualExtractor
 
@@ -64,7 +65,12 @@ class QuestionExtractor:
                 )
                 clip = self._question_clip(page, start["top"], bottom)
                 stimulus_clip = self.visual.stimulus_clip(page_idx, page, clip)
-                question_text, options = self._parse_question_text(page, clip, stimulus_clip)
+                (
+                    question_text,
+                    options,
+                    stimulus_text,
+                    question_to_answer,
+                ) = self._parse_question_text(page, clip, stimulus_clip)
 
                 question = {
                     "number": start["number"],
@@ -73,6 +79,12 @@ class QuestionExtractor:
                     "options": options,
                     "page": page_idx + 1,
                 }
+
+                if stimulus_text:
+                    question["stimulus_question"] = stimulus_text
+
+                if question_to_answer:
+                    question["question_to_answer"] = question_to_answer
 
                 if stimulus_clip:
                     question["image"] = self.visual.transparent_region_base64(
@@ -160,12 +172,12 @@ class QuestionExtractor:
         page: pdfplumber.page.Page,
         clip: Rect,
         stimulus_clip: Rect | None = None,
-    ) -> tuple[str, list[dict]]:
+    ) -> tuple[str, list[dict], str, str]:
         lines = self._extract_text_lines(page, clip, stimulus_clip)
         lines = [line for line in lines if line and not is_page_footer(line)]
 
         if not lines:
-            return "", []
+            return "", [], "", ""
 
         lines[0] = re.sub(r"^\d{1,2}\s+", "", lines[0]).strip()
         option_start = next(
@@ -187,9 +199,14 @@ class QuestionExtractor:
             elif re.match(r"A\.", option_lines[0]):
                 question_lines.pop()
 
+        question_text = question_latex(clean_question_lines(question_lines))
+        stimulus_text, question_to_answer = split_stimulus_and_prompt(question_text)
+
         return (
-            question_latex(clean_question_lines(question_lines)),
+            question_text,
             self._extract_options(option_lines),
+            stimulus_text,
+            question_to_answer,
         )
 
     def _extract_text_lines(
@@ -199,25 +216,28 @@ class QuestionExtractor:
         excluded_clip: Rect | None,
     ) -> list[str]:
         cropped = page.crop(clip)
-        if not excluded_clip:
-            text = cropped.extract_text(x_tolerance=2, y_tolerance=4) or ""
-            return [clean_text(line) for line in text.splitlines()]
-
         words = cropped.extract_words(x_tolerance=2, y_tolerance=4)
         lines = []
+        previous_bottom = None
         for line_words in group_words_by_line(words):
             if self._line_belongs_to_stimulus(line_words, excluded_clip):
                 continue
+
+            line_top = min(word["top"] for word in line_words)
+            if previous_bottom is not None and line_top - previous_bottom > 10:
+                lines.append("")
+
             line = " ".join(word["text"] for word in line_words)
             lines.append(clean_text(line))
+            previous_bottom = max(word["bottom"] for word in line_words)
         return lines
 
     def _line_belongs_to_stimulus(
         self,
         line_words: list[dict],
-        stimulus_clip: Rect,
+        stimulus_clip: Rect | None,
     ) -> bool:
-        if not line_words:
+        if not line_words or not stimulus_clip:
             return False
 
         inside_count = sum(1 for word in line_words if word_center_inside(word, stimulus_clip))
