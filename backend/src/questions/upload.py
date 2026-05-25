@@ -3,10 +3,10 @@ import tempfile
 import threading
 from datetime import datetime
 from hashlib import sha256
-from uuid import uuid4
 from urllib.error import URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
+from uuid import uuid4
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
@@ -85,11 +85,13 @@ def process_pdf_job(upload_id, paper_id, temp_path, user_id):
         )
 
         # TODO:
-        # 1. Upload temp_path to Mistral OCR
-        # 2. Fetch OCR result
-        # 3. Store raw OCR JSON
-        # 4. Parse into questions
-        # 5. Store questions in SQL
+        # upload temp path to mistral ocr
+        # get the ocr result
+        # store the raw json result
+        # then parse into questions
+        # then store questions into sql
+
+        # essentially i would have
 
         set_progress(
             upload_id,
