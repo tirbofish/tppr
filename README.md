@@ -1,4 +1,4 @@
-# tppr
+# Thribhu's Past Paper Repository
 
 **tppr** _(Thribhu's Past Paper Repository)_ is a repository that holds NESA past papers. This is my Year 12 Software Engineering Major Project for 2026, and was requested by my math tutor to be made.
 

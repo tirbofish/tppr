@@ -35,6 +35,8 @@ dist-ssr
 *.sw?
 
 .env
+.seaweedfs/
+.uv-cache/
 database.db
 .pytest_cache
 output.*

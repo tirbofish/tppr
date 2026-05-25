@@ -2,15 +2,15 @@ import os
 import sys
 from datetime import timedelta
 
-from dotenv import load_dotenv
-from flask import Flask, jsonify, send_from_directory
-from flask_cors import CORS
-from flask_jwt_extended import JWTManager
-
 import auth
 import db
 import questions
 import swagger
+from dotenv import load_dotenv
+from flask import Flask, jsonify, send_from_directory
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager
+from questions import upload as question_upload
 from shared import BLOCKLIST
 
 load_dotenv()
@@ -77,7 +77,7 @@ def page_not_found(e):
 # --- blueprint registration ---
 
 auth.register_blueprint(app)
-app.register_blueprint(questions.q_bp)
+app.register_blueprint(question_upload.bp)
 swagger.register_blueprint(app)
 
 

@@ -21,8 +21,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetch("/api/whoami", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
-        if (data?.user) setUser(data.user)
-        else setUser(null)
+        if (data?.user) {
+          setUser(data.user)
+        } else if (data?.user_id && data?.username && data?.email) {
+          setUser({
+            user_id: data.user_id,
+            username: data.username,
+            email: data.email,
+          })
+        } else {
+          setUser(null)
+        }
       })
       .catch(() => setUser(null))
   }
