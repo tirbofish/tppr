@@ -17,25 +17,12 @@ firstly, you need to set your env variables. set it by copying [.env](.env) and 
 cp .env-example .env
 ```
 
-this python-typescript project uses **uv** for the backend and **bun** or **node** for the frontend. for specific info, refer to their respective README.md files for [frontend](frontend/README.md) and [backend](backend/README.md).
+this project requires **uv** for the backend and **bun** or **node** for the frontend. for specific info, refer to their respective README.md files for [frontend](frontend/README.md) and [backend](backend/README.md).
 
-firstly, you need to compile the frontend so it can be served by the backend:
-
-```bash
-npm install
-npm run build
-```
-
-then, you can serve the website:
+launch with the [launch.py](launch.py) script, which deals with all the dependencies for you. 
 
 ```bash
-uv run src/main.py
-```
-
-or even better:
-
-```bash
-python launch.py # deals with building and serving
+uv run launch.py # deals with building and serving
 ```
 
 where it will be launched at [localhost:5000](localhost:5000)
@@ -47,7 +34,7 @@ if you want to provide a system like this for your school, you can do so as the 
 if you want to serve the backend and the frontend separately, use the launch script with `--split` as so:
 
 ```bash
-python launch.py --split
+uv run launch.py --split
 ```
 
 it will launch the frontend at [localhost:5173](http://localhost:5173) and the backend at [localhost:5000](http://localhost:5000).

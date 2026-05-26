@@ -15,7 +15,7 @@ def main():
     args = parser.parse_args()
 
     with open(args.input, "rb") as file:
-        with tppr_paper_utils.TPPRExtractor(file) as extract:
+        with tppr_paper_utils.PaperExtractor(file) as extract:
             output = extract.extract()
             with open(args.output, "w") as out:
                 out.write(json.dumps(output, indent=2))

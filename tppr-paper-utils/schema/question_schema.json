@@ -1,0 +1,58 @@
+{
+  "type": "object",
+  "properties": {
+    "stimulus": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "assetURL": {
+          "type": "string"
+        }
+      }
+    },
+    "parts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "stimulus": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "assetURL": {
+                "type": "string"
+              }
+            }
+          },
+          "question": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "questionType": {
+      "type": "string",
+      "enum": ["long_answer", "multiple_choice"]
+    },
+    "questionIndex": {
+      "type": "string"
+    },
+    "marks": {
+      "type": "integer"
+    },
+    "ID_OF_OG_PDF": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "parts",
+    "questionType",
+    "questionIndex",
+    "marks",
+    "ID_OF_OG_PDF"
+  ]
+}

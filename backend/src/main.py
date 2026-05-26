@@ -4,13 +4,12 @@ from datetime import timedelta
 
 import auth
 import db
-import questions
 import swagger
+import upload as question_upload
 from dotenv import load_dotenv
 from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from questions import upload as question_upload
 from shared import BLOCKLIST
 
 load_dotenv()

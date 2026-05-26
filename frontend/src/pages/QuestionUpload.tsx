@@ -60,6 +60,17 @@ type UploadStatus = {
   msg?: string
 }
 
+type StoredPdfStatus = {
+  exists?: boolean
+  sha256?: string
+  storage_path?: string
+  seaweedfs_url?: string
+  message?: string
+  details?: string
+  error?: string
+  msg?: string
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null
@@ -140,6 +151,13 @@ function isPdfFile(file: File) {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
 }
 
+async function sha256File(file: File) {
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer())
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+}
+
 function getUploadMessage(status: UploadStatus | null, phase: UploadPhase) {
   if (status?.message) {
     return status.message
@@ -178,6 +196,10 @@ function parseUploadResponse(text: string): UploadStatus {
 }
 
 function getUploadErrorMessage(status: UploadStatus, fallback: string) {
+  return status.message || status.details || status.error || status.msg || fallback
+}
+
+function getStoredPdfErrorMessage(status: StoredPdfStatus, fallback: string) {
   return status.message || status.details || status.error || status.msg || fallback
 }
 
@@ -473,6 +495,46 @@ export default function QuestionUpload() {
     []
   )
 
+  const checkStoredPdf = React.useCallback(async (sha256: string) => {
+    const response = await fetch(`/api/upload/pdf/${sha256}/status`, {
+      credentials: "include",
+    })
+    const status = (await response.json()) as StoredPdfStatus
+
+    if (!response.ok) {
+      throw new Error(
+        getStoredPdfErrorMessage(status, "Could not check stored PDF status.")
+      )
+    }
+
+    return status
+  }, [])
+
+  const reuseStoredPdf = React.useCallback(
+    async (file: File, sha256: string): Promise<UploadStatus> => {
+      const response = await fetch("/api/upload/pdf/reuse", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sha256,
+          filename: file.name,
+          content_type: file.type || "application/pdf",
+        }),
+      })
+      const status = (await response.json()) as UploadStatus
+
+      if (!response.ok) {
+        throw new Error(getUploadErrorMessage(status, "Could not reuse stored PDF."))
+      }
+
+      return status
+    },
+    []
+  )
+
   const handleFiles = React.useCallback(async (nextFiles: File[]) => {
     uploadRunRef.current += 1
     const runId = uploadRunRef.current
@@ -526,7 +588,43 @@ export default function QuestionUpload() {
         setPaperData(null)
       }
 
-      const status = await uploadFile(file, runId)
+      let status: UploadStatus
+
+      if (isPdfFile(file)) {
+        setUploadStatus({
+          stage: "checking_storage",
+          progress: 5,
+          message: "Checking whether this PDF is already stored...",
+        })
+        setUploadProgress(5)
+
+        const fileHash = await sha256File(file)
+
+        if (runId !== uploadRunRef.current) {
+          return
+        }
+
+        const storedPdf = await checkStoredPdf(fileHash)
+
+        if (runId !== uploadRunRef.current) {
+          return
+        }
+
+        if (storedPdf.exists) {
+          setUploadPhase("processing")
+          setUploadStatus({
+            stage: "stored_seaweedfs",
+            progress: 35,
+            message: "PDF already exists in SeaweedFS. Reusing stored copy...",
+          })
+          setUploadProgress(35)
+          status = await reuseStoredPdf(file, fileHash)
+        } else {
+          status = await uploadFile(file, runId)
+        }
+      } else {
+        status = await uploadFile(file, runId)
+      }
 
       if (runId !== uploadRunRef.current) {
         return
@@ -557,7 +655,7 @@ export default function QuestionUpload() {
           : "Could not upload this file."
       )
     }
-  }, [abortUpload, pollUploadStatus, uploadFile, user])
+  }, [abortUpload, checkStoredPdf, pollUploadStatus, reuseStoredPdf, uploadFile, user])
 
   const fileName = files[0]?.name
   const questions = paperData?.questions ?? []
