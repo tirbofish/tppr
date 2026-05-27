@@ -26,6 +26,8 @@ class MistralOCRError(RuntimeError):
 
 
 class MistralOCRProvider(OCRProvider):
+    name = "mistral"
+
     def __init__(self, mistral: Mistral):
         self.mistral = mistral
 
@@ -78,6 +80,7 @@ class MistralOCRProvider(OCRProvider):
         text = "\n\n".join(page.text for page in ocr_pages if page.text)
 
         return OCRResult(
+            provider=self.name,
             text=text,
             pages=ocr_pages,
             raw=raw,
