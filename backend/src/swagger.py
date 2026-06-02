@@ -1,8 +1,6 @@
 from flask import Blueprint, jsonify
 from flask_swagger_ui import get_swaggerui_blueprint
 
-import questions
-
 swagger_bp = Blueprint("swagger", __name__)
 SWAGGER_URL = "/api/docs"
 API_URL = "/swagger.json"
@@ -26,11 +24,6 @@ def form_request_body(fields, required=None):
 
 @swagger_bp.route(API_URL)
 def swagger_json():
-    question_upload_schema = questions.QuestionAdapter.json_schema(
-        ref_template="#/components/schemas/{model}"
-    )
-    question_schemas = question_upload_schema.pop("$defs", {})
-
     return jsonify(
         {
             "openapi": "3.0.3",
@@ -53,8 +46,6 @@ def swagger_json():
                         "type": "object",
                         "properties": {"message": {"type": "string"}},
                     },
-                    "QuestionUpload": question_upload_schema,
-                    **question_schemas,
                 },
             },
             "paths": {
@@ -235,25 +226,6 @@ def swagger_json():
                             "401": {"description": "Invalid 2FA code or JWT"},
                             "404": {"description": "User not found"},
                             "500": {"description": "Failed to disable 2FA"},
-                        },
-                    }
-                },
-                "/api/questions/upload": {
-                    "post": {
-                        "summary": "Validate and upload a question",
-                        "requestBody": {
-                            "required": True,
-                            "content": {
-                                "application/json": {
-                                    "schema": {
-                                        "$ref": "#/components/schemas/QuestionUpload"
-                                    }
-                                }
-                            },
-                        },
-                        "responses": {
-                            "200": {"description": "Question validated successfully"},
-                            "400": {"description": "Invalid JSON or question format"},
                         },
                     }
                 },

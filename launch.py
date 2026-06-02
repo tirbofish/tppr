@@ -10,19 +10,13 @@
 #
 # --- DO NOT MARK ---
 
-import json
 import os
 import platform
-import secrets
 import shutil
-import socket
 import subprocess
 import sys
-import tarfile
 import threading
 import time
-import urllib.request
-import zipfile
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -62,15 +56,8 @@ BACKEND = os.path.join(ROOT, "backend")
 PAPER_UTILS = os.path.join(ROOT, "tppr-paper-utils")
 UV_CACHE_DIR = os.path.join(ROOT, ".uv-cache")
 ENV_FILE = os.path.join(ROOT, ".env")
-SEAWEEDFS_DIR = os.path.join(ROOT, ".seaweedfs")
-SEAWEEDFS_BIN_DIR = os.path.join(SEAWEEDFS_DIR, "bin")
-SEAWEEDFS_DATA_DIR = os.path.join(SEAWEEDFS_DIR, "data")
-SEAWEEDFS_CONFIG_FILE = os.path.join(SEAWEEDFS_DIR, "s3.json")
-SEAWEEDFS_MASTER_PORT = "9333"
-SEAWEEDFS_VOLUME_PORT = "8081"
-SEAWEEDFS_FILER_PORT = "8888"
-SEAWEEDFS_S3_PORT = "8333"
-SEAWEEDFS_BUCKET = "tppr"
+
+DEFAULT_DATABASE_URL = "postgresql://localhost:5432/tppr"
 
 console = Console()
 
@@ -502,182 +489,13 @@ def write_env_values(updates):
         env.writelines(next_lines)
 
 
-def seaweedfs_asset_name():
-    system = platform.system().lower()
-    machine = platform.machine().lower()
-
-    os_map = {
-        "linux": "linux",
-        "darwin": "darwin",
-        "freebsd": "freebsd",
-        "windows": "windows",
-    }
-    arch_map = {
-        "x86_64": "amd64",
-        "amd64": "amd64",
-        "aarch64": "arm64",
-        "arm64": "arm64",
-    }
-
-    if system not in os_map or machine not in arch_map:
-        raise RuntimeError(f"Unsupported SeaweedFS platform: {system}/{machine}")
-
-    extension = "zip" if system == "windows" else "tar.gz"
-    return f"{os_map[system]}_{arch_map[machine]}.{extension}"
-
-
-def find_or_install_weed():
-    binary = "weed.exe" if platform.system().lower() == "windows" else "weed"
-    local_weed = os.path.join(SEAWEEDFS_BIN_DIR, binary)
-    if os.path.exists(local_weed):
-        success(f"SeaweedFS binary ready at {rel(local_weed)}")
-        return local_weed
-
-    system_weed = shutil.which(binary) or shutil.which("weed")
-    if system_weed:
-        success(f"Using system SeaweedFS binary at {system_weed}")
-        return system_weed
-
-    os.makedirs(SEAWEEDFS_BIN_DIR, exist_ok=True)
-    archive_name = seaweedfs_asset_name()
-    archive_path = os.path.join(SEAWEEDFS_DIR, archive_name)
-    url = f"https://github.com/seaweedfs/seaweedfs/releases/latest/download/{archive_name}"
-
-    with console.status("[bold cyan]Downloading SeaweedFS[/]", spinner="dots"):
-        urllib.request.urlretrieve(url, archive_path)
-
-    try:
-        with console.status("[bold cyan]Extracting SeaweedFS[/]", spinner="dots"):
-            if archive_name.endswith(".zip"):
-                with zipfile.ZipFile(archive_path) as archive:
-                    archive.extract(binary, SEAWEEDFS_BIN_DIR)
-            else:
-                with tarfile.open(archive_path, "r:gz") as archive:
-                    member = archive.getmember(binary)
-                    member.name = binary
-                    archive.extract(member, SEAWEEDFS_BIN_DIR)
-    finally:
-        if os.path.exists(archive_path):
-            os.remove(archive_path)
-
-    if platform.system().lower() != "windows":
-        os.chmod(local_weed, 0o755)
-
-    success(f"Installed SeaweedFS at {rel(local_weed)}")
-    return local_weed
-
-
-def setup_seaweedfs():
-    console.print(Panel("Preparing SeaweedFS object storage", border_style="blue"))
+def setup_database_env():
     env_values = load_env_file()
-    access_key = env_values.get("SEAWEEDFS_S3_ACCESS_KEY") or "tppr-dev"
-    secret_key = env_values.get("SEAWEEDFS_S3_SECRET_KEY") or secrets.token_urlsafe(32)
-
-    os.makedirs(SEAWEEDFS_DATA_DIR, exist_ok=True)
-
-    s3_config = {
-        "identities": [
-            {
-                "name": "tppr_dev",
-                "credentials": [
-                    {
-                        "accessKey": access_key,
-                        "secretKey": secret_key,
-                    }
-                ],
-                "actions": ["Admin", "Read", "List", "Tagging", "Write"],
-            }
-        ]
-    }
-    with open(SEAWEEDFS_CONFIG_FILE, "w", encoding="utf-8") as config:
-        json.dump(s3_config, config, indent=2)
-        config.write("\n")
-
-    updates = {
-        "SEAWEEDFS_MASTER_URL": f"localhost:{SEAWEEDFS_MASTER_PORT}",
-        "SEAWEEDFS_FILER_URL": f"http://localhost:{SEAWEEDFS_FILER_PORT}",
-        "SEAWEEDFS_S3_ENDPOINT": f"http://localhost:{SEAWEEDFS_S3_PORT}",
-        "SEAWEEDFS_S3_ACCESS_KEY": access_key,
-        "SEAWEEDFS_S3_SECRET_KEY": secret_key,
-        "SEAWEEDFS_S3_BUCKET": env_values.get("SEAWEEDFS_S3_BUCKET")
-        or SEAWEEDFS_BUCKET,
-        "SEAWEEDFS_DATA_DIR": SEAWEEDFS_DATA_DIR,
-        "SEAWEEDFS_CONFIG_FILE": SEAWEEDFS_CONFIG_FILE,
-    }
-    write_env_values(updates)
-    success("Updated .env with SeaweedFS settings")
-
-    if port_is_open("localhost", int(SEAWEEDFS_S3_PORT)):
-        success("SeaweedFS S3 endpoint is already running")
-        return None
-
-    weed = find_or_install_weed()
-    args = [
-        weed,
-        "server",
-        f"-dir={SEAWEEDFS_DATA_DIR}",
-        "-ip=localhost",
-        f"-master.port={SEAWEEDFS_MASTER_PORT}",
-        f"-volume.port={SEAWEEDFS_VOLUME_PORT}",
-        "-filer",
-        f"-filer.port={SEAWEEDFS_FILER_PORT}",
-        "-s3",
-        f"-s3.port={SEAWEEDFS_S3_PORT}",
-        "-s3.iam=false",
-        f"-s3.config={SEAWEEDFS_CONFIG_FILE}",
-    ]
-
-    log("Starting SeaweedFS...")
-    proc = subprocess.Popen(
-        args,
-        cwd=ROOT,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    try:
-        wait_for_port(
-            "localhost", int(SEAWEEDFS_FILER_PORT), "SeaweedFS filer", proc=proc
-        )
-        wait_for_port(
-            "localhost",
-            int(SEAWEEDFS_S3_PORT),
-            "SeaweedFS S3",
-            timeout=90,
-            proc=proc,
-        )
-    except Exception:
-        terminate_process(proc)
-        raise
-
-    success("SeaweedFS is ready")
-    return proc
-
-
-def port_is_open(host, port):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(0.25)
-        return sock.connect_ex((host, port)) == 0
-
-
-def wait_for_port(host, port, label, timeout=60, proc=None):
-    deadline = time.time() + timeout
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        TimeElapsedColumn(),
-        transient=True,
-        console=console,
-    ) as progress:
-        task = progress.add_task(f"Waiting for {label} on {host}:{port}", total=None)
-        while time.time() < deadline:
-            if port_is_open(host, port):
-                progress.update(task, description=f"{label} is ready")
-                return
-            if proc and proc.poll() is not None:
-                raise RuntimeError(f"{label} exited before starting on {host}:{port}")
-            time.sleep(0.25)
-
-    raise RuntimeError(f"{label} did not start on {host}:{port}")
+    if "DATABASE_URL" not in env_values:
+        write_env_values({"DATABASE_URL": DEFAULT_DATABASE_URL})
+        success(f"Added DATABASE_URL to .env (default: {DEFAULT_DATABASE_URL})")
+    else:
+        success(f"DATABASE_URL already configured: {env_values['DATABASE_URL']}")
 
 
 def terminate_process(proc):
@@ -900,7 +718,7 @@ class SplitOutputView:
         self.frontend_pane = frontend_pane
 
     def render(self):
-        visible_lines = max(8, console.height - 13)
+        visible_lines = max(8, console.height - 11)
         links = Table.grid(padding=(0, 2))
         links.add_column(style="bold")
         links.add_column()
@@ -915,8 +733,8 @@ class SplitOutputView:
         links.add_row(
             "API docs",
             "[link=http://localhost:5000/api/docs/]http://localhost:5000/api/docs/[/link]",
-            "SeaweedFS S3",
-            f"http://localhost:{SEAWEEDFS_S3_PORT}",
+            "",
+            "",
         )
 
         table = Table.grid(expand=True)
@@ -959,7 +777,6 @@ def render_ready(split_mode):
         "API docs",
         "[link=http://localhost:5000/api/docs/]http://localhost:5000/api/docs/[/link]",
     )
-    table.add_row("SeaweedFS S3", f"http://localhost:{SEAWEEDFS_S3_PORT}")
 
     console.print(Panel(table, title="Ready", border_style="green", box=box.ROUNDED))
 
@@ -1089,14 +906,13 @@ def main():
     split_mode = "--split" in sys.argv
     skip_install = "--skip-install" in sys.argv
     watchers = []
-    seaweedfs_proc = None
 
     render_header(split_mode)
 
     try:
         tools = check_dependencies()
         prepare_dependencies(tools, skip_install=skip_install)
-        seaweedfs_proc = setup_seaweedfs()
+        setup_database_env()
 
         if split_mode:
             run_split_mode(tools, watchers)
@@ -1113,7 +929,6 @@ def main():
     finally:
         for watcher in watchers:
             watcher.stop()
-        terminate_process(seaweedfs_proc)
         success("Launcher cleanup complete")
 
 
