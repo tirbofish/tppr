@@ -2,8 +2,6 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import Signup from './pages/Signup'
-import Papers from './pages/Papers'
-import PaperEditor from './pages/PaperEditor'
 import { AuthProvider } from './api/auth'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -17,8 +15,6 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path='/signup' element={<Signup />} />
-        <Route path="/questions" element={<Papers />} />
-        <Route path="/questions/:paperId" element={<PaperEditor />} />
       </Routes>
       <Toaster />
       </TooltipProvider>

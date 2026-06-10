@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -19,6 +18,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/api/auth"
 import { useState } from "react"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const [error, setError] = useState("")

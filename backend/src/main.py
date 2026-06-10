@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from questions.db import prepare as prepare_paper_db
 from questions.endpoints import q_bp
 from shared import BLOCKLIST
 
@@ -92,4 +93,5 @@ print()
 if __name__ == "__main__":
     auth_db = AuthenticationDB()
     auth_db.prepare(app.logger)
+    prepare_paper_db(app.logger)
     app.run(debug=True, host="0.0.0.0", port=5000)
