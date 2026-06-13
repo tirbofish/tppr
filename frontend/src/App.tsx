@@ -7,6 +7,8 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import PaperEditor from './pages/PaperEditor'
 import { PapersViewer } from './pages/PaperEditorViewer'
+import Unauthorized from './pages/Unauthorised'
+import { GenericError } from './pages/GenericError'
 
 function App() {
   return (
@@ -19,6 +21,10 @@ function App() {
         <Route path='/signup' element={<Signup />} />
         <Route path="/papers/:id" element={<PaperEditor />} />
         <Route path="/papers" element={<PapersViewer />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
+
+        {/* always keep this at the bottom */}
+        <Route path="*" element={<GenericError code={404} title="Not Found" message="The page you're looking for doesn't exist." />} />
       </Routes>
       <Toaster />
       </TooltipProvider>

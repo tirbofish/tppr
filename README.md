@@ -17,27 +17,15 @@ firstly, you need to set your env variables. set it by copying [.env](.env) and 
 cp .env-example .env
 ```
 
-this project requires **uv** for the backend and **bun** or **node** for the frontend. for specific info, refer to their respective README.md files for [frontend](frontend/README.md) and [backend](backend/README.md).
+this project requires **uv** for the backend and **bun** for the frontend. for specific info, refer to their respective README.md files for [frontend](frontend/README.md) and [backend](backend/README.md).
 
 launch with the [launch.py](launch.py) script, which deals with all the dependencies for you. 
 
 ```bash
-uv run launch.py # deals with building and serving
+uv run launch.py
 ```
 
-where it will be launched at [localhost:5000](localhost:5000)
-
-## self hosting
-
-if you want to provide a system like this for your school, you can do so as the frontend and the backend can be run independently, so you are able to host your backend within the network and the frontend that already exists online.
-
-if you want to serve the backend and the frontend separately, use the launch script with `--split` as so:
-
-```bash
-uv run launch.py --split
-```
-
-it will launch the frontend at [localhost:5173](http://localhost:5173) and the backend at [localhost:5000](http://localhost:5000).
+it will launch the frontend at [localhost:5173](http://localhost:5173) and the backend at [localhost:5000](http://localhost:5000).a
 
 ### AI Usage
 This disclaimer is required by markers. 

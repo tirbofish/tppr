@@ -20,6 +20,8 @@ import { QuestionEditor } from "@/components/question-editor";
 import { EditableNumber } from "@/components/editable-number";
 import { toast } from "sonner";
 import { syncPaper } from "@/lib/cloud";
+import { useAuth } from "@/api/auth";
+import Unauthorized from "./Unauthorised";
 
 export default function PaperEditor() {
     const { id } = useParams<{ id: string }>();
@@ -31,6 +33,8 @@ export default function PaperEditor() {
 
     const navigate = useNavigate();
     const [syncing, setSyncing] = useState(false);
+
+    const { user, loading: authLoading } = useAuth();
 
     async function handleBack() {
         if (paper) {
@@ -107,7 +111,7 @@ export default function PaperEditor() {
         });
     }
 
-    if (loading) {
+    if (loading || authLoading) {
         return (
             <>
                 <NavBar />
@@ -127,6 +131,13 @@ export default function PaperEditor() {
                 </p>
             </>
         );
+    }
+
+    if (
+        paper.visibility === "private" &&
+        (!user || String(user.user_id) !== paper.author_id)
+    ) {
+        return <Unauthorized />;
     }
 
     return (

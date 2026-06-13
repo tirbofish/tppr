@@ -186,16 +186,13 @@ def check_dependencies():
     if not uv:
         missing.append("uv")
 
-    npm = find_command("npm")
     bun = find_command("bun")
-    if not npm and not bun:
-        missing.append("npm or bun")
+    if not bun:
+        missing.append("bun")
 
-    package_lock = os.path.join(ROOT, "package-lock.json")
-    prefer_npm = os.path.exists(package_lock) and npm
-    runner = npm if prefer_npm else bun or npm
-    runner_name = "npm" if runner == npm else "bun"
-    runner_reason = "package-lock.json" if prefer_npm else "available on PATH"
+    runner = bun
+    runner_name = "bun"
+    runner_reason = "default JavaScript runner"
 
     table = Table(title="Toolchain", box=box.SIMPLE_HEAVY)
     table.add_column("Tool", style="bold")
@@ -204,7 +201,7 @@ def check_dependencies():
     table.add_row("uv", "[green]found[/]" if uv else "[red]missing[/]", uv or "-")
     table.add_row(
         "JavaScript runner",
-        "[green]found[/]" if bun or npm else "[red]missing[/]",
+        "[green]found[/]" if bun else "[red]missing[/]",
         f"{runner} ({runner_reason})" if runner else "-",
     )
     console.print(table)
@@ -212,7 +209,7 @@ def check_dependencies():
     if missing:
         fatal(
             "Missing required tools: " + ", ".join(missing),
-            "Install uv and either bun or npm, then run launch.py again.",
+            "Install uv and bun, then run launch.py again.",
         )
 
     return {
@@ -257,8 +254,6 @@ def missing_frontend_packages():
 
 
 def frontend_script_command(tools, script):
-    if tools["js_name"] == "npm":
-        return [tools["js"], "run", script], ROOT
     return [tools["js"], "run", script], FRONTEND
 
 
@@ -370,7 +365,7 @@ def ensure_frontend_dependencies(tools, skip_install=False, tui=None, live=None)
     node_modules = os.path.join(ROOT, "node_modules")
     dependency_files = [
         os.path.join(ROOT, "package.json"),
-        os.path.join(ROOT, "package-lock.json"),
+        os.path.join(ROOT, "bun.lock"),
         os.path.join(FRONTEND, "package.json"),
         os.path.join(FRONTEND, "bun.lock"),
     ]
@@ -896,7 +891,7 @@ def run_combined_mode(tools, watchers):
 
 
 def main():
-    split_mode = "--split" in sys.argv
+    split_mode = "--build" not in sys.argv
     skip_install = "--skip-install" in sys.argv
     watchers = []
 

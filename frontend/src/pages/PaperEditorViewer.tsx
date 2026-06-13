@@ -8,6 +8,7 @@ import { FileQuestion } from "lucide-react";
 import { toast } from "sonner";
 import type { PaperMeta } from "@/types/tppr-paper";
 import { Spinner } from "@/components/ui/spinner";
+import { useAuth } from "@/api/auth";
 
 type ListedPaper = PaperMeta & { isLocal?: boolean };
 
@@ -15,8 +16,16 @@ export function PapersViewer() {
     const [papers, setPapers] = useState<ListedPaper[]>([]);
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
+    const { user, loading: authLoading } = useAuth();
 
     useEffect(() => {
+        if (!authLoading && !user) {
+            navigate("/login");
+        }
+    }, [user, authLoading, navigate]);
+
+    useEffect(() => {
+        if (authLoading || !user) return;
         async function load() {
             try {
                 const [remote, local] = await Promise.all([
@@ -30,17 +39,20 @@ export function PapersViewer() {
                     merged.set(p.id, { ...p, isLocal: true });
                 }
 
+                const userId = String(user?.user_id);
                 setPapers(
-                    [...merged.values()].sort((a, b) =>
-                        b.updated_at.localeCompare(a.updated_at)
-                    ),
+                    [...merged.values()]
+                        .filter((p) => p.author_id === userId)
+                        .sort((a, b) =>
+                            b.updated_at.localeCompare(a.updated_at)
+                        ),
                 );
             } finally {
                 setLoading(false);
             }
         }
         load();
-    }, []);
+    }, [user, authLoading]);
 
     async function handleDelete(paper: ListedPaper) {
         try {
