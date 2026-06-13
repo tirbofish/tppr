@@ -23,6 +23,7 @@ function renderSegment(seg: string, i: number) {
         html = katex.renderToString(tex, {
             displayMode: isBlock,
             throwOnError: true,
+            strict: false,
         });
     } catch {
         // invalid latex, make it evil

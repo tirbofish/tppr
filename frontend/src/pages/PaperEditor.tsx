@@ -15,7 +15,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from "@/components/ui/sheet";
-import { ArrowLeft, Plus, Shell } from "lucide-react";
+import { ArrowLeft, Check, CloudOff, CloudUpload, Loader2, Plus, Shell } from "lucide-react";
 import { QuestionEditor } from "@/components/question-editor";
 import { EditableNumber } from "@/components/editable-number";
 import { toast } from "sonner";
@@ -29,6 +29,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useSyncStatus } from "@/lib/hooks";
 
 export default function PaperEditor() {
     const { id } = useParams<{ id: string }>();
@@ -49,6 +50,8 @@ export default function PaperEditor() {
     const [remixSource, setRemixSource] = useState<
         { title: string; author: string } | null
     >(null);
+
+    const syncStatus = useSyncStatus();
 
     useEffect(() => {
         if (!paper?.remixed) return;
@@ -172,6 +175,23 @@ export default function PaperEditor() {
         });
     }
 
+    function handleDuplicate(qid: string) {
+        if (!paper) return;
+        const source = paper.questions.find((q) => q.id === qid);
+        if (!source) return;
+        const idx = paper.questions.indexOf(source);
+        const clone: QuestionData = {
+            ...structuredClone(source),
+            id: crypto.randomUUID(),
+        };
+        const questions = [...paper.questions];
+        questions.splice(idx + 1, 0, clone);
+        updatePaper({
+            ...paper,
+            questions: questions.map((q, i) => ({ ...q, number: i + 1 })),
+        });
+    }
+
     function handleNumberChange(qid: string, newNumber: number) {
         if (!paper) return;
         const from = paper.questions.findIndex((q) => q.id === qid);
@@ -260,6 +280,39 @@ export default function PaperEditor() {
                             />
                         )}
 
+                        {isOwner && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className="ml-2">
+                                            {syncStatus === "synced" && (
+                                                <Check className="size-4 text-green-500" />
+                                            )}
+                                            {syncStatus === "syncing" && (
+                                                <Loader2 className="size-4 animate-spin text-blue-500" />
+                                            )}
+                                            {syncStatus === "pending" && (
+                                                <CloudUpload className="size-4 text-yellow-500" />
+                                            )}
+                                            {syncStatus === "offline" && (
+                                                <CloudOff className="size-4 text-destructive" />
+                                            )}
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        {syncStatus === "synced" &&
+                                            "All changes saved"}
+                                        {syncStatus === "syncing" &&
+                                            "Syncing..."}
+                                        {syncStatus === "pending" &&
+                                            "Changes pending sync"}
+                                        {syncStatus === "offline" &&
+                                            "Offline — changes saved locally"}
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+
                         {/** Remix button */}
                         {!isOwner && paper.visibility === "public" &&
                             !paper.remixed && (
@@ -346,6 +399,9 @@ export default function PaperEditor() {
                                         : undefined}
                                     onEdit={isOwner
                                         ? () => setSelectedId(q.id)
+                                        : undefined}
+                                    onDuplicate={isOwner
+                                        ? () => handleDuplicate(q.id)
                                         : undefined}
                                 />
                             ))}

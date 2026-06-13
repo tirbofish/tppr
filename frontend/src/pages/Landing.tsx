@@ -70,8 +70,8 @@ export default function Landing() {
         <section className="grid gap-8 pb-24 sm:grid-cols-2 lg:grid-cols-4">
           <Feature
             icon={<BookOpen className="size-5" />}
-            title="LaTeX Rendering"
-            description="Full math support with KaTeX. Questions render exactly as they appear on paper."
+            title="Advanced Rendering"
+            description="Full math support with KaTeX and advanced rendering with Markdown. Questions render exactly as they appear on paper."
           />
           <Feature
             icon={<Search className="size-5" />}

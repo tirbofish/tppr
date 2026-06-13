@@ -155,7 +155,7 @@ export function CreatePaperDialog({ onCreated }: { onCreated?: () => void }) {
                                 name="year"
                                 type="number"
                                 min={1990}
-                                placeholder="2026"
+                                placeholder="2024"
                             />
                         </Field>
                         <Field>

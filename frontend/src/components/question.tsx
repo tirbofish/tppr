@@ -8,9 +8,11 @@ import type {
     ContentBlock,
     Question as QuestionData,
 } from "@/types/tppr-paper";
-import { Pencil, Trash2 } from "lucide-react";
+import { Copy, Pencil, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { MathText } from "./math-text";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 /** Resolves asset:// URLs from IndexedDB to object URLs. */
 function useAssetUrl(url: string): string | undefined {
@@ -53,18 +55,55 @@ function AssetImage({
     );
 }
 
-/** Renders an ordered list of text / image / table blocks. */
-export function ContentBlocks({ blocks }: { blocks?: ContentBlock[] }) {
+function renderWithMath(children: React.ReactNode): React.ReactNode {
+    if (typeof children === "string") {
+        return <MathText text={children} />;
+    }
+    if (Array.isArray(children)) {
+        return children.map((child, i) =>
+            typeof child === "string"
+                ? <MathText key={i} text={child} />
+                : child
+        );
+    }
+    return children;
+}
+
+/** Deals with the rendering stuff */
+export function ContentBlocks(
+    { blocks, className }: { blocks?: ContentBlock[]; className?: string },
+) {
     if (!blocks?.length) return null;
     return (
-        <div className="space-y-2">
+        <div className={`space-y-2 ${className ?? ""}`}>
             {blocks.map((block, i) => {
                 switch (block.kind) {
                     case "text":
                         return (
-                            <p key={i} className="whitespace-pre-wrap text-sm">
-                                <MathText text={block.text} />
-                            </p>
+                            <div
+                                key={i}
+                                className="prose prose-sm max-w-none dark:prose-invert [&_p]:whitespace-pre-wrap text-inherit"
+                            >
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        p: ({ children }) => (
+                                            <p>{renderWithMath(children)}</p>
+                                        ),
+                                        li: ({ children }) => (
+                                            <li>{renderWithMath(children)}</li>
+                                        ),
+                                        td: ({ children }) => (
+                                            <td>{renderWithMath(children)}</td>
+                                        ),
+                                        th: ({ children }) => (
+                                            <th>{renderWithMath(children)}</th>
+                                        ),
+                                    }}
+                                >
+                                    {block.text}
+                                </ReactMarkdown>
+                            </div>
                         );
                     case "image":
                         return (
@@ -76,16 +115,6 @@ export function ContentBlocks({ blocks }: { blocks?: ContentBlock[] }) {
                                 height={block.height}
                             />
                         );
-                    case "table":
-                        return (
-                            <div
-                                key={i}
-                                className="overflow-x-auto text-sm [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:px-2 [&_th]:py-1"
-                                // idk if this is safe, ill get SAST to flag it :shrug:
-                                // specifically needs to purify
-                                dangerouslySetInnerHTML={{ __html: block.html }}
-                            />
-                        );
                 }
             })}
         </div>
@@ -93,11 +122,12 @@ export function ContentBlocks({ blocks }: { blocks?: ContentBlock[] }) {
 }
 
 export function Question(
-    { question, onChange, onDelete, onEdit }: {
+    { question, onChange, onDelete, onEdit, onDuplicate }: {
         question: QuestionData;
         onChange?: (q: QuestionData) => void;
         onDelete?: () => void;
         onEdit?: () => void;
+        onDuplicate?: () => void;
     },
 ) {
     return (
@@ -124,6 +154,15 @@ export function Question(
                                 <Pencil />
                             </Button>
                         )}
+                        {onDuplicate && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={onDuplicate}
+                            >
+                                <Copy />
+                            </Button>
+                        )}
                         {onDelete && (
                             <Button
                                 variant="ghost"
@@ -139,7 +178,10 @@ export function Question(
 
             <CardContent className="space-y-4">
                 {/* Stimulus (text + assets) */}
-                <ContentBlocks blocks={question.stimulus} />
+                <ContentBlocks
+                    blocks={question.stimulus}
+                    className="text-muted-foreground"
+                />
 
                 {/* Question body */}
                 <ContentBlocks blocks={question.content} />
