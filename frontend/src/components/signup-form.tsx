@@ -138,7 +138,7 @@ export function SignupForm({
                   </Button>
 
                   <FieldDescription className="px-6 text-center">
-                    Already have an account? <Link to="/login">Login</Link>
+                    Already have an account? <Link to={`/login${redirectTo !== "/" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}>Login</Link>
                   </FieldDescription>
                 </Field>
               </FieldGroup>

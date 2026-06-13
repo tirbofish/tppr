@@ -15,7 +15,14 @@ export default function Unauthorized() {
                 <p className="text-muted-foreground">
                     This paper is private. Please log in to view it.
                 </p>
-                <Button onClick={() => navigate("/login")}>
+                <Button
+                    onClick={() =>
+                        navigate(
+                            `/login?redirect=${
+                                encodeURIComponent(window.location.pathname)
+                            }`,
+                        )}
+                >
                     Go to Login
                 </Button>
             </main>

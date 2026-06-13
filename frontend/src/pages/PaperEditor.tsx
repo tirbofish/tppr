@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
     createQuestion,
     paperStore,
@@ -15,7 +15,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from "@/components/ui/sheet";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, Shell } from "lucide-react";
 import { QuestionEditor } from "@/components/question-editor";
 import { EditableNumber } from "@/components/editable-number";
 import { toast } from "sonner";
@@ -23,6 +23,12 @@ import { useAuth } from "@/api/auth";
 import Unauthorized from "./Unauthorised";
 import { PaperSettings } from "@/components/paper-settings";
 import { syncService } from "@/lib/cloud";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function PaperEditor() {
     const { id } = useParams<{ id: string }>();
@@ -39,6 +45,27 @@ export default function PaperEditor() {
 
     const [authorName, setAuthorName] = useState<string | null>(null);
     const isOwner = !!user && String(user.user_id) === paper?.author_id;
+
+    const [remixSource, setRemixSource] = useState<
+        { title: string; author: string } | null
+    >(null);
+
+    useEffect(() => {
+        if (!paper?.remixed) return;
+        fetch(`/api/papers/${paper.remixed}`, { credentials: "include" })
+            .then((res) => res.ok ? res.json() : Promise.reject())
+            .then(async (data) => {
+                const authorRes = await fetch(
+                    `/api/whotf?user_id=${data.author_id}`,
+                );
+                const authorData = await authorRes.json();
+                setRemixSource({
+                    title: data.title,
+                    author: authorData.username ?? "Unknown",
+                });
+            })
+            .catch(() => setRemixSource(null));
+    }, [paper?.remixed]);
 
     useEffect(() => {
         if (!paper) return;
@@ -80,6 +107,22 @@ export default function PaperEditor() {
         }
         load();
     }, [id]);
+
+    async function handleRemix() {
+        if (!paper) return;
+        const res = await fetch(`/api/papers/${paper.id}/remix`, {
+            method: "POST",
+            credentials: "include",
+        });
+        if (!res.ok) {
+            toast.error("Failed to remix paper");
+            return;
+        }
+        const remixed = await res.json();
+        await paperStore.savePaper(remixed);
+        toast.success("Remixed!");
+        navigate(`/papers/${remixed.id}`);
+    }
 
     async function updatePaper(next: Paper) {
         const stamped = withRecalculatedTotals(next);
@@ -192,7 +235,23 @@ export default function PaperEditor() {
                         >
                             <ArrowLeft />
                         </Button>
-                        <h1 className="text-2xl font-bold">{paper.title}</h1>
+                        <div>
+                            <h1 className="text-2xl font-bold">
+                                {paper.title}
+                            </h1>
+                            {paper.remixed && (
+                                <Link
+                                    to={`/papers/${paper.remixed}`}
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:underline"
+                                >
+                                    <Shell className="size-3" /> Remixed from "
+                                    {remixSource
+                                        ? `${remixSource.author}/${remixSource.title}`
+                                        : "…"}
+                                    "
+                                </Link>
+                            )}
+                        </div>
                         {isOwner && (
                             <PaperSettings
                                 paper={paper}
@@ -200,6 +259,63 @@ export default function PaperEditor() {
                                     updatePaper({ ...paper, ...meta })}
                             />
                         )}
+
+                        {/** Remix button */}
+                        {!isOwner && paper.visibility === "public" &&
+                            !paper.remixed && (
+                                user
+                                    ? (
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        onClick={handleRemix}
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-8"
+                                                    >
+                                                        <Shell className="size-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    Remix this and create your
+                                                    own editable copy
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    )
+                                    : (
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-8 text-muted-foreground"
+                                                        onClick={(e) => {
+                                                            e.currentTarget
+                                                                .classList.add(
+                                                                    "animate-[shake_0.3s_ease-in-out]",
+                                                                );
+                                                            setTimeout(() =>
+                                                                e.currentTarget
+                                                                    .classList
+                                                                    .remove(
+                                                                        "animate-[shake_0.3s_ease-in-out]",
+                                                                    ), 300);
+                                                        }}
+                                                    >
+                                                        <Shell className="size-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    You gotta log in to remix
+                                                    this paper
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    )
+                            )}
                     </div>
                     <span className="text-sm text-muted-foreground">
                         {!isOwner && authorName && <>by {authorName} ·</>}

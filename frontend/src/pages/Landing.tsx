@@ -26,10 +26,20 @@ export default function Landing() {
             Thribhu's Past Paper Repository
           </h1>
           <p className="max-w-lg text-lg text-muted-foreground">
-            Create, organise, and share HSC past paper questions.
+            Create, organise, and share HSC past paper questions. A modern
+            alternative to{" "}
+            <a
+              href="https://thsconline.github.io/s/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground transition-colors"
+            >
+              thsconline
+            </a>
+            , if you will.
           </p>
           <p className="text-sm text-muted-foreground">
-            Built by a student, for students.
+            Built by a student, for students
           </p>
           <div className="flex gap-3">
             {user
@@ -46,10 +56,10 @@ export default function Landing() {
               : (
                 <>
                   <Button asChild size="lg">
-                    <Link to="/signup">Get Started</Link>
+                    <Link to="/signup?redirect=%2Fpapers">Get Started</Link>
                   </Button>
                   <Button asChild variant="outline" size="lg">
-                    <Link to="/login">Log In</Link>
+                    <Link to="/login?redirect=%2Fpapers">Log In</Link>
                   </Button>
                 </>
               )}

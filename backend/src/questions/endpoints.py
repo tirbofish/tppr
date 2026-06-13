@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlmodel import col, select
@@ -9,6 +11,7 @@ from questions.types import (
     PaperDB,
     PaperOutcome,
     PaperUpdate,
+    QuestionDB,
     paper_db_to_meta_read,
     paper_db_to_read,
 )
@@ -305,3 +308,66 @@ def unpublish_paper(paper_id):
         session.refresh(paper)
 
         return jsonify(paper_db_to_meta_read(paper).model_dump(mode="json")), 200
+
+# --- REMIXING ---
+
+@q_bp.route("/api/papers/<string:paper_id>/remix", methods=["POST"])
+@jwt_required()
+def remix_paper(paper_id):
+    user_id = get_jwt_identity()
+
+    with get_session() as session:
+        original = session.get(PaperDB, paper_id)
+        if not original:
+            return jsonify({"message": "Paper not found"}), 404
+        if original.visibility != "public":
+            return jsonify({"message": "Cannot remix a private paper"}), 403
+
+        new_id = str(uuid4())
+        now = datetime.now(UTC)
+
+        # clone the paper
+        remix = PaperDB(
+            id=new_id,
+            title=f"{original.title} (remix)",
+            author_id=str(user_id),
+            subject=original.subject,
+            syllabus_id=original.syllabus_id,
+            year=original.year,
+            source=original.source,
+            school=original.school,
+            course_level=original.course_level,
+            visibility="private",
+            question_count=original.question_count,
+            total_marks=original.total_marks,
+            duration_minutes=original.duration_minutes,
+            topics_json=original.topics_json,
+            remixed=paper_id,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(remix)
+
+        # clone questions
+        for q in original.questions:
+            session.add(QuestionDB(
+                id=str(uuid4()),
+                paper_id=new_id,
+                author_id=str(user_id),
+                number=q.number,
+                type=q.type,
+                marks=q.marks,
+                stimulus_json=q.stimulus_json,
+                content_json=q.content_json,
+                parts_json=q.parts_json,
+                options_json=q.options_json,
+                topics_json=q.topics_json,
+                answer=q.answer,
+                difficulty=q.difficulty,
+                created_at=now,
+                updated_at=now,
+            ))
+
+        session.commit()
+        session.refresh(remix)
+        return jsonify(paper_db_to_read(remix).model_dump(mode="json")), 201

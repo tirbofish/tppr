@@ -121,6 +121,7 @@ export interface PaperMeta {
     duration_minutes?: number;
     created_at: string;
     updated_at: string;
+    remixed?: string;
 }
 
 // ---------- Full paper (tppr-paper.json) ----------
@@ -144,6 +145,7 @@ export interface Paper {
     source?: PaperSource;
     course_level?: CourseLevel;
     school?: string;
+    remixed?: string;
     /** Full ordered list of questions in the paper. */
     questions: Question[];
 }

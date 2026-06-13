@@ -39,7 +39,7 @@ export function PapersViewer() {
 
     useEffect(() => {
         if (!authLoading && !user) {
-            navigate("/login");
+            navigate(`/login?redirect=${encodeURIComponent("/papers")}`);
         }
     }, [user, authLoading, navigate]);
 

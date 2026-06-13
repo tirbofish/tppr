@@ -105,64 +105,68 @@ export default function NavBar() {
 
         {/* Search bar — centered */}
         {!isSearchPage && (
-        <form
-          onSubmit={handleSearch}
-          className="mx-auto flex max-w-md flex-1 items-center gap-2"
-        >
-          <Popover
-            open={showSearchGuide}
-            onOpenChange={(open) => !open && dismissGuide()}
+          <form
+            onSubmit={handleSearch}
+            className="mx-auto flex max-w-md flex-1 items-center gap-2"
           >
-            <PopoverTrigger asChild>
-              <div className="relative flex-1">
-                <SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  ref={inputRef}
-                  placeholder="Search papers…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onFocus={() => {
-                    setFocused(true);
-                    dismissGuide();
-                  }}
-                  onBlur={(e) => {
-                    if (e.relatedTarget?.closest("[data-filter-toggle]")) {
-                      return;
-                    }
-                    setFocused(false);
-                  }}
-                  className={`pl-8 ${
-                    showSearchGuide ? "ring-2 ring-primary" : ""
-                  }`}
-                />
-              </div>
-            </PopoverTrigger>
-            <PopoverContent side="bottom" align="center" className="w-72">
-              <p className="font-medium text-sm">Start by searching</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Search for past papers by subject, year, or topic here.
-              </p>
-              <Button size="sm" className="mt-3 w-full" onClick={dismissGuide}>
-                Got it!
-              </Button>
-            </PopoverContent>
-          </Popover>
-          {focused && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-8 shrink-0"
-              data-filter-toggle
-              onClick={() => setShowFilters((v) => !v)}
-              aria-label="Toggle filters"
+            <Popover
+              open={showSearchGuide}
+              onOpenChange={(open) => !open && dismissGuide()}
             >
-              <Filter className="size-4" />
-            </Button>
-          )}
-        </form>
+              <PopoverTrigger asChild>
+                <div className="relative flex-1">
+                  <SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    ref={inputRef}
+                    placeholder="Search papers…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onFocus={() => {
+                      setFocused(true);
+                      dismissGuide();
+                    }}
+                    onBlur={(e) => {
+                      if (e.relatedTarget?.closest("[data-filter-toggle]")) {
+                        return;
+                      }
+                      setFocused(false);
+                    }}
+                    className={`pl-8 ${
+                      showSearchGuide ? "ring-2 ring-primary" : ""
+                    }`}
+                  />
+                </div>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="center" className="w-72">
+                <p className="font-medium text-sm">Start by searching</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Search for past papers by subject, year, or topic here.
+                </p>
+                <Button
+                  size="sm"
+                  className="mt-3 w-full"
+                  onClick={dismissGuide}
+                >
+                  Got it!
+                </Button>
+              </PopoverContent>
+            </Popover>
+            {focused && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8 shrink-0"
+                data-filter-toggle
+                onClick={() => setShowFilters((v) => !v)}
+                aria-label="Toggle filters"
+              >
+                <Filter className="size-4" />
+              </Button>
+            )}
+          </form>
         )}
-        
+
         {/* Right */}
         <div className="flex flex-1 shrink-0 items-center justify-end gap-2">
           {user
@@ -210,8 +214,8 @@ export default function NavBar() {
                       </TooltipTrigger>
                       <TooltipContent side="bottom">
                         {online
-                          ? "Online — syncing to cloud"
-                          : "Offline — changes saved locally"}
+                          ? "Online; syncing to cloud"
+                          : "Offline; changes saved locally"}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -226,10 +230,22 @@ export default function NavBar() {
             : (
               <>
                 <Button asChild variant="outline">
-                  <Link to="/login">Login</Link>
+                  <Link
+                    to={`/login?redirect=${
+                      encodeURIComponent(location.pathname + location.search)
+                    }`}
+                  >
+                    Login
+                  </Link>
                 </Button>
                 <Button asChild>
-                  <Link to="/signup">Signup</Link>
+                  <Link
+                    to={`/signup?redirect=${
+                      encodeURIComponent(location.pathname + location.search)
+                    }`}
+                  >
+                    Signup
+                  </Link>
                 </Button>
               </>
             )}

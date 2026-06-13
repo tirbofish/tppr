@@ -1,41 +1,43 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Field,
   FieldDescription,
   FieldGroup,
   FieldLabel,
   FieldSeparator,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Link, useNavigate, useSearchParams } from "react-router-dom"
-import { useAuth } from "@/api/auth"
-import { useState } from "react"
-import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/api/auth";
+import { useState } from "react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
-export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
-  const [error, setError] = useState("")
-  const { login } = useAuth()
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const redirectTo = searchParams.get("redirect") || "/"
+export function LoginForm(
+  { className, ...props }: React.ComponentProps<"div">,
+) {
+  const [error, setError] = useState("");
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/";
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    const err = await login(formData)
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const err = await login(formData);
     if (err) {
-      setError(err)
+      setError(err);
     } else {
-      toast.success("Signed in successfully")
-      navigate(redirectTo)
+      toast.success("Signed in successfully");
+      navigate(redirectTo);
     }
   }
   return (
@@ -90,7 +92,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit">Login</Button>
                 <FieldDescription className="text-center">
-                  Don&apos;t have an account? <Link to="/signup">Sign up</Link>
+                  Don&apos;t have an account? <Link to={`/signup${redirectTo !== "/" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}>Sign up</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>
@@ -98,9 +100,10 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
         </CardContent>
       </Card>
       <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
+        By clicking continue, you agree to our <a href="#">Terms of Service</a>
+        {" "}
         and <a href="#">Privacy Policy</a>.
       </FieldDescription>
     </div>
-  )
+  );
 }

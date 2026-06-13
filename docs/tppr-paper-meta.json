@@ -75,6 +75,10 @@
     "updated_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "remixed": {
+      "type": "string",
+      "description": "ID of the original paper this was remixed from. Null if original."
     }
   },
   "required": [

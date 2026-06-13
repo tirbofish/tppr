@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated, Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -174,8 +174,9 @@ class PaperDB(SQLModel, table=True):
     total_marks: int = Field(default=0)
     duration_minutes: int | None = None
     topics_json: str | None = Field(default=None, sa_column=Column(Text))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    remixed: str | None = Field(default=None)
 
     # Relationships
     questions: list["QuestionDB"] = Relationship(
@@ -335,12 +336,14 @@ class PaperMetaRead(BaseModel):
     duration_minutes: int | None = None
     created_at: datetime
     updated_at: datetime
+    remixed: str | None = Field(default=None)
 
 
 class PaperRead(PaperMetaRead):
     """Full paper with questions included."""
 
     syllabus_id: str | None = None
+    remixed: str | None = Field(default=None)
     questions: list[QuestionRead] = []
 
 
@@ -483,8 +486,8 @@ def paper_db_to_meta_read(p: PaperDB) -> PaperMetaRead:
         duration_minutes=p.duration_minutes,
         created_at=p.created_at,
         updated_at=p.updated_at,
+        remixed=p.remixed,
     )
-
 
 def paper_db_to_read(p: PaperDB) -> PaperRead:
     """Convert a PaperDB row into a full PaperRead API model."""
@@ -506,5 +509,6 @@ def paper_db_to_read(p: PaperDB) -> PaperRead:
         duration_minutes=p.duration_minutes,
         created_at=p.created_at,
         updated_at=p.updated_at,
+        remixed=p.remixed,
         questions=[question_db_to_read(q) for q in p.questions],
     )
