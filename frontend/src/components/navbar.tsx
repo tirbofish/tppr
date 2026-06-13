@@ -198,7 +198,7 @@ export default function NavBar() {
                             className="relative size-8 rounded-full"
                           >
                             <Avatar className="size-8">
-                              <AvatarImage src="force_to_not_work" />
+                              <AvatarImage src="dont_worry_about_it_just_need_to_ensure_the_avatar_fetching_fails" />
                               <AvatarFallback>
                                 {user.username?.slice(0, 2).toUpperCase() ??
                                   "U"}
