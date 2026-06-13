@@ -96,10 +96,16 @@ export function PapersViewer() {
                                     paper={paper}
                                     onOpen={() =>
                                         navigate(`/papers/${paper.id}`)}
-                                    onEdit={() =>
-                                        navigate(
-                                            `/papers/${paper.id}?settings=true`,
-                                        )}
+                                    onEdit={(updated) => {
+                                        setPapers((prev) =>
+                                            prev.map((p) =>
+                                                p.id === updated.id
+                                                    ? { ...p, ...updated }
+                                                    : p
+                                            )
+                                        );
+                                        paperStore.savePaper(updated as any);
+                                    }}
                                     onDelete={() => handleDelete(paper)}
                                 />
                             ))}

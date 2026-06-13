@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { syncPaper } from "@/lib/cloud";
 import { useAuth } from "@/api/auth";
 import Unauthorized from "./Unauthorised";
+import { PaperSettings } from "@/components/paper-settings";
 
 export default function PaperEditor() {
     const { id } = useParams<{ id: string }>();
@@ -36,8 +37,19 @@ export default function PaperEditor() {
 
     const { user, loading: authLoading } = useAuth();
 
+    const [authorName, setAuthorName] = useState<string | null>(null);
+    const isOwner = !!user && String(user.user_id) === paper?.author_id;
+
+    useEffect(() => {
+        if (!paper) return;
+        fetch(`/api/whotf?user_id=${paper.author_id}`)
+            .then((res) => res.ok ? res.json() : Promise.reject())
+            .then((data) => setAuthorName(data.username))
+            .catch(() => setAuthorName("Unknown"));
+    }, [paper?.author_id]);
+
     async function handleBack() {
-        if (paper) {
+        if (paper && isOwner) {
             setSyncing(true);
             try {
                 await syncPaper(paper);
@@ -156,12 +168,20 @@ export default function PaperEditor() {
                             <ArrowLeft />
                         </Button>
                         <h1 className="text-2xl font-bold">{paper.title}</h1>
+                        {isOwner && (
+                            <PaperSettings
+                                paper={paper}
+                                onSave={(meta) =>
+                                    updatePaper({ ...paper, ...meta })}
+                            />
+                        )}
                     </div>
                     <span className="text-sm text-muted-foreground">
-                        {paper.question_count} question
-                        {paper.question_count === 1 ? "" : "s"} ·{" "}
-                        {paper.total_marks} mark
-                        {paper.total_marks === 1 ? "" : "s"}
+                        {!isOwner && authorName && <>by {authorName} ·</>}
+                        {paper.question_count}{" "}
+                        question{paper.question_count === 1 ? "" : "s"} ·{" "}
+                        {paper.total_marks}{" "}
+                        mark{paper.total_marks === 1 ? "" : "s"}
                     </span>
                 </div>
 
@@ -177,17 +197,25 @@ export default function PaperEditor() {
                                 <Question
                                     key={q.id}
                                     question={q}
-                                    onChange={handleQuestionChange}
-                                    onDelete={() => handleQuestionDelete(q.id)}
-                                    onEdit={() => setSelectedId(q.id)}
+                                    onChange={isOwner
+                                        ? handleQuestionChange
+                                        : undefined}
+                                    onDelete={isOwner
+                                        ? () => handleQuestionDelete(q.id)
+                                        : undefined}
+                                    onEdit={isOwner
+                                        ? () => setSelectedId(q.id)
+                                        : undefined}
                                 />
                             ))}
                         </div>
                     )}
 
-                <Button onClick={addQuestion} className="mt-6">
-                    <Plus /> Add question
-                </Button>
+                {isOwner && (
+                    <Button onClick={addQuestion} className="mt-6">
+                        <Plus /> Add question
+                    </Button>
+                )}
             </main>
 
             <Sheet

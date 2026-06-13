@@ -27,7 +27,7 @@ export function QuestionEditor({
 
     return (
         <div className="space-y-4 px-4 pb-8">
-            {/* Type + Marks inline */}
+
             <div className="flex gap-4">
                 <Field className="flex-1">
                     <FieldLabel htmlFor="q-type">Type</FieldLabel>

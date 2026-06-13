@@ -9,6 +9,21 @@ from .db import AuthenticationDB
 management_bp = Blueprint("tppr-account-management", __name__)
 db = AuthenticationDB()
 
+@management_bp.route("/api/whotf", methods=["GET"])
+def whotfisthis():
+    """Get a username by user_id. 
+    
+    `Who The F*** Is This`
+    """
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"message": "user_id is required"}), 400
+
+    user = db.get_user_by_id(user_id, fields=["user_id", "username"])
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    return jsonify({"user_id": user["user_id"], "username": user["username"]}), 200
 
 @management_bp.route("/api/account/username", methods=["PUT"])
 @jwt_required()

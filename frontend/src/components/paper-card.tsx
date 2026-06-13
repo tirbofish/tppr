@@ -13,20 +13,31 @@ import {
     HoverCardContent,
     HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { Clock, Globe, Lock, Settings, Trash2 } from "lucide-react";
+import { Clock, Globe, Lock, Trash2 } from "lucide-react";
 import { QuestionSample } from "@/components/question-sample";
 import type { PaperMeta } from "@/types/tppr-paper";
+import { PaperSettings } from "./paper-settings";
+import { useState } from "react";
 
 interface PaperCardProps {
     paper: PaperMeta;
     onOpen: () => void;
-    onEdit: () => void;
+    onEdit: (updated: PaperMeta) => void;
     onDelete: () => void;
 }
 
 export function PaperCard({ paper, onOpen, onEdit, onDelete }: PaperCardProps) {
+    const [hoverOpen, setHoverOpen] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+
     return (
-        <HoverCard openDelay={400}>
+        <HoverCard
+            open={hoverOpen && !settingsOpen}
+            onOpenChange={(open) => {
+                if (!settingsOpen) setHoverOpen(open);
+            }}
+            openDelay={400}
+        >
             <HoverCardTrigger asChild>
                 <Card
                     className="cursor-pointer transition-shadow hover:shadow-md"
@@ -69,26 +80,24 @@ export function PaperCard({ paper, onOpen, onEdit, onDelete }: PaperCardProps) {
                         <Badge variant="outline">
                             {paper.total_marks} marks
                         </Badge>
-                        {paper.duration_minutes ? (
-                            <Badge variant="outline">
-                                <Clock data-icon="inline-start" />
-                                {paper.duration_minutes} min
-                            </Badge>
-                        ) : null}
+                        {paper.duration_minutes
+                            ? (
+                                <Badge variant="outline">
+                                    <Clock data-icon="inline-start" />
+                                    {paper.duration_minutes} min
+                                </Badge>
+                            )
+                            : null}
                     </CardContent>
 
                     <CardFooter className="justify-end gap-1">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onEdit();
-                            }}
-                        >
-                            <Settings className="size-4" />
-                        </Button>
+                        <span onClick={(e) => e.stopPropagation()}>
+                            <PaperSettings
+                                paper={paper}
+                                onSave={onEdit}
+                                onOpenChange={setSettingsOpen}
+                            />
+                        </span>
                         <Button
                             variant="ghost"
                             size="icon"
