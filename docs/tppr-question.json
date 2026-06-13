@@ -1,0 +1,209 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "tppr-question.json",
+  "title": "tppr Question",
+  "description": "A single question in the tppr system.",
+  "type": "object",
+  "$defs": {
+    "SyllabusPoint": {
+      "type": "object",
+      "description": "A reference to a specific syllabus dot point.",
+      "properties": {
+        "syllabus_id": {
+          "type": "string",
+          "description": "Identifier for the syllabus (e.g. 'hsc-physics-2025')."
+        },
+        "point_code": {
+          "type": "string",
+          "description": "Dot-point code within the syllabus (e.g. 'PH12-4.1.3')."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable label for the syllabus point."
+        }
+      },
+      "required": ["syllabus_id", "point_code"],
+      "additionalProperties": false
+    },
+    "ContentBlock": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": { "const": "text" },
+            "text": { "type": "string", "minLength": 1 }
+          },
+          "required": ["kind", "text"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": { "const": "image" },
+            "url": { "type": "string", "format": "uri" },
+            "mime_type": { "type": "string" },
+            "alt": { "type": "string" },
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Display width in pixels."
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Display height in pixels."
+            }
+          },
+          "required": ["kind", "url"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": { "const": "table" },
+            "html": { "type": "string", "minLength": 1 }
+          },
+          "required": ["kind", "html"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ChoiceOption": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "pattern": "^[A-Z]$",
+          "description": "Option letter (A, B, C, D, etc.)."
+        },
+        "content": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ContentBlock" },
+          "minItems": 1
+        }
+      },
+      "required": ["label", "content"],
+      "additionalProperties": false
+    },
+    "QuestionPart": {
+      "type": "object",
+      "description": "A sub-part of a question (e.g. part a, b, c).",
+      "properties": {
+        "label": {
+          "type": "string",
+          "pattern": "^[a-z]+$",
+          "description": "Part label (e.g. 'a', 'b', 'ii')."
+        },
+        "stimulus": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ContentBlock" },
+          "description": "Stimulus material for this sub-part."
+        },
+        "content": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ContentBlock" },
+          "minItems": 1
+        },
+        "marks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "is_independent": {
+          "type": "boolean",
+          "description": " True if this part stands alone from the previous part's context."
+          
+        }
+      },
+      "required": ["label", "content"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique question identifier."
+    },
+    "paper_id": {
+      "type": "string",
+      "description": "ID of the paper this question belongs to."
+    },
+    "author_id": {
+      "type": "string",
+      "description": "User ID of the question creator."
+    },
+    "number": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Question number within the paper."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["multiple_choice", "short_answer", "long_answer"],
+      "description": "The question format."
+    },
+    "marks": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total marks allocated to this question."
+    },
+    "stimulus": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ContentBlock" },
+      "description": "Stimulus material shown before the question."
+    },
+    "content": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ContentBlock" },
+      "minItems": 1,
+      "description": "The question body content."
+    },
+    "parts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/QuestionPart" },
+      "description": "Sub-parts if the question is multi-part."
+    },
+    "options": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ChoiceOption" },
+      "description": "Answer choices (for multiple_choice type)."
+    },
+    "answer": {
+      "type": "string",
+      "description": "Correct answer label or short text (author-only)."
+    },
+    "topics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Topic tags for filtering (e.g. ['kinematics', 'projectile motion'])."
+    },
+    "syllabus_points": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/SyllabusPoint" },
+      "description": "Syllabus dot-point references for this question."
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["easy", "medium", "hard"],
+      "description": "Approximate difficulty rating."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "id",
+    "paper_id",
+    "author_id",
+    "number",
+    "type",
+    "marks",
+    "created_at",
+    "updated_at"
+  ],
+  "additionalProperties": false
+}

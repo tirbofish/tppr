@@ -1,0 +1,87 @@
+import os
+from datetime import timedelta
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
+PROJECT_ROOT = os.path.abspath(os.path.join(BACKEND_DIR, ".."))
+FRONTEND_DIST_DIR = os.getenv(
+    "FRONTEND_DIST_DIR",
+    os.path.join(PROJECT_ROOT, "frontend", "dist"),
+)
+ASSETS_DIR = os.getenv("BACKEND_ASSETS_DIR", os.path.join(BACKEND_DIR, "assets"))
+DATABASE_PATH = os.getenv(
+    "DATABASE_PATH",
+    os.path.join(PROJECT_ROOT, "database.db"),
+)
+
+API_ONLY_FLAG = "--api-only"
+BACKEND_HOST = os.getenv("BACKEND_HOST", "0.0.0.0")
+BACKEND_PORT = int(os.getenv("BACKEND_PORT", "5000"))
+BACKEND_DEBUG = os.getenv("BACKEND_DEBUG", "1") == "1"
+
+APP_NAME = "TPPR"
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")
+JWT_TOKEN_LOCATION = ["cookies"]
+JWT_COOKIE_SECURE = os.getenv("JWT_COOKIE_SECURE", "0") == "1"
+JWT_COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "Lax")
+JWT_COOKIE_CSRF_PROTECT = False
+ACCESS_TOKEN_COOKIE_NAME = os.getenv("ACCESS_TOKEN_COOKIE_NAME", "access_token_cookie")
+ACCESS_TOKEN_MAX_AGE_SECONDS = int(os.getenv("ACCESS_TOKEN_MAX_AGE_SECONDS", "86400"))
+JWT_ACCESS_TOKEN_EXPIRES = timedelta(seconds=ACCESS_TOKEN_MAX_AGE_SECONDS)
+
+TOTP_ISSUER_NAME = os.getenv("TOTP_ISSUER_NAME", APP_NAME)
+TOTP_VALID_WINDOW = int(os.getenv("TOTP_VALID_WINDOW", "1"))
+QR_CODE_VERSION = int(os.getenv("QR_CODE_VERSION", "1"))
+QR_CODE_BOX_SIZE = int(os.getenv("QR_CODE_BOX_SIZE", "10"))
+QR_CODE_BORDER = int(os.getenv("QR_CODE_BORDER", "5"))
+QR_CODE_FILL_COLOR = os.getenv("QR_CODE_FILL_COLOR", "black")
+QR_CODE_BACK_COLOR = os.getenv("QR_CODE_BACK_COLOR", "white")
+QR_CODE_IMAGE_FORMAT = os.getenv("QR_CODE_IMAGE_FORMAT", "PNG")
+
+PDF_MIME_TYPE = "application/pdf"
+JSON_MIME_TYPE = "application/json"
+FORM_MIME_TYPE = "application/x-www-form-urlencoded"
+BINARY_MIME_TYPE = "application/octet-stream"
+HTML_MIME_TYPE = "text/html"
+MARKDOWN_MIME_TYPE = "text/markdown"
+
+DEFAULT_PDF_FILENAME = os.getenv("DEFAULT_PDF_FILENAME", "document.pdf")
+DEFAULT_UPLOAD_FILENAME = os.getenv("DEFAULT_UPLOAD_FILENAME", "upload")
+UPLOAD_CHUNK_SIZE_BYTES = int(os.getenv("UPLOAD_CHUNK_SIZE_BYTES", str(1024 * 1024)))
+IMOHASH_SAMPLE_THRESHOLD_BYTES = int(
+    os.getenv("IMOHASH_SAMPLE_THRESHOLD_BYTES", "131072")
+)
+IMOHASH_SAMPLE_SIZE_BYTES = int(os.getenv("IMOHASH_SAMPLE_SIZE_BYTES", "16384"))
+SHA256_HEX_LENGTH = 64
+
+LOCAL_HOSTNAMES = {"localhost", "127.0.0.1", "::1"}
+SEAWEEDFS_DEFAULT_FILER_URL = os.getenv(
+    "SEAWEEDFS_FILER_URL",
+    "http://localhost:8888",
+)
+SEAWEEDFS_DEFAULT_BUCKET = os.getenv("SEAWEEDFS_S3_BUCKET", "tppr")
+SEAWEEDFS_TIMEOUT_SECONDS = int(os.getenv("SEAWEEDFS_TIMEOUT_SECONDS", "60"))
+SEAWEEDFS_BUCKETS_PREFIX = "buckets"
+SEAWEEDFS_UPLOADS_PREFIX = "uploads"
+SEAWEEDFS_PDF_HASH_PREFIX = "pdf-sha256"
+
+PDF_SHARE_LINK_SECRET = (
+    os.getenv("PDF_SHARE_LINK_SECRET")
+    or JWT_SECRET_KEY
+    or SECRET_KEY
+    or "dev-share-link-secret"
+)
+PDF_SHARE_LINK_TTL_SECONDS = int(os.getenv("PDF_SHARE_LINK_TTL_SECONDS", "3600"))
+PDF_SHARE_ROUTE_PREFIX = "/api/share"
+PDF_SHARE_STORAGE_PREFIX = "/buckets/"
+PDF_RESPONSE_CACHE_CONTROL = "private, max-age=0, no-store"
+
+UPLOAD_STATUS_TERMINAL = {"complete", "failed"}
+UPLOAD_PROGRESS_CHECKING_STORAGE = 5
+UPLOAD_PROGRESS_RECEIVED = 25
+UPLOAD_PROGRESS_STORED = 35
+UPLOAD_PROGRESS_OCR_STARTED = 40
+UPLOAD_PROGRESS_OCR_COMPLETE = 70
+UPLOAD_PROGRESS_PARSING = 75
+UPLOAD_PROGRESS_DONE = 100

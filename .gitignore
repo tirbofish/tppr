@@ -35,4 +35,11 @@ dist-ssr
 *.sw?
 
 .env
+.seaweedfs/
+.uv-cache/
 database.db
+.pytest_cache
+
+# make sure that no sort of outputs from testing is used.
+output.*
+output/

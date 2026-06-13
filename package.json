@@ -1,0 +1,16 @@
+{
+  "name": "tppr-workspace",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace tppr-frontend",
+    "build": "npm run build --workspace tppr-frontend",
+    "lint": "npm run lint --workspace tppr-frontend",
+    "preview": "npm run preview --workspace tppr-frontend"
+  },
+  "dependencies": {
+    "katex": "^0.17.0"
+  }
+}

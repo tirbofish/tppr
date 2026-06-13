@@ -1,25 +1,26 @@
-import io
 import base64
+import io
 import sqlite3
-from shared import DB_PATH, BLOCKLIST
 
 import bcrypt
 import pyotp
 import qrcode
-from flask import Blueprint, jsonify, request, current_app
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
+from flask import Blueprint, current_app, jsonify, request
+from flask_jwt_extended import (
+    create_access_token,
+    get_jwt,
+    get_jwt_identity,
+    jwt_required,
+)
+from shared import BLOCKLIST
 
-account_bp = Blueprint('tppr-account-authentication', __name__)
+from .db import AuthenticationDB
+
+account_bp = Blueprint("tppr-account-authentication", __name__)
+db = AuthenticationDB()
 
 
-def get_db(row_factory=False):
-    conn = sqlite3.connect(DB_PATH)
-    if row_factory:
-        conn.row_factory = sqlite3.Row
-    return conn
-
-
-@account_bp.route('/api/register', methods=['POST'])
+@account_bp.route("/api/register", methods=["POST"])
 def register():
     data = request.form
     email = data.get("email")
@@ -30,22 +31,16 @@ def register():
     if not email or not password or not username:
         return jsonify({"message": "Email, username, and password are required"}), 400
 
-    conn = None
     try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT user_id FROM users WHERE email = ? OR username = ?", (email, username))
-        if cur.fetchone():
-            return jsonify({"message": "User with this email or username already exists"}), 400
+        if db.user_exists(email, username):
+            return jsonify(
+                {"message": "User with this email or username already exists"}
+            ), 400
     except Exception as e:
         current_app.logger.error(f"Error checking existing user: {e}")
         return jsonify({"message": "Database error", "cause": str(e)}), 500
-    finally:
-        if conn:
-            conn.close()
 
-    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
     totp_secret = None
     qr_code_base64 = None
@@ -54,8 +49,7 @@ def register():
     if enable_2fa:
         totp_secret = pyotp.random_base32()
         totp = pyotp.TOTP(totp_secret)
-        provisioning_uri = totp.provisioning_uri(
-            name=email, issuer_name='TPPR')
+        provisioning_uri = totp.provisioning_uri(name=email, issuer_name="TPPR")
 
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
         qr.add_data(provisioning_uri)
@@ -63,50 +57,51 @@ def register():
         img = qr.make_image(fill_color="black", back_color="white")
 
         img_buffer = io.BytesIO()
-        img.save(img_buffer, format='PNG')
+        img.save(img_buffer, format="PNG")
         img_buffer.seek(0)
         qr_code_base64 = base64.b64encode(img_buffer.getvalue()).decode()
 
-    conn = None
     try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO users (username, email, password_hash, totp_secret, totp_enabled) VALUES (?, ?, ?, ?, ?)",
-            (username, email, password_hash.decode(),
-             totp_secret, 1 if enable_2fa else 0)
+        user_id = db.create_user(
+            username=username,
+            email=email,
+            password_hash=password_hash,
+            totp_secret=totp_secret,
+            totp_enabled=enable_2fa,
         )
-        user_id = cur.lastrowid
-        conn.commit()
 
         if enable_2fa:
-            return jsonify({
-                "message": "User created. Please verify 2FA.",
-                "user_id": user_id,
-                "requires_2fa": True,
-                "totp_secret": totp_secret,
-                "provisioning_uri": provisioning_uri,
-                "qr_code": f"data:image/png;base64,{qr_code_base64}"
-            }), 201
+            return jsonify(
+                {
+                    "message": "User created. Please verify 2FA.",
+                    "user_id": user_id,
+                    "requires_2fa": True,
+                    "totp_secret": totp_secret,
+                    "provisioning_uri": provisioning_uri,
+                    "qr_code": f"data:image/png;base64,{qr_code_base64}",
+                }
+            ), 201
         else:
             access_token = create_access_token(
                 identity=str(user_id),
-                additional_claims={'email': email, 'username': username}
+                additional_claims={"email": email, "username": username},
             )
-            response = jsonify({
-                "message": "User created.",
-                "user_id": user_id,
-                "requires_2fa": False,
-                "user": {
+            response = jsonify(
+                {
+                    "message": "User created.",
                     "user_id": user_id,
-                    "username": username,
-                    "email": email
+                    "requires_2fa": False,
+                    "user": {"user_id": user_id, "username": username, "email": email},
                 }
-            })
+            )
             response.status_code = 201
             response.set_cookie(
-                'access_token_cookie', access_token,
-                httponly=True, secure=False, samesite='Lax', max_age=86400
+                "access_token_cookie",
+                access_token,
+                httponly=True,
+                secure=False,
+                samesite="Lax",
+                max_age=86400,
             )
             return response
 
@@ -115,117 +110,87 @@ def register():
     except Exception as e:
         current_app.logger.error(f"Error while creating user: {e}")
         return jsonify({"message": "Error while creating user", "cause": str(e)}), 400
-    finally:
-        if conn:
-            conn.close()
 
 
-@account_bp.route('/api/login', methods=['POST'])
+@account_bp.route("/api/login", methods=["POST"])
 def login():
     data = request.form
     email = data.get("email")
     password = data.get("password")
 
     if not email or not password:
-        return jsonify({'message': 'Email and password required'}), 400
+        return jsonify({"message": "Email or username, and password required"}), 400
 
-    conn = None
     try:
-        conn = get_db(row_factory=True)
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT user_id, username, email, password_hash, totp_secret, totp_enabled FROM users WHERE email = ?",
-            (email,)
-        )
-        user = cur.fetchone()
+        user = db.get_user_by_email_or_username(email)
     except Exception as e:
         current_app.logger.error(f"Error while attempting to login: {e}")
-        return jsonify({'message': 'Error while attempting to login', 'cause': str(e)}), 500
-    finally:
-        if conn:
-            conn.close()
+        return jsonify(
+            {"message": "Error while attempting to login", "cause": str(e)}
+        ), 500
 
-    if not user or not bcrypt.checkpw(password.encode(), user['password_hash'].encode()):
-        return jsonify({'message': 'Invalid email or password'}), 401
+    if not user or not bcrypt.checkpw(
+        password.encode(), user["password_hash"].encode()
+    ):
+        return jsonify({"message": "Invalid credentials"}), 401
 
-    if user['totp_enabled']:
-        return jsonify({
-            'message': 'Password correct, please enter 2FA code.',
-            'user_id': user['user_id'],
-            'requires_2fa': True
-        }), 200
-    else:
-        conn = None
-        try:
-            conn = get_db()
-            cur = conn.cursor()
-            cur.execute(
-                "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?",
-                (user['user_id'],)
-            )
-            conn.commit()
-        except Exception:
-            pass
-        finally:
-            if conn:
-                conn.close()
-
-        token = create_access_token(
-            identity=str(user['user_id']),
-            additional_claims={
-                'email': user['email'], 'username': user['username']}
-        )
-        response = jsonify({
-            'message': 'Login successful',
-            'requires_2fa': False,
-            'user': {
-                'user_id': user['user_id'],
-                'username': user['username'],
-                'email': user['email']
-            }
-        })
-        response.set_cookie(
-            'access_token_cookie', token,
-            httponly=True, secure=False, samesite='Lax', max_age=86400
-        )
-        return response, 200
+    token = create_access_token(
+        identity=str(user["user_id"]),
+        additional_claims={"email": user["email"], "username": user["username"]},
+    )
+    response = jsonify(
+        {
+            "message": "Login successful",
+            "requires_2fa": False,
+            "user": {
+                "user_id": user["user_id"],
+                "username": user["username"],
+                "email": user["email"],
+            },
+        }
+    )
+    response.set_cookie(
+        "access_token_cookie",
+        token,
+        httponly=True,
+        secure=False,
+        samesite="Lax",
+        max_age=86400,
+    )
+    return response, 200
 
 
-@account_bp.route('/api/whoami', methods=['GET'])
+@account_bp.route("/api/whoami", methods=["GET"])
 @jwt_required()
 def whoami():
     user_id = get_jwt_identity()
 
-    conn = None
     try:
-        conn = get_db(row_factory=True)
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT user_id, username, email, totp_enabled FROM users WHERE user_id = ?", (user_id,))
-        user = cur.fetchone()
+        user = db.get_user_by_id(
+            user_id, fields=["user_id", "username", "email", "totp_enabled"]
+        )
 
         if not user:
             return jsonify({"message": "User not found"}), 404
 
-        return jsonify({
-            "user_id": user["user_id"],
-            "username": user["username"],
-            "email": user["email"],
-            "totp_enabled": bool(user["totp_enabled"])
-        }), 200
+        return jsonify(
+            {
+                "user_id": user["user_id"],
+                "username": user["username"],
+                "email": user["email"],
+                "totp_enabled": bool(user["totp_enabled"]),
+            }
+        ), 200
     except Exception as e:
         current_app.logger.error(f"Error in whoami: {e}")
         return jsonify({"message": "Error fetching user info"}), 500
-    finally:
-        if conn:
-            conn.close()
 
 
-@account_bp.route('/api/logout', methods=['POST'])
+@account_bp.route("/api/logout", methods=["POST"])
 @jwt_required()
 def logout():
     jti = get_jwt()["jti"]
     BLOCKLIST.add(jti)
     response = jsonify({"message": "Logout successful"})
-    response.delete_cookie('access_token_cookie')
+    response.delete_cookie("access_token_cookie")
     return response, 200

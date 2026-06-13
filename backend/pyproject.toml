@@ -11,10 +11,18 @@ dependencies = [
     "flask-jwt-extended>=4.7.1",
     "flask-login>=0.6.3",
     "flask-sqlalchemy>=3.1.1",
+    "flask-swagger-ui>=5.32.5",
+    "imohash>=1.1.0",
+    "psycopg[binary]>=3.3.4",
     "pydantic>=2.13.3",
     "pyotp>=2.9.0",
     "python-dotenv>=1.2.2",
     "qrcode[pil]>=8.2",
+    "sqlmodel>=0.0.38",
+    # "tppr-paper-utils",
     "typing>=3.10.0.0",
     "werkzeug>=3.1.8",
 ]
+
+# [tool.uv.sources]
+# tppr-paper-utils = { workspace = true }

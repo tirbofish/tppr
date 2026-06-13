@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "tppr-paper.json",
+  "title": "tppr Paper",
+  "description": "Full paper: metadata plus the complete list of questions.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique paper identifier."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display title of the paper."
+    },
+    "author_id": {
+      "type": "string",
+      "description": "User ID of the paper creator."
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subject area (e.g. 'Physics', 'Mathematics Advanced')."
+    },
+    "syllabus_id": {
+      "type": "string",
+      "description": "Primary syllabus this paper targets (e.g. 'hsc-physics-2025')."
+    },
+    "topics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Aggregate topic tags across all questions."
+    },
+    "visibility": {
+      "type": "string",
+      "enum": ["private", "public"],
+      "default": "private",
+      "description": "Whether this paper is visible in the public question pool."
+    },
+    "question_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of questions in the paper."
+    },
+    "total_marks": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Sum of marks across all questions."
+    },
+    "duration_minutes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Suggested time allocation in minutes."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "questions": {
+      "type": "array",
+      "items": { "$ref": "tppr-question.json" },
+      "description": "Full ordered list of questions in the paper."
+    }
+  },
+  "required": ["id", "title", "author_id", "subject", "visibility", "question_count", "total_marks", "created_at", "updated_at", "questions"],
+  "additionalProperties": false
+}

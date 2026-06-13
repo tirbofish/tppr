@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "tppr-paper-meta.json",
+  "title": "tppr Paper Metadata",
+  "description": "Minimal paper metadata for listing, searching, and previews.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique paper identifier."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display title of the paper."
+    },
+    "author_id": {
+      "type": "string",
+      "description": "User ID of the paper creator."
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subject area (e.g. 'Physics', 'Mathematics Advanced')."
+    },
+    "year": {
+      "type": "integer",
+      "minimum": 2000,
+      "description": "The year this paper is from (e.g. 2024)."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["hsc", "trial", "internal", "practice", "custom"],
+      "description": "Origin of the paper: official HSC, school trial, internal assessment, practice, or custom."
+    },
+    "school": {
+      "type": "string",
+      "description": "School name, relevant for trial/internal papers (e.g. 'James Ruse')."
+    },
+    "course_level": {
+      "type": "string",
+      "enum": ["standard", "advanced", "extension_1", "extension_2"],
+      "description": "Course level tier, applicable to Mathematics and English."
+    },
+
+    "topics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Aggregate topic tags across all questions."
+    },
+    "visibility": {
+      "type": "string",
+      "enum": ["private", "public"],
+      "default": "private",
+      "description": "Whether this paper is visible in the public question pool."
+    },
+    "question_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of questions in the paper."
+    },
+    "total_marks": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Sum of marks across all questions."
+    },
+    "duration_minutes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Suggested time allocation in minutes."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "author_id",
+    "subject",
+    "visibility",
+    "question_count",
+    "total_marks",
+    "created_at",
+    "updated_at"
+  ],
+  "additionalProperties": false
+}

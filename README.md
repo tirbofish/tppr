@@ -1,4 +1,4 @@
-# tppr
+# Thribhu's Past Paper Repository
 
 **tppr** _(Thribhu's Past Paper Repository)_ is a repository that holds NESA past papers. This is my Year 12 Software Engineering Major Project for 2026, and was requested by my math tutor to be made.
 
@@ -17,45 +17,19 @@ firstly, you need to set your env variables. set it by copying [.env](.env) and 
 cp .env-example .env
 ```
 
-this python-typescript project uses **uv** for the backend and **bun** or **node** for the frontend. for specific info, refer to their respective README.md files for [frontend](frontend/README.md) and [backend](backend/README.md).
+this project requires **uv** for the backend and **bun** for the frontend. for specific info, refer to their respective README.md files for [frontend](frontend/README.md) and [backend](backend/README.md).
 
-firstly, you need to compile the frontend so it can be served by the backend:
-
-```bash
-cd frontend
-bun run build
-# or
-npm run build
-# then
-cd ..
-```
-
-then, you can serve the website:
+launch with the [launch.py](launch.py) script, which deals with all the dependencies for you. 
 
 ```bash
-cd backend
-uv run src/main.py
+uv run launch.py
 ```
 
-or even better:
+it will launch the frontend at [localhost:5173](http://localhost:5173) and the backend at [localhost:5000](http://localhost:5000).a
 
-```bash
-python launch.py # deals with building and serving
-```
+### AI Usage
+This disclaimer is required by markers. 
 
-where it will be launched at [localhost:5000](localhost:5000)
+Certain files and scripts were generated fully with the use of AI. Specific ones will be signified with a warning at the top of the file/script. 
 
-## self hosting
-
-if you want to provide a system like this for your school, you can do so as the frontend and the backend can be run independently, so you are able to host your backend within the network and the frontend that already exists online.
-
-if you want to serve the backend and the frontend separately, use the launch script with `--split` as so:
-
-```bash
-python launch.py --split
-```
-
-it will launch the frontend at [localhost:5173](http://localhost:5173) and the backend at [localhost:5000](http://localhost:5000).
-
-> [!NOTE]
-> Currently not available as of this moment, but a couple tweaks can get it working.
+Although AI was used, the entire design, idea and infrastructure decisions were done by humans, as well as many files in the repository.
