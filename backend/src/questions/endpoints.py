@@ -100,12 +100,19 @@ def list_papers():
         )
 
 @q_bp.route("/api/papers/<string:paper_id>", methods=["GET"])
-@jwt_required()
+@jwt_required(optional=True)
 def get_paper(paper_id):
+    user_id = get_jwt_identity()  # None if not logged in
+
     with get_session() as session:
         paper = session.get(PaperDB, paper_id)
         if not paper:
             return jsonify({"message": "Paper not found"}), 404
+
+        # Private papers are only visible to their author
+        if paper.visibility == "private" and str(paper.author_id) != str(user_id):
+            return jsonify({"message": "Paper not found"}), 404
+
         return jsonify(paper_db_to_read(paper).model_dump(mode="json"))
 
 

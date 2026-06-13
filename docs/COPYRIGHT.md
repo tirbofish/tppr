@@ -27,7 +27,7 @@ Users who transcribe questions from published papers should be aware that:
 
 ## Takedown Requests
 
-If you are a copyright holder and believe content on this platform infringes your rights, please contact me (<thribhu.krishnan@protonmail.com>). Infringing content will be removed promptly upon valid request.
+If you are a copyright holder and believe content on this platform infringes your rights, please contact me (<4tkbytes@pm.me>). Infringing content will be removed promptly upon valid request.
 
 ## Disclaimer
 

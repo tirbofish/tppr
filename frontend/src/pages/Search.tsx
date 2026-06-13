@@ -67,7 +67,6 @@ export default function Search() {
             per_page: 20,
         };
 
-        // Sync to URL
         const params = new URLSearchParams();
         for (const [key, value] of Object.entries(filters)) {
             if (value !== undefined && value !== "") {
@@ -89,10 +88,16 @@ export default function Search() {
         }
     }
 
-    // Run search on mount if URL has params
     useEffect(() => {
-        if (searchParams.toString()) doSearch(page);
-    }, []);
+        if (searchParams.toString()) {
+            setQ(searchParams.get("q") ?? "");
+            setSubject(searchParams.get("subject") ?? "all");
+            setSource(searchParams.get("source") ?? "all");
+            setCourseLevel(searchParams.get("course_level") ?? "all");
+            setYear(searchParams.get("year") ?? "");
+            doSearch(Number(searchParams.get("page")) || 1);
+        }
+    }, [searchParams.toString()]);
 
     function handleSubmit(e: React.SubmitEvent) {
         e.preventDefault();
@@ -127,11 +132,13 @@ export default function Search() {
                         </Button>
                     </div>
 
-                    {/*
+                    {
+                        /*
                         this ui is fucked (it looks uneven)
 
                         TODO: fix this up
-                    */}
+                    */
+                    }
                     <div className="flex flex-wrap gap-3">
                         <Select value={subject} onValueChange={setSubject}>
                             <SelectTrigger className="w-48">
@@ -226,9 +233,15 @@ export default function Search() {
                     )
                     : papers.length === 0
                     ? (
-                        <p className="py-24 text-center text-muted-foreground">
-                            No papers found matching your criteria.
-                        </p>
+                        <div className="py-24 text-center">
+                            <p className="text-muted-foreground">
+                                No papers found matching your criteria.
+                            </p>
+                            <p className="mt-2 text-sm italic text-muted-foreground">
+                                You should consider making your own paper for
+                                the world to see...
+                            </p>
+                        </div>
                     )
                     : (
                         <>

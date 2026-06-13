@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   FileText,
@@ -17,7 +17,7 @@ import {
 import { useAuth } from "@/api/auth";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { CreatePaperDialog } from "./create-paper-dialog";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -34,6 +34,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useOnline } from "@/lib/hooks";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 export default function NavBar() {
   const online = useOnline();
@@ -48,6 +49,21 @@ export default function NavBar() {
   const [year, setYear] = useState("");
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const [showSearchGuide, setShowSearchGuide] = useState(false);
+  const location = useLocation();
+  const isSearchPage = location.pathname === "/search";
+
+  useEffect(() => {
+    if (!localStorage.getItem("hasSeenSearchGuide")) {
+      setShowSearchGuide(true);
+    }
+  }, []);
+
+  function dismissGuide() {
+    localStorage.setItem("hasSeenSearchGuide", "true");
+    setShowSearchGuide(false);
+  }
 
   function handleSearch(e: React.SubmitEvent) {
     e.preventDefault();
@@ -88,26 +104,49 @@ export default function NavBar() {
         </Link>
 
         {/* Search bar — centered */}
+        {!isSearchPage && (
         <form
           onSubmit={handleSearch}
           className="mx-auto flex max-w-md flex-1 items-center gap-2"
         >
-          <div className="relative flex-1">
-            <SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              ref={inputRef}
-              placeholder="Search papers…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setFocused(true)}
-              onBlur={(e) => {
-                // Don't close if clicking the filter button
-                if (e.relatedTarget?.closest("[data-filter-toggle]")) return;
-                setFocused(false);
-              }}
-              className="pl-8"
-            />
-          </div>
+          <Popover
+            open={showSearchGuide}
+            onOpenChange={(open) => !open && dismissGuide()}
+          >
+            <PopoverTrigger asChild>
+              <div className="relative flex-1">
+                <SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  ref={inputRef}
+                  placeholder="Search papers…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => {
+                    setFocused(true);
+                    dismissGuide();
+                  }}
+                  onBlur={(e) => {
+                    if (e.relatedTarget?.closest("[data-filter-toggle]")) {
+                      return;
+                    }
+                    setFocused(false);
+                  }}
+                  className={`pl-8 ${
+                    showSearchGuide ? "ring-2 ring-primary" : ""
+                  }`}
+                />
+              </div>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="center" className="w-72">
+              <p className="font-medium text-sm">Start by searching</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Search for past papers by subject, year, or topic here.
+              </p>
+              <Button size="sm" className="mt-3 w-full" onClick={dismissGuide}>
+                Got it!
+              </Button>
+            </PopoverContent>
+          </Popover>
           {focused && (
             <Button
               type="button"
@@ -122,7 +161,8 @@ export default function NavBar() {
             </Button>
           )}
         </form>
-
+        )}
+        
         {/* Right */}
         <div className="flex flex-1 shrink-0 items-center justify-end gap-2">
           {user
