@@ -3,8 +3,16 @@ import type { ContentBlock, Question, QuestionPart } from "@/types/tppr-paper";
 import { Button } from "../ui/button";
 import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
+import { Separator } from "../ui/separator";
 import { Textarea } from "../ui/textarea";
-import { firstText, withFirstText } from "./helpers";
+import {
+    answerContentText,
+    answerSummary,
+    firstText,
+    withAnswerContentText,
+    withAnswerSummary,
+    withFirstText,
+} from "./helpers";
 import {
     Tooltip,
     TooltipContent,
@@ -259,6 +267,54 @@ export function LongAnswerEditor({ question, onChange }: {
                             </TooltipProvider>
                         </label>
                     </div>
+
+                    <Separator />
+
+                    <Field>
+                        <div className="flex items-center justify-between gap-2">
+                            <FieldLabel htmlFor={`part-${i}-answer-summary`}>
+                                Sample answer
+                            </FieldLabel>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={!part.answer}
+                                onClick={() =>
+                                    updatePart(i, { answer: undefined })}
+                            >
+                                <X /> Clear
+                            </Button>
+                        </div>
+                        <Textarea
+                            id={`part-${i}-answer-summary`}
+                            value={answerSummary(part.answer)}
+                            onChange={(e) =>
+                                updatePart(i, {
+                                    answer: withAnswerSummary(
+                                        part.answer,
+                                        e.target.value,
+                                    ),
+                                })}
+                        />
+                    </Field>
+
+                    <Field>
+                        <FieldLabel htmlFor={`part-${i}-answer-working`}>
+                            Worked solution / marking notes
+                        </FieldLabel>
+                        <Textarea
+                            id={`part-${i}-answer-working`}
+                            value={answerContentText(part.answer)}
+                            onChange={(e) =>
+                                updatePart(i, {
+                                    answer: withAnswerContentText(
+                                        part.answer,
+                                        e.target.value,
+                                    ),
+                                })}
+                        />
+                    </Field>
                 </div>
             ))}
 

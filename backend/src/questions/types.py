@@ -64,7 +64,6 @@ class TextBlock(StrictBaseModel):
     kind: Literal["text"]
     text: str
 
-
 class ImageBlock(StrictBaseModel):
     kind: Literal["image"]
     url: str
@@ -93,6 +92,72 @@ class ChoiceOption(StrictBaseModel):
     content: list[ContentBlock] = PydanticField(min_length=1)
 
 
+class QuestionAnswer(StrictBaseModel):
+    option_label: str | None = PydanticField(
+        default=None,
+        pattern=r"^[A-Z]$",
+        description="Correct option label for multiple-choice questions.",
+    )
+    summary: str | None = PydanticField(
+        default=None,
+        description="Concise final answer or answer summary.",
+    )
+    content: list[ContentBlock] | None = PydanticField(
+        default=None,
+        description="Worked solution or answer content.",
+    )
+    alternatives: list[list[ContentBlock]] | None = PydanticField(
+        default=None,
+        description="Alternative valid answer forms or solution paths.",
+    )
+
+
+def _parse_answer(raw: str | None) -> str | QuestionAnswer | None:
+    """Deserialize a plain string or JSON-encoded QuestionAnswer."""
+    if raw is None:
+        return None
+    if raw.startswith("{"):
+        try:
+            return QuestionAnswer.model_validate(json.loads(raw))
+        except Exception:
+            return raw
+    return raw
+
+
+class RubricCriterion(StrictBaseModel):
+    label: str | None = PydanticField(
+        default=None,
+        description="Optional criterion label or band name.",
+    )
+    marks: int | None = PydanticField(
+        default=None,
+        ge=0,
+        description="Exact marks awarded when this criterion is met.",
+    )
+    min_marks: int | None = PydanticField(
+        default=None,
+        ge=0,
+        description="Lower bound for a mark range.",
+    )
+    max_marks: int | None = PydanticField(
+        default=None,
+        ge=0,
+        description="Upper bound for a mark range.",
+    )
+    description: list[ContentBlock] = PydanticField(
+        min_length=1,
+        description="Criterion description, including notation or tables.",
+    )
+
+
+class QuestionRubric(StrictBaseModel):
+    criteria: list[RubricCriterion] = PydanticField(min_length=1)
+    notes: list[ContentBlock] | None = PydanticField(
+        default=None,
+        description="Additional marking notes not tied to a single criterion.",
+    )
+
+
 class QuestionPart(StrictBaseModel):
     label: str = PydanticField(
         pattern=r"^[a-z]+$",
@@ -107,6 +172,15 @@ class QuestionPart(StrictBaseModel):
     is_independent: bool | None = PydanticField(
         default=None,
         description="True if this part stands alone from the previous part's context.",
+    )
+    answer: str | QuestionAnswer | None = PydanticField(
+        default=None,
+        description="Answer material for this sub-part.",
+    )
+    rubric: QuestionRubric | None = None
+    guidelines: list[ContentBlock] | None = PydanticField(
+        default=None,
+        description="General marking guidelines, feedback, common errors or comments.",
     )
 
 
@@ -306,7 +380,9 @@ class QuestionRead(BaseModel):
     content: list[ContentBlock] | None = None
     parts: list[QuestionPart] | None = None
     options: list[ChoiceOption] | None = None
-    answer: str | None = None
+    answer: str | QuestionAnswer | None = None
+    rubric: QuestionRubric | None = None
+    guidelines: list[ContentBlock] | None = None
     topics: list[str] = []
     outcomes: list[str] = []
     syllabus_points: list[SyllabusPoint] = []
@@ -387,7 +463,9 @@ class QuestionCreate(BaseModel):
     content: list[ContentBlock] | None = None
     parts: list[QuestionPart] | None = None
     options: list[ChoiceOption] | None = None
-    answer: str | None = None
+    answer: str | QuestionAnswer | None = None
+    rubric: QuestionRubric | None = None
+    guidelines: list[ContentBlock] | None = None
     topics: list[str] | None = None
     outcomes: list[str] | None = None
     syllabus_points: list[SyllabusPoint] | None = None
@@ -401,7 +479,9 @@ class QuestionUpdate(BaseModel):
     content: list[ContentBlock] | None = None
     parts: list[QuestionPart] | None = None
     options: list[ChoiceOption] | None = None
-    answer: str | None = None
+    answer: str | QuestionAnswer | None = None
+    rubric: QuestionRubric | None = None
+    guidelines: list[ContentBlock] | None = None
     topics: list[str] | None = None
     outcomes: list[str] | None = None
     syllabus_points: list[SyllabusPoint] | None = None
@@ -450,7 +530,7 @@ def question_db_to_read(q: QuestionDB) -> QuestionRead:
         content=q.get_content(),
         parts=q.get_parts(),
         options=q.get_options(),
-        answer=q.answer,
+        answer=_parse_answer(q.answer),
         topics=q.get_topics(),
         outcomes=[o.outcome_code for o in q.outcomes],
         syllabus_points=[

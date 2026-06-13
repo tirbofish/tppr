@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+    type PointerEvent as ReactPointerEvent,
+} from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
     createQuestion,
@@ -48,7 +54,26 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+
+const EDITOR_MIN_WIDTH = 384;
+const EDITOR_DEFAULT_WIDTH = 448;
+const EDITOR_MAX_MARGIN = 96;
+const EDITOR_KEYBOARD_STEP = 48;
+
+function clampEditorWidth(width: number) {
+    const viewportMax = typeof window === "undefined"
+        ? 896
+        : Math.max(EDITOR_MIN_WIDTH, window.innerWidth - EDITOR_MAX_MARGIN);
+    return Math.min(Math.max(width, EDITOR_MIN_WIDTH), viewportMax);
+}
 
 export default function PaperEditor() {
     const { id } = useParams<{ id: string }>();
@@ -57,6 +82,7 @@ export default function PaperEditor() {
     const [loading, setLoading] = useState(true);
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [editorWidth, setEditorWidth] = useState(EDITOR_DEFAULT_WIDTH);
     const selected = paper?.questions.find((q) => q.id === selectedId) ?? null;
 
     const navigate = useNavigate();
@@ -299,6 +325,32 @@ export default function PaperEditor() {
         setSelectedId(qid);
     }, []);
 
+    const handleEditorResizeStart = useCallback((
+        e: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        const startX = e.clientX;
+        const startWidth = editorWidth;
+
+        function handlePointerMove(moveEvent: PointerEvent) {
+            const delta = startX - moveEvent.clientX;
+            setEditorWidth(clampEditorWidth(startWidth + delta));
+        }
+
+        function handlePointerUp() {
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+            window.removeEventListener("pointermove", handlePointerMove);
+            window.removeEventListener("pointerup", handlePointerUp);
+        }
+
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+        window.addEventListener("pointermove", handlePointerMove);
+        window.addEventListener("pointerup", handlePointerUp);
+    }, [editorWidth]);
+
     if (loading || authLoading) {
         return (
             <>
@@ -389,8 +441,9 @@ export default function PaperEditor() {
                                     </span>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto px-3 py-2 text-xs">
-                                    Don't worry, everything is automatically
-                                    saved
+                                    {syncStatus !== "offline"
+                                        ? "Don't worry, everything is automatically saved"
+                                        : "Well this is awkward... At least it's available locally"}
                                 </PopoverContent>
                             </Popover>
                         )}
@@ -473,6 +526,9 @@ export default function PaperEditor() {
                                 <Question
                                     key={q.id}
                                     question={q}
+                                    onChange={isOwner
+                                        ? handleQuestionChange
+                                        : undefined}
                                     onDelete={isOwner
                                         ? handleQuestionDelete
                                         : undefined}
@@ -500,11 +556,44 @@ export default function PaperEditor() {
             >
                 <SheetContent
                     side="right"
-                    className="w-full sm:max-w-md overflow-y-auto"
+                    className="w-[calc(100vw-16px)] max-w-none overflow-y-auto sm:w-auto"
+                    style={{
+                        width: `min(${editorWidth}px, calc(100vw - 16px))`,
+                        maxWidth: "none",
+                    }}
                 >
                     {selected && (
                         <>
-                            <SheetHeader>
+                            <div
+                                role="separator"
+                                aria-orientation="vertical"
+                                aria-label="Resize question editor"
+                                tabIndex={0}
+                                className="group absolute inset-y-0 left-0 z-20 w-4 -translate-x-1/2 cursor-col-resize touch-none focus-visible:outline-none"
+                                onPointerDown={handleEditorResizeStart}
+                                onKeyDown={(e) => {
+                                    if (e.key === "ArrowLeft") {
+                                        e.preventDefault();
+                                        setEditorWidth((width) =>
+                                            clampEditorWidth(
+                                                width +
+                                                    EDITOR_KEYBOARD_STEP,
+                                            ));
+                                    }
+                                    if (e.key === "ArrowRight") {
+                                        e.preventDefault();
+                                        setEditorWidth((width) =>
+                                            clampEditorWidth(
+                                                width -
+                                                    EDITOR_KEYBOARD_STEP,
+                                        ));
+                                    }
+                                }}
+                            >
+                                <span className="absolute inset-y-0 left-1/2 w-px bg-border transition group-hover:bg-primary/70 group-focus-visible:bg-primary" />
+                                <span className="absolute left-1/2 top-1/2 h-10 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-border/80 transition group-hover:bg-primary/70 group-focus-visible:bg-primary" />
+                            </div>
+                            <SheetHeader className="pr-12">
                                 <SheetTitle>
                                     Edit Question{" "}
                                     <EditableNumber
@@ -524,26 +613,29 @@ export default function PaperEditor() {
             </Sheet>
 
             <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
-    <DialogContent>
-        <DialogHeader>
-            <DialogTitle>
-                You really don't trust the cloud, do you? Hmph.
-            </DialogTitle>
-            <DialogDescription>
-                Here, you can save it locally or whatever… its not like I'm
-                doing this because I care.
-            </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-            <Button variant="outline" onClick={() => setShowExportDialog(false)}>
-                Nevermind
-            </Button>
-            <Button onClick={handleExportJson}>
-                <Download className="size-4" /> Export as JSON
-            </Button>
-        </DialogFooter>
-    </DialogContent>
-</Dialog>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            You really don't trust the cloud, do you? Hmph.
+                        </DialogTitle>
+                        <DialogDescription>
+                            Here, you can save it locally or whatever… its not
+                            like I'm doing this because I care.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowExportDialog(false)}
+                        >
+                            Nevermind
+                        </Button>
+                        <Button onClick={handleExportJson}>
+                            <Download className="size-4" /> Export as JSON
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

@@ -85,6 +85,86 @@
       "required": ["label", "content"],
       "additionalProperties": false
     },
+    "QuestionAnswer": {
+      "type": "object",
+      "description": "Answer material for a question or sub-part. Supports multiple-choice keys, short final answers and worked solutions.",
+      "properties": {
+        "option_label": {
+          "type": "string",
+          "pattern": "^[A-Z]$",
+          "description": "Correct option label for multiple-choice questions."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Concise final answer or answer summary."
+        },
+        "content": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ContentBlock" },
+          "description": "Worked solution or answer content."
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/ContentBlock" }
+          },
+          "description": "Alternative valid answer forms or solution paths."
+        }
+      },
+      "additionalProperties": false
+    },
+    "RubricCriterion": {
+      "type": "object",
+      "description": "A marking criterion or mark band from a marking guide.",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Optional criterion label or band name."
+        },
+        "marks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Exact marks awarded when this criterion is met."
+        },
+        "min_marks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Lower bound for a mark range."
+        },
+        "max_marks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Upper bound for a mark range."
+        },
+        "description": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ContentBlock" },
+          "minItems": 1,
+          "description": "Criterion description, including any mathematical notation or tables."
+        }
+      },
+      "required": ["description"],
+      "additionalProperties": false
+    },
+    "QuestionRubric": {
+      "type": "object",
+      "description": "Mark allocation and criteria for a question or sub-part.",
+      "properties": {
+        "criteria": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/RubricCriterion" },
+          "minItems": 1
+        },
+        "notes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ContentBlock" },
+          "description": "Additional marking notes not tied to a single criterion."
+        }
+      },
+      "required": ["criteria"],
+      "additionalProperties": false
+    },
     "QuestionPart": {
       "type": "object",
       "description": "A sub-part of a question (e.g. part a, b, c).",
@@ -112,6 +192,21 @@
           "type": "boolean",
           "description": " True if this part stands alone from the previous part's context."
           
+        },
+        "answer": {
+          "oneOf": [
+            { "type": "string" },
+            { "$ref": "#/$defs/QuestionAnswer" }
+          ],
+          "description": "Answer material for this sub-part."
+        },
+        "rubric": {
+          "$ref": "#/$defs/QuestionRubric"
+        },
+        "guidelines": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ContentBlock" },
+          "description": "General marking guidelines, feedback, common errors or comments for this sub-part."
         }
       },
       "required": ["label", "content"],
@@ -168,8 +263,19 @@
       "description": "Answer choices (for multiple_choice type)."
     },
     "answer": {
-      "type": "string",
-      "description": "Correct answer label or short text (author-only)."
+      "oneOf": [
+        { "type": "string" },
+        { "$ref": "#/$defs/QuestionAnswer" }
+      ],
+      "description": "Correct answer, answer key or worked solution material (author-only)."
+    },
+    "rubric": {
+      "$ref": "#/$defs/QuestionRubric"
+    },
+    "guidelines": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ContentBlock" },
+      "description": "General marking guidelines, feedback, common errors or comments for this question."
     },
     "topics": {
       "type": "array",

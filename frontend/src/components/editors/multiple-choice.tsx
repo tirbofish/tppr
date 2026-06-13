@@ -1,9 +1,29 @@
 import { Plus, X } from "lucide-react";
-import { defaultOptions, firstText, relabelOptions, withFirstText } from "./helpers";
-import type { ChoiceOption, Question } from "@/types/tppr-paper";
+import {
+    answerContentText,
+    answerOptionLabel,
+    defaultOptions,
+    firstText,
+    relabelOptions,
+    withAnswerContentText,
+    withAnswerOptionLabel,
+    withFirstText,
+} from "./helpers";
+import type {
+    ChoiceOption,
+    Question,
+} from "@/types/tppr-paper";
 import { Button } from "../ui/button";
 import { Field, FieldLabel } from "../ui/field";
 import { Textarea } from "../ui/textarea";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../ui/select";
+import { Separator } from "../ui/separator";
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
@@ -19,11 +39,13 @@ export function MultipleChoiceEditor({ question, onChange }: {
     }
 
     function updateOption(label: string, text: string) {
-        setOptions(options.map((opt) =>
-            opt.label === label
-                ? { ...opt, content: withFirstText(opt.content, text) }
-                : opt
-        ));
+        setOptions(
+            options.map((opt) =>
+                opt.label === label
+                    ? { ...opt, content: withFirstText(opt.content, text) }
+                    : opt
+            ),
+        );
     }
 
     function addOption() {
@@ -38,7 +60,9 @@ export function MultipleChoiceEditor({ question, onChange }: {
         if (options.length <= MIN_OPTIONS) return;
         const next = relabelOptions(options.filter((o) => o.label !== label));
 
-        const answer = next.some((o) => o.label === question.answer)
+        const currentAnswer = answerOptionLabel(question.answer) ||
+            (typeof question.answer === "string" ? question.answer : "");
+        const answer = next.some((o) => o.label === currentAnswer)
             ? question.answer
             : undefined;
         setOptions(next, answer);
@@ -52,13 +76,14 @@ export function MultipleChoiceEditor({ question, onChange }: {
                 <Textarea
                     id="q-content"
                     value={firstText(question.content)}
-                    onChange={(e) => onChange({
-                        ...question,
-                        content: withFirstText(
-                            question.content,
-                            e.target.value,
-                        ),
-                    })}
+                    onChange={(e) =>
+                        onChange({
+                            ...question,
+                            content: withFirstText(
+                                question.content,
+                                e.target.value,
+                            ),
+                        })}
                 />
             </Field>
 
@@ -71,7 +96,8 @@ export function MultipleChoiceEditor({ question, onChange }: {
                         <Textarea
                             id={`q-opt-${opt.label}`}
                             value={firstText(opt.content)}
-                            onChange={(e) => updateOption(opt.label, e.target.value)}
+                            onChange={(e) =>
+                                updateOption(opt.label, e.target.value)}
                         />
                         <Button
                             type="button"
@@ -96,7 +122,65 @@ export function MultipleChoiceEditor({ question, onChange }: {
                 <Plus /> Add option
             </Button>
 
-            {/* correct-answer Select stays as before, mapped over `options`. if i bother tho */}
+            <Separator />
+
+            {/* Correct answer & justification */}
+            <Field>
+                <div className="flex items-center justify-between gap-2">
+                    <FieldLabel htmlFor="q-answer">Correct answer</FieldLabel>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={!question.answer}
+                        onClick={() =>
+                            onChange({ ...question, answer: undefined })}
+                    >
+                        <X /> Clear
+                    </Button>
+                </div>
+                <Select
+                    value={answerOptionLabel(question.answer) ||
+                        (typeof question.answer === "string"
+                            ? question.answer
+                            : "")}
+                    onValueChange={(v) => {
+                        onChange({
+                            ...question,
+                            answer: withAnswerOptionLabel(question.answer, v),
+                        });
+                    }}
+                >
+                    <SelectTrigger id="q-answer" className="w-full">
+                        <SelectValue placeholder="Select correct option" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {options.map((opt) => (
+                            <SelectItem key={opt.label} value={opt.label}>
+                                {opt.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </Field>
+
+            <Field>
+                <FieldLabel htmlFor="q-justification">Justification</FieldLabel>
+                <Textarea
+                    id="q-justification"
+                    placeholder="Why is this the correct answer?"
+                    value={answerContentText(question.answer)}
+                    onChange={(e) => {
+                        onChange({
+                            ...question,
+                            answer: withAnswerContentText(
+                                question.answer,
+                                e.target.value,
+                            ),
+                        });
+                    }}
+                />
+            </Field>
         </div>
     );
 }

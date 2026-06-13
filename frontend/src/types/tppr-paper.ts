@@ -59,6 +59,39 @@ export interface ChoiceOption {
     content: ContentBlock[];
 }
 
+/** Answer material for a question or sub-part. */
+export interface QuestionAnswer {
+    /** Correct option label for multiple-choice questions. */
+    option_label?: string;
+    /** Concise final answer or answer summary. */
+    summary?: string;
+    /** Worked solution or answer content. */
+    content?: ContentBlock[];
+    /** Alternative valid answer forms or solution paths. */
+    alternatives?: ContentBlock[][];
+}
+
+/** A marking criterion or mark band from a marking guide. */
+export interface RubricCriterion {
+    /** Optional criterion label or band name. */
+    label?: string;
+    /** Exact marks awarded when this criterion is met. */
+    marks?: number;
+    /** Lower bound for a mark range. */
+    min_marks?: number;
+    /** Upper bound for a mark range. */
+    max_marks?: number;
+    /** Criterion description, including any mathematical notation or tables. */
+    description: ContentBlock[];
+}
+
+/** Mark allocation and criteria for a question or sub-part. */
+export interface QuestionRubric {
+    criteria: RubricCriterion[];
+    /** Additional marking notes not tied to a single criterion. */
+    notes?: ContentBlock[];
+}
+
 /** A sub-part of a question (e.g. part a, b, c). */
 export interface QuestionPart {
     /** Part label (e.g. "a", "b", "ii"). */
@@ -68,6 +101,12 @@ export interface QuestionPart {
     marks?: number;
     /** True if this part stands alone from the previous part's context. */
     is_independent?: boolean;
+    /** Answer material for this sub-part. */
+    answer?: string | QuestionAnswer;
+    /** Mark allocation and criteria for this sub-part. */
+    rubric?: QuestionRubric;
+    /** General marking guidelines, feedback, common errors or comments. */
+    guidelines?: ContentBlock[];
 }
 
 // ---------- Question (tppr-question.json) ----------
@@ -88,8 +127,12 @@ export interface Question {
     parts?: QuestionPart[];
     /** Answer choices (for multiple_choice type). */
     options?: ChoiceOption[];
-    /** Correct answer label or short text (author-only). */
-    answer?: string;
+    /** Correct answer, answer key or worked solution material (author-only). */
+    answer?: string | QuestionAnswer;
+    /** Mark allocation and criteria for this question. */
+    rubric?: QuestionRubric;
+    /** General marking guidelines, feedback, common errors or comments. */
+    guidelines?: ContentBlock[];
     /** Topic tags, e.g. ["kinematics", "projectile motion"]. */
     topics?: string[];
     syllabus_points?: SyllabusPoint[];

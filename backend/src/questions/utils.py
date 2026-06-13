@@ -25,7 +25,9 @@ def _build_question_db(q_data: dict, paper_id: str, author_id: str) -> QuestionD
         parts_json=json.dumps(q_data["parts"]) if q_data.get("parts") else None,
         options_json=json.dumps(q_data["options"]) if q_data.get("options") else None,
         topics_json=json.dumps(q_data["topics"]) if q_data.get("topics") else None,
-        answer=q_data.get("answer"),
+        answer=json.dumps(q_data["answer"])
+        if isinstance(q_data.get("answer"), dict)
+        else q_data.get("answer"),
         difficulty=q_data.get("difficulty"),
         created_at=_parse_dt(q_data.get("created_at")),
         updated_at=_parse_dt(q_data.get("updated_at")),
