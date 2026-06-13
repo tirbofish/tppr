@@ -9,6 +9,7 @@ import PaperEditor from './pages/PaperEditor'
 import { PapersViewer } from './pages/PaperEditorViewer'
 import Unauthorized from './pages/Unauthorised'
 import { GenericError } from './pages/GenericError'
+import Search from './pages/Search'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/papers/:id" element={<PaperEditor />} />
         <Route path="/papers" element={<PapersViewer />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="/search" element={<Search />} />
 
         {/* always keep this at the bottom */}
         <Route path="*" element={<GenericError code={404} title="Not Found" message="The page you're looking for doesn't exist." />} />

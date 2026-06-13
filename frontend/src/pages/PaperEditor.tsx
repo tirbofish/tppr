@@ -19,7 +19,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { QuestionEditor } from "@/components/question-editor";
 import { EditableNumber } from "@/components/editable-number";
 import { toast } from "sonner";
-import { syncPaper } from "@/lib/cloud";
+import { flushSync, syncPaper } from "@/lib/cloud";
 import { useAuth } from "@/api/auth";
 import Unauthorized from "./Unauthorised";
 import { PaperSettings } from "@/components/paper-settings";
@@ -48,32 +48,57 @@ export default function PaperEditor() {
             .catch(() => setAuthorName("Unknown"));
     }, [paper?.author_id]);
 
+    useEffect(() => {
+        if (!id) return;
+        async function load() {
+            // local first
+            const local = await paperStore.getPaper(id!);
+            if (local) {
+                setPaper(local);
+                setLoading(false);
+                return;
+            }
+
+            // server fallback
+            try {
+                const res = await fetch(`/api/papers/${id}`, {
+                    credentials: "include",
+                });
+                if (!res.ok) {
+                    setPaper(null);
+                    return;
+                }
+                const data = await res.json();
+                setPaper(data);
+                // cache locally for future access
+                await paperStore.savePaper(data);
+            } catch {
+                setPaper(null);
+            } finally {
+                setLoading(false);
+            }
+        }
+        load();
+    }, [id]);
+
+    async function updatePaper(next: Paper) {
+        const stamped = withRecalculatedTotals(next);
+        setPaper(stamped);
+        await syncPaper(stamped);
+    }
+
     async function handleBack() {
         if (paper && isOwner) {
             setSyncing(true);
             try {
-                await syncPaper(paper);
+                await flushSync();
             } catch {
                 toast.error("Sync failed — changes are saved locally.");
             } finally {
                 setSyncing(false);
             }
         }
-        navigate("/papers");
-    }
-
-    useEffect(() => {
-        if (!id) return;
-        paperStore
-            .getPaper(id)
-            .then((p) => setPaper(p ?? null))
-            .finally(() => setLoading(false));
-    }, [id]);
-
-    async function updatePaper(next: Paper) {
-        const stamped = withRecalculatedTotals(next);
-        setPaper(stamped);
-        await paperStore.savePaper(stamped);
+        navigate(-1);
     }
 
     function addQuestion() {

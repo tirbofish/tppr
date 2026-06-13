@@ -7,6 +7,8 @@ from pydantic import Field as PydanticField
 from sqlalchemy import Column, Text, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
+# NOTE: This module was made with AI
+
 # ---------------------------------------------------------------------------
 # enumerate
 # ---------------------------------------------------------------------------
@@ -65,7 +67,7 @@ class TextBlock(StrictBaseModel):
 
 class ImageBlock(StrictBaseModel):
     kind: Literal["image"]
-    url: str  # stored as string in JSON
+    url: str
     mime_type: str | None = None
     alt: str | None = None
     width: int | None = PydanticField(default=None, ge=1)
@@ -102,6 +104,10 @@ class QuestionPart(StrictBaseModel):
     )
     content: list[ContentBlock] = PydanticField(min_length=1)
     marks: int | None = PydanticField(default=None, ge=0)
+    is_independent: bool | None = PydanticField(
+        default=None,
+        description="True if this part stands alone from the previous part's context.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -158,6 +164,7 @@ class PaperDB(SQLModel, table=True):
     title: str
     author_id: str
     subject: str
+    syllabus_id: str | None = None
     year: int | None = None
     source: str | None = None  # PaperSource
     school: str | None = None
@@ -166,12 +173,26 @@ class PaperDB(SQLModel, table=True):
     question_count: int = Field(default=0)
     total_marks: int = Field(default=0)
     duration_minutes: int | None = None
+    topics_json: str | None = Field(default=None, sa_column=Column(Text))
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
     questions: list["QuestionDB"] = Relationship(back_populates="paper")
     outcomes: list["PaperOutcome"] = Relationship()
+
+    # --- JSON helpers ---
+
+    def get_topics(self) -> list[str]:
+        if not self.topics_json:
+            return []
+        return json.loads(self.topics_json)
+
+    def set_topics(self, topics: list[str] | None) -> None:
+        if topics is None:
+            self.topics_json = None
+        else:
+            self.topics_json = json.dumps(topics)
 
 
 class QuestionDB(SQLModel, table=True):
@@ -192,6 +213,7 @@ class QuestionDB(SQLModel, table=True):
     content_json: str | None = Field(default=None, sa_column=Column(Text))
     parts_json: str | None = Field(default=None, sa_column=Column(Text))
     options_json: str | None = Field(default=None, sa_column=Column(Text))
+    topics_json: str | None = Field(default=None, sa_column=Column(Text))
 
     answer: str | None = None
     difficulty: str | None = None  # Difficulty
@@ -246,6 +268,17 @@ class QuestionDB(SQLModel, table=True):
         else:
             self.options_json = json.dumps([o.model_dump() for o in options])
 
+    def get_topics(self) -> list[str]:
+        if not self.topics_json:
+            return []
+        return json.loads(self.topics_json)
+
+    def set_topics(self, topics: list[str] | None) -> None:
+        if topics is None:
+            self.topics_json = None
+        else:
+            self.topics_json = json.dumps(topics)
+
 
 # ---------------------------------------------------------------------------
 # API response models (not tables — used for serialization)
@@ -268,6 +301,7 @@ class QuestionRead(BaseModel):
     parts: list[QuestionPart] | None = None
     options: list[ChoiceOption] | None = None
     answer: str | None = None
+    topics: list[str] = []
     outcomes: list[str] = []
     syllabus_points: list[SyllabusPoint] = []
     difficulty: Difficulty | None = None
@@ -288,6 +322,7 @@ class PaperMetaRead(BaseModel):
     source: PaperSource | None = None
     school: str | None = None
     course_level: CourseLevel | None = None
+    topics: list[str] = []
     outcomes: list[str] = []
     visibility: Visibility = "private"
     question_count: int = 0
@@ -300,6 +335,7 @@ class PaperMetaRead(BaseModel):
 class PaperRead(PaperMetaRead):
     """Full paper with questions included."""
 
+    syllabus_id: str | None = None
     questions: list[QuestionRead] = []
 
 
@@ -311,10 +347,12 @@ class PaperRead(PaperMetaRead):
 class PaperCreate(BaseModel):
     title: str = PydanticField(min_length=1)
     subject: str
+    syllabus_id: str | None = None
     year: int | None = PydanticField(default=None, ge=2000)
     source: PaperSource | None = None
     school: str | None = None
     course_level: CourseLevel | None = None
+    topics: list[str] | None = None
     outcomes: list[str] | None = None
     visibility: Visibility = "private"
     duration_minutes: int | None = PydanticField(default=None, ge=0)
@@ -323,10 +361,12 @@ class PaperCreate(BaseModel):
 class PaperUpdate(BaseModel):
     title: str | None = PydanticField(default=None, min_length=1)
     subject: str | None = None
+    syllabus_id: str | None = None
     year: int | None = PydanticField(default=None, ge=2000)
     source: PaperSource | None = None
     school: str | None = None
     course_level: CourseLevel | None = None
+    topics: list[str] | None = None
     outcomes: list[str] | None = None
     visibility: Visibility | None = None
     duration_minutes: int | None = PydanticField(default=None, ge=0)
@@ -340,6 +380,7 @@ class QuestionCreate(BaseModel):
     parts: list[QuestionPart] | None = None
     options: list[ChoiceOption] | None = None
     answer: str | None = None
+    topics: list[str] | None = None
     outcomes: list[str] | None = None
     syllabus_points: list[SyllabusPoint] | None = None
     difficulty: Difficulty | None = None
@@ -353,6 +394,7 @@ class QuestionUpdate(BaseModel):
     parts: list[QuestionPart] | None = None
     options: list[ChoiceOption] | None = None
     answer: str | None = None
+    topics: list[str] | None = None
     outcomes: list[str] | None = None
     syllabus_points: list[SyllabusPoint] | None = None
     difficulty: Difficulty | None = None
@@ -399,6 +441,7 @@ def question_db_to_read(q: QuestionDB) -> QuestionRead:
         parts=q.get_parts(),
         options=q.get_options(),
         answer=q.answer,
+        topics=q.get_topics(),
         outcomes=[o.outcome_code for o in q.outcomes],
         syllabus_points=[
             SyllabusPoint(
@@ -425,6 +468,7 @@ def paper_db_to_meta_read(p: PaperDB) -> PaperMetaRead:
         source=p.source,  # type: ignore[arg-type]
         school=p.school,
         course_level=p.course_level,  # type: ignore[arg-type]
+        topics=p.get_topics(),
         outcomes=[o.outcome_code for o in p.outcomes],
         visibility=p.visibility,  # type: ignore[arg-type]
         question_count=p.question_count,
@@ -442,10 +486,12 @@ def paper_db_to_read(p: PaperDB) -> PaperRead:
         title=p.title,
         author_id=p.author_id,
         subject=p.subject,
+        syllabus_id=p.syllabus_id,
         year=p.year,
         source=p.source,  # type: ignore[arg-type]
         school=p.school,
         course_level=p.course_level,  # type: ignore[arg-type]
+        topics=p.get_topics(),
         outcomes=[o.outcome_code for o in p.outcomes],
         visibility=p.visibility,  # type: ignore[arg-type]
         question_count=p.question_count,

@@ -47,7 +47,7 @@ export function SignupForm({
           toast.success("Account created successfully")
           window.location.href = redirectTo
         } else if (data.requires_2fa === true) {
-          toast.success("Account created — please log in")
+          toast.success("Account created, please log in")
           window.location.href = `/login?redirect=${encodeURIComponent(redirectTo)}`
         } else {
           setError(data.message || 'Signup failed')

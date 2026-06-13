@@ -1,3 +1,4 @@
+import type { PapersListResponse } from "@/types/responses";
 import type { CourseLevel, Paper, PaperSource, Question, Visibility } from "@/types/tppr-paper";
 
 interface StoredAsset {
@@ -143,4 +144,26 @@ export function withRecalculatedTotals(paper: Paper): Paper {
         total_marks: paper.questions.reduce((s, q) => s + q.marks, 0),
         updated_at: new Date().toISOString(),
     };
+}
+
+// ------- SEARCHING -------
+
+export interface SearchFilters {
+    q?: string;
+    subject?: string;
+    source?: string;
+    course_level?: string;
+    year?: string;
+    page?: number;
+    per_page?: number;
+}
+
+export async function searchPapers(filters: SearchFilters = {}): Promise<PapersListResponse> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+        if (value !== undefined && value !== "") params.set(key, String(value));
+    }
+    const res = await fetch(`/api/papers/search?${params}`, { credentials: "include" });
+    if (!res.ok) throw new Error(`Search failed: ${res.status}`);
+    return res.json();
 }

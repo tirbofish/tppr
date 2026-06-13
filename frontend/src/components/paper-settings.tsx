@@ -34,6 +34,7 @@ import type {
 } from "@/types/tppr-paper";
 import { Settings } from "lucide-react";
 import { toast } from "sonner";
+import { publishPaper, unpublishPaper } from "@/lib/cloud";
 
 interface PaperSettingsProps {
     paper: PaperMeta;
@@ -85,12 +86,13 @@ export function PaperSettings(
         save();
     }
 
-    function save() {
+    async function save() {
         const isPublishing = paper.visibility === "private" &&
             visibility === "public";
         const isUnpublishing = paper.visibility === "public" &&
             visibility === "private";
-        onSave({
+
+        const updated: PaperMeta = {
             ...paper,
             title,
             subject,
@@ -101,12 +103,22 @@ export function PaperSettings(
             source: (source as PaperSource) || undefined,
             visibility,
             updated_at: new Date().toISOString(),
-        });
-        if (isPublishing) {
-            toast.success(`${title} is now public!`);
-        } else if (isUnpublishing) {
-            toast.success(`${title} is now private.`);
+        };
+
+        try {
+            if (isPublishing) {
+                await publishPaper(paper.id);
+                toast.success(`${title} is now public!`);
+            } else if (isUnpublishing) {
+                await unpublishPaper(paper.id);
+                toast.success(`${title} is now private.`);
+            }
+        } catch {
+            toast.error("Failed to update visibility. Please try again.");
+            return;
         }
+
+        onSave(updated);
         setShowPublishWarning(false);
         setShowUnpublishWarning(false);
         setOpen(false);
