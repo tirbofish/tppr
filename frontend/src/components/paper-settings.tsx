@@ -334,6 +334,9 @@ export function PaperSettings(
                             Your paper will appear in search results and the
                             shared question pool.
                         </li>
+                        <li>
+                            Your paper can be copied and remixed by anyone. 
+                        </li>
                     </ul>
                     <p className="text-sm font-medium">Continue?</p>
                     <DialogFooter>
