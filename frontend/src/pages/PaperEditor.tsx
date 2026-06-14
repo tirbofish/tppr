@@ -1,9 +1,9 @@
 import {
+    type PointerEvent as ReactPointerEvent,
     useCallback,
     useEffect,
     useRef,
     useState,
-    type PointerEvent as ReactPointerEvent,
 } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
@@ -39,7 +39,7 @@ import { QuestionEditor } from "@/components/question-editor";
 import { EditableNumber } from "@/components/editable-number";
 import { toast } from "sonner";
 import { useAuth } from "@/api/auth";
-import Unauthorized from "./Unauthorised";
+import Unauthorized from "./errors/Unauthorised";
 import { PaperSettings } from "@/components/paper-settings";
 import { syncService } from "@/lib/cloud";
 import {
@@ -62,6 +62,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { AdminSidebar } from "@/components/admin-sidebar";
+import { Takendown } from "./errors/Takendown";
+import { GenericError } from "./errors/GenericError";
 
 const EDITOR_MIN_WIDTH = 384;
 const EDITOR_DEFAULT_WIDTH = 448;
@@ -103,6 +106,8 @@ export default function PaperEditor() {
     const saveCountRef = useRef(0);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
+    const [takenDown, setTakenDown] = useState(false);
+
     useEffect(() => {
         function handleKeyDown(e: KeyboardEvent) {
             if ((e.ctrlKey || e.metaKey) && e.key === "s") {
@@ -115,7 +120,7 @@ export default function PaperEditor() {
                     saveCountRef.current = 0;
                 }, 3000);
 
-                if (saveCountRef.current >= 5) {
+                if (saveCountRef.current >= 10) {
                     saveCountRef.current = 0;
                     setShowSaveHint(false);
                     setShowExportDialog(true);
@@ -176,30 +181,42 @@ export default function PaperEditor() {
 
     useEffect(() => {
         if (!id) return;
+        setTakenDown(false); // reset stale state
+        setPaper(null);
+        setLoading(true);
         async function load() {
-            // local first
-            const local = await paperStore.getPaper(id!);
-            if (local) {
-                setPaper(local);
-                setLoading(false);
-                return;
-            }
-
-            // server fallback
             try {
                 const res = await fetch(`/api/papers/${id}`, {
                     credentials: "include",
+                    cache: "no-store",
                 });
-                if (!res.ok) {
-                    setPaper(null);
+                if (res.status === 410) {
+                    await paperStore.deletePaper(id!);
+                    setTakenDown(true);
                     return;
                 }
-                const data = await res.json();
-                setPaper(data);
-                // cache locally for future access
-                await paperStore.savePaper(data);
-            } catch {
+                if (res.ok) {
+                    const data = await res.json();
+                    setPaper(data);
+                    await paperStore.savePaper(data);
+                    return;
+                }
+                if (res.status === 404) {
+                    const local = await paperStore.getPaper(id!);
+                    if (local) {
+                        setPaper(local);
+                        void syncService.sync(local);
+                        return;
+                    }
+                }
                 setPaper(null);
+            } catch {
+                const local = await paperStore.getPaper(id!);
+                if (local) {
+                    setPaper(local);
+                } else {
+                    setPaper(null);
+                }
             } finally {
                 setLoading(false);
             }
@@ -362,20 +379,31 @@ export default function PaperEditor() {
         );
     }
 
-    if (!paper) {
+    if (takenDown) {
         return (
             <>
-                <NavBar />
-                <p className="py-24 text-center text-muted-foreground">
-                    Paper not found.
-                </p>
+                <Takendown />
+                <AdminSidebar paperId={id!} isTakenDown />
             </>
         );
     }
 
+    if (!paper) {
+        if (!paper) {
+            return (
+                <GenericError
+                    code={404}
+                    title="Paper not found"
+                    message="This paper doesn't exist or may have been deleted."
+                    showNav={true}
+                />
+            );
+        }
+    }
+
     if (
         paper.visibility === "private" &&
-        (!user || String(user.user_id) !== paper.author_id)
+        (!user || (!user.admin && String(user.user_id) !== paper.author_id))
     ) {
         return <Unauthorized />;
     }
@@ -578,7 +606,8 @@ export default function PaperEditor() {
                                             clampEditorWidth(
                                                 width +
                                                     EDITOR_KEYBOARD_STEP,
-                                            ));
+                                            )
+                                        );
                                     }
                                     if (e.key === "ArrowRight") {
                                         e.preventDefault();
@@ -586,7 +615,8 @@ export default function PaperEditor() {
                                             clampEditorWidth(
                                                 width -
                                                     EDITOR_KEYBOARD_STEP,
-                                        ));
+                                            )
+                                        );
                                     }
                                 }}
                             >
@@ -636,6 +666,11 @@ export default function PaperEditor() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <AdminSidebar
+                paperId={id!}
+                isTakenDown={paper.visibility === "removed"}
+            />
         </>
     );
 }

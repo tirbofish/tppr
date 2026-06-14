@@ -16,8 +16,16 @@ from questions.types import (
     paper_db_to_read,
 )
 from questions.utils import _build_question_db
+from admin import is_admin
+
 
 q_bp = Blueprint("tppr-questions", __name__)
+
+
+def _removed_response():
+    response = jsonify({"message": "Paper has been removed", "visibility": "removed"})
+    response.headers["Cache-Control"] = "no-store"
+    return response, 410
 
 
 # --- Papers ---
@@ -112,6 +120,14 @@ def get_paper(paper_id):
         if not paper:
             return jsonify({"message": "Paper not found"}), 404
 
+        # Admins can view everything
+        if user_id and is_admin(str(user_id)):
+            return jsonify(paper_db_to_read(paper).model_dump(mode="json"))
+
+        # Removed papers — tell the user it's gone (owner included)
+        if paper.visibility == "removed":
+            return _removed_response()
+
         # Private papers are only visible to their author
         if paper.visibility == "private" and str(paper.author_id) != str(user_id):
             return jsonify({"message": "Paper not found"}), 404
@@ -130,6 +146,15 @@ def create_paper():
         return jsonify({"message": "No data provided"}), 400
 
     with get_session() as session:
+        visibility = data.get("visibility", "private")
+        if visibility == "removed":
+            return jsonify({"message": "Cannot create a removed paper"}), 400
+        
+        paper_id = data.get("id", str(uuid4()))
+        existing = session.get(PaperDB, paper_id)
+        if existing:
+            return jsonify({"message": "Paper already exists"}), 409
+        
         paper = PaperDB(
             id=data.get("id", str(__import__("uuid").uuid4())),
             title=data.get("title", "Untitled"),
@@ -140,7 +165,7 @@ def create_paper():
             source=data.get("source"),
             school=data.get("school"),
             course_level=data.get("course_level"),
-            visibility=data.get("visibility", "private"),
+            visibility=visibility,
             question_count=data.get("question_count", 0),
             total_marks=data.get("total_marks", 0),
             duration_minutes=data.get("duration_minutes"),
@@ -151,7 +176,7 @@ def create_paper():
         session.add(paper)
 
         for q_data in data.get("questions", []):
-            q = _build_question_db(q_data, paper.id, str(user_id))
+            q = _build_question_db(q_data, paper.id, str(user_id), preserve_id=False)
             session.add(q)
 
         session.commit()
@@ -171,6 +196,8 @@ def update_paper(paper_id):
         paper = session.get(PaperDB, paper_id)
         if not paper:
             return jsonify({"message": "Paper not found"}), 404
+        if paper.visibility == "removed":
+            return _removed_response()
         if paper.author_id != str(user_id):
             return jsonify({"message": "Forbidden"}), 403
 
@@ -189,7 +216,7 @@ def update_paper(paper_id):
             paper.school = data["school"]
         if "course_level" in data:
             paper.course_level = data["course_level"]
-        if "visibility" in data:
+        if "visibility" in data and data["visibility"] != "removed":
             paper.visibility = data["visibility"]
         if "question_count" in data:
             paper.question_count = data["question_count"]
@@ -233,6 +260,8 @@ def delete_paper(paper_id):
         paper = session.get(PaperDB, paper_id)
         if not paper:
             return jsonify({"message": "Paper not found"}), 404
+        if paper.visibility == "removed":
+            return _removed_response()
         if paper.author_id != str(user_id):
             return jsonify({"message": "Forbidden"}), 403
 
@@ -254,6 +283,8 @@ def publish_paper(paper_id):
             # it exists, verify it
             if paper.author_id != str(user_id):
                 return jsonify({"message": "Forbidden"}), 403
+            if paper.visibility == "removed":
+                return _removed_response()
             if paper.visibility == "public":
                 return jsonify({"message": "Paper is already public"}), 409
         else:
@@ -297,6 +328,8 @@ def unpublish_paper(paper_id):
             return jsonify({"message": "Paper not found"}), 404
         if paper.author_id != str(user_id):
             return jsonify({"message": "Forbidden"}), 403
+        if paper.visibility == "removed":
+            return _removed_response()
         if paper.visibility == "private":
             return jsonify({"message": "Paper is already private"}), 409
 

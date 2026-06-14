@@ -21,6 +21,11 @@ export class SyncService {
         this.listeners.forEach((fn) => fn(s));
     }
 
+    private async saveServerPaper(res: Response): Promise<void> {
+        const saved = await res.json() as Paper;
+        await paperStore.savePaper(saved);
+    }
+
     private async pushToServer(paper: Paper): Promise<void> {
         this.setStatus("syncing");
         const res = await fetch(`/api/papers/${paper.id}`, {
@@ -38,8 +43,11 @@ export class SyncService {
                 body: JSON.stringify(paper),
             });
             if (!createRes.ok) throw new Error(`Create failed: ${createRes.status}`);
+            await this.saveServerPaper(createRes);
         } else if (!res.ok) {
             throw new Error(`Sync failed: ${res.status}`);
+        } else {
+            await this.saveServerPaper(res);
         }
         this.setStatus("synced");
     }
@@ -73,8 +81,9 @@ export class SyncService {
         if (this.pending) {
             try {
                 await this.pushToServer(this.pending);
-            } catch {
+            } catch (e) {
                 this.setStatus("offline");
+                throw e;
             }
             this.pending = null;
         }

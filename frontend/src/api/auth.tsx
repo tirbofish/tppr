@@ -10,6 +10,7 @@ interface User {
   user_id: number;
   username: string;
   email: string;
+  admin?: boolean;
 }
 
 interface AuthContextType {
@@ -34,14 +35,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetch("/api/whoami", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
+        let parsedUser: User | null = null;
+
         if (data?.user) {
-          setUser(data.user);
+          parsedUser = data.user;
         } else if (data?.user_id && data?.username && data?.email) {
-          setUser({
+          parsedUser = {
             user_id: data.user_id,
             username: data.username,
             email: data.email,
-          });
+          };
+        }
+
+        if (parsedUser) {
+          fetch("/api/admin/status", { credentials: "include" })
+            .then((r) => (r.ok ? r.json() : { admin: false }))
+            .then((s) => setUser({ ...parsedUser!, admin: s.admin }))
+            .catch(() => setUser(parsedUser!));
         } else {
           setUser(null);
         }
@@ -63,8 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (res.ok && data.user) {
-        setUser(data.user);
-        return null; // success
+        setUser({ ...data.user, admin: data.admin ?? false });
+        return null;
       }
       return data.message || "Login failed";
     } catch {

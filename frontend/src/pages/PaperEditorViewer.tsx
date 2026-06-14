@@ -129,15 +129,17 @@ export function PapersViewer() {
                 }));
 
                 await syncService.sync(imported);
+                await syncService.flush();
 
                 setPapers((prev) => [
                     { ...imported, isLocal: true },
                     ...prev,
                 ]);
                 toast.success(`Imported "${imported.title}" successfully!`);
-            } catch {
+            } catch (error) {
+                console.warn(error);
                 toast.error(
-                    "Failed to read file — make sure it's valid JSON.",
+                    "Failed to import paper. Make sure it's valid JSON and try again.",
                 );
             }
         },

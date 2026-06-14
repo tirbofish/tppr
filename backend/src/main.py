@@ -11,6 +11,7 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from questions.db import prepare as prepare_paper_db
 from questions.endpoints import q_bp
+from admin import admin_bp, init_admins, teardown_admins
 from shared import BLOCKLIST
 
 load_dotenv()
@@ -79,6 +80,8 @@ def page_not_found(e):
 auth.register_blueprint(app)
 swagger.register_blueprint(app)
 app.register_blueprint(q_bp)
+app.register_blueprint(admin_bp)
+
 
 
 # --- do not add code any further than this line, or else...👻👻👻 ---
@@ -94,4 +97,8 @@ if __name__ == "__main__":
     auth_db = AuthenticationDB()
     auth_db.prepare(app.logger)
     prepare_paper_db(app.logger)
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    init_admins()
+    try:
+        app.run(debug=True, host="0.0.0.0", port=5000)
+    finally:
+        teardown_admins()

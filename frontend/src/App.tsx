@@ -7,9 +7,10 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import PaperEditor from "./pages/PaperEditor";
 import { PapersViewer } from "./pages/PaperEditorViewer";
-import Unauthorized from "./pages/Unauthorised";
-import { GenericError } from "./pages/GenericError";
+import Unauthorized from "./pages/errors/Unauthorised";
+import { GenericError } from "./pages/errors/GenericError";
 import Search from "./pages/Search";
+import AdminTakedowns from "./pages/AdminTakedowns";
 import Copyright from "./pages/legal/Copyright";
 import Privacy from "./pages/legal/Privacy";
 import { Footer } from "./components/footer";
@@ -38,6 +39,7 @@ function App() {
               <Route path="/papers" element={<PapersViewer />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
               <Route path="/search" element={<Search />} />
+              <Route path="/admin/takedowns" element={<AdminTakedowns />} />
 
               <Route path="/legal/copyright" element={<Copyright />} />
               <Route path="/legal/privacy" element={<Privacy />} />
@@ -50,6 +52,7 @@ function App() {
                     code={404}
                     title="Not Found"
                     message="The page you're looking for doesn't exist."
+                    showNav={true}
                   />
                 }
               />

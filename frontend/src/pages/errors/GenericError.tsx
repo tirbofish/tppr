@@ -7,18 +7,21 @@ interface GenericErrorProps {
     title?: string;
     message?: string;
     code?: number | string;
+    showNav: boolean;
 }
 
 export function GenericError({
     title = "Something went wrong",
     message = "An unexpected error occurred.",
     code,
+    showNav = false,
 }: GenericErrorProps) {
     const navigate = useNavigate();
 
     return (
         <>
-            <NavBar />
+            {showNav ? <NavBar /> : " "}
+
             <main className="flex flex-col items-center gap-4 py-24 text-center px-6">
                 <AlertTriangle className="size-12 text-destructive" />
                 {code && (

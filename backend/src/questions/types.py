@@ -13,7 +13,7 @@ from sqlmodel import Field, Relationship, SQLModel
 # enumerate
 # ---------------------------------------------------------------------------
 
-Visibility = Literal["private", "public"]
+Visibility = Literal["private", "public", "removed"]
 
 QuestionType = Literal[
     "multiple_choice",

@@ -11,7 +11,7 @@ export type CourseLevel =
     | "extension_1"
     | "extension_2";
 
-export type Visibility = "private" | "public";
+export type Visibility = "private" | "public" | "removed";
 
 export type QuestionType = "multiple_choice" | "short_answer" | "long_answer";
 

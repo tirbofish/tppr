@@ -6,12 +6,15 @@ import {
   NotepadTextDashed,
   Plus,
   SearchIcon,
+  ShieldCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/api/auth";
@@ -197,13 +200,17 @@ export default function NavBar() {
                             variant="ghost"
                             className="relative size-8 rounded-full"
                           >
-                            <Avatar className="size-8">
-                              <AvatarImage src="dont_worry_about_it_just_need_to_ensure_the_avatar_fetching_fails" />
-                              <AvatarFallback>
-                                {user.username?.slice(0, 2).toUpperCase() ??
-                                  "U"}
-                              </AvatarFallback>
-                            </Avatar>
+                            {user.admin
+                              ? <ShieldCheck className="size-5 text-primary" />
+                              : (
+                                <Avatar className="size-8">
+                                  <AvatarImage src="dont_worry_about_it_just_need_to_ensure_the_avatar_fetching_fails" />
+                                  <AvatarFallback>
+                                    {user.username?.slice(0, 2).toUpperCase() ??
+                                      "U"}
+                                  </AvatarFallback>
+                                </Avatar>
+                              )}
                             <span
                               className={`absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-background ${
                                 online ? "bg-green-500" : "bg-yellow-500"
@@ -220,9 +227,29 @@ export default function NavBar() {
                     </Tooltip>
                   </TooltipProvider>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={logout}>
-                      Sign out
-                    </DropdownMenuItem>
+                    <DropdownMenuGroup>
+                      {user.admin && (
+                        <>
+                          <DropdownMenuItem
+                            disabled
+                            className="gap-2 text-primary"
+                          >
+                            <ShieldCheck />
+                            Admin mode
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/admin/takedowns">
+                              <ShieldCheck />
+                              Takedowns
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+                      <DropdownMenuItem onClick={logout}>
+                        Sign out
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>

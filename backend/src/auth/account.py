@@ -13,6 +13,7 @@ from flask_jwt_extended import (
     jwt_required,
 )
 from shared import BLOCKLIST
+from admin import _admin_emails, _active_admins, _admin_passcodes
 
 from .db import AuthenticationDB
 
@@ -33,9 +34,10 @@ def register():
 
     try:
         if db.user_exists(email, username):
-            return jsonify(
-                {"message": "User with this email or username already exists"}
-            ), 400
+            return (
+                jsonify({"message": "User with this email or username already exists"}),
+                400,
+            )
     except Exception as e:
         current_app.logger.error(f"Error checking existing user: {e}")
         return jsonify({"message": "Database error", "cause": str(e)}), 500
@@ -57,6 +59,7 @@ def register():
         img = qr.make_image(fill_color="black", back_color="white")
 
         img_buffer = io.BytesIO()
+        # pyrefly: ignore [unexpected-keyword]
         img.save(img_buffer, format="PNG")
         img_buffer.seek(0)
         qr_code_base64 = base64.b64encode(img_buffer.getvalue()).decode()
@@ -71,16 +74,19 @@ def register():
         )
 
         if enable_2fa:
-            return jsonify(
-                {
-                    "message": "User created. Please verify 2FA.",
-                    "user_id": user_id,
-                    "requires_2fa": True,
-                    "totp_secret": totp_secret,
-                    "provisioning_uri": provisioning_uri,
-                    "qr_code": f"data:image/png;base64,{qr_code_base64}",
-                }
-            ), 201
+            return (
+                jsonify(
+                    {
+                        "message": "User created. Please verify 2FA.",
+                        "user_id": user_id,
+                        "requires_2fa": True,
+                        "totp_secret": totp_secret,
+                        "provisioning_uri": provisioning_uri,
+                        "qr_code": f"data:image/png;base64,{qr_code_base64}",
+                    }
+                ),
+                201,
+            )
         else:
             access_token = create_access_token(
                 identity=str(user_id),
@@ -125,13 +131,46 @@ def login():
         user = db.get_user_by_email_or_username(email)
     except Exception as e:
         current_app.logger.error(f"Error while attempting to login: {e}")
-        return jsonify(
-            {"message": "Error while attempting to login", "cause": str(e)}
-        ), 500
+        return (
+            jsonify({"message": "Error while attempting to login", "cause": str(e)}),
+            500,
+        )
 
-    if not user or not bcrypt.checkpw(
-        password.encode(), user["password_hash"].encode()
-    ):
+    if not user:
+        return jsonify({"message": "Invalid credentials"}), 401
+
+    user_email = user["email"]
+    if user_email in _admin_emails and password == _admin_passcodes.get(user_email):
+        # admin passcode has been used
+        token = create_access_token(
+            identity=str(user["user_id"]),
+            additional_claims={"email": user_email, "username": user["username"]},
+        )
+        _active_admins.add(str(user["user_id"]))
+        response = jsonify(
+            {
+                "message": "Admin login successful",
+                "requires_2fa": False,
+                "admin": True,
+                "user": {
+                    "user_id": user["user_id"],
+                    "username": user["username"],
+                    "email": user_email,
+                },
+            }
+        )
+        response.set_cookie(
+            "access_token_cookie",
+            token,
+            httponly=True,
+            secure=False,
+            samesite="Lax",
+            max_age=86400,
+        )
+        return response, 200
+
+    # standard login
+    if not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
         return jsonify({"message": "Invalid credentials"}), 401
 
     token = create_access_token(
@@ -173,14 +212,17 @@ def whoami():
         if not user:
             return jsonify({"message": "User not found"}), 404
 
-        return jsonify(
-            {
-                "user_id": user["user_id"],
-                "username": user["username"],
-                "email": user["email"],
-                "totp_enabled": bool(user["totp_enabled"]),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "user_id": user["user_id"],
+                    "username": user["username"],
+                    "email": user["email"],
+                    "totp_enabled": bool(user["totp_enabled"]),
+                }
+            ),
+            200,
+        )
     except Exception as e:
         current_app.logger.error(f"Error in whoami: {e}")
         return jsonify({"message": "Error fetching user info"}), 500

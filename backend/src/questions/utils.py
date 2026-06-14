@@ -12,9 +12,15 @@ def _parse_dt(value) -> datetime:
     return datetime.now(UTC)
 
 
-def _build_question_db(q_data: dict, paper_id: str, author_id: str) -> QuestionDB:
+def _build_question_db(
+    q_data: dict,
+    paper_id: str,
+    author_id: str,
+    *,
+    preserve_id: bool = True,
+) -> QuestionDB:
     return QuestionDB(
-        id=q_data.get("id", str(uuid.uuid4())),
+        id=q_data.get("id") if preserve_id and q_data.get("id") else str(uuid.uuid4()),
         paper_id=paper_id,
         author_id=author_id,
         number=q_data.get("number", 1),
