@@ -33,6 +33,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Build frontend
+        working-directory: frontend
+        run: bun run build
+        env:
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
+          VITE_BACKEND_URL: ${{ vars.BACKEND_URL }}
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+
       - name: Check BACKEND_URL
         run: |
           if [ -z "$BACKEND_URL" ]; then
