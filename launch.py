@@ -17,6 +17,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from collections import deque
@@ -342,6 +343,142 @@ def run_checked(args, cwd, label, env=None, show_status=True):
 
     success(label)
     return proc
+
+
+def run_streamed(args, cwd, label, env=None):
+    log(label)
+    proc = subprocess.run(args, cwd=cwd, env=env, text=True)
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(proc.returncode, args)
+    success(label)
+    return proc
+
+
+def run_capture(args, cwd, label):
+    proc = subprocess.run(args, cwd=cwd, text=True, capture_output=True)
+    if proc.returncode != 0:
+        output = "\n".join(part for part in [proc.stdout, proc.stderr] if part).strip()
+        fatal(label, output or f"Command failed: {command_text(args)}")
+    return proc.stdout.strip()
+
+
+def gcloud_config_value(gcloud, key):
+    proc = subprocess.run(
+        [gcloud, "config", "get-value", key],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        return ""
+    value = proc.stdout.strip()
+    if value == "(unset)":
+        return ""
+    return value
+
+
+def check_deploy_tools():
+    git = find_command("git")
+    gcloud = find_command("gcloud")
+    missing = [name for name, cmd in [("git", git), ("gcloud", gcloud)] if not cmd]
+    if missing:
+        fatal(
+            "Missing deploy tools: " + ", ".join(missing),
+            "Install the missing command(s), then run `uv run launch.py --deploy gcp` again.",
+        )
+    return {"git": git, "gcloud": gcloud}
+
+
+def copy_latest_commit(git, target_dir):
+    archive_file = tempfile.NamedTemporaryFile(
+        prefix="tppr-source-", suffix=".zip", delete=False
+    )
+    archive_path = archive_file.name
+    archive_file.close()
+    try:
+        proc = subprocess.run(
+            [git, "archive", "--format=zip", "--output", archive_path, "HEAD"],
+            cwd=ROOT,
+            text=True,
+        )
+        if proc.returncode != 0:
+            raise subprocess.CalledProcessError(proc.returncode, proc.args)
+        shutil.unpack_archive(archive_path, target_dir)
+    finally:
+        try:
+            os.unlink(archive_path)
+        except OSError:
+            pass
+
+
+def run_gcp_deploy():
+    tools = check_deploy_tools()
+    git = tools["git"]
+    gcloud = tools["gcloud"]
+
+    commit = run_capture(
+        [git, "rev-parse", "--short=12", "HEAD"],
+        ROOT,
+        "Could not resolve the latest git commit",
+    )
+    branch = run_capture(
+        [git, "branch", "--show-current"],
+        ROOT,
+        "Could not resolve the current git branch",
+    ) or "detached HEAD"
+    status = run_capture(
+        [git, "status", "--short"],
+        ROOT,
+        "Could not inspect git status",
+    )
+    if status:
+        warn("Working tree has uncommitted changes; deploying the latest commit only.")
+
+    service = os.getenv("GCP_CLOUD_RUN_SERVICE", os.getenv("CLOUD_RUN_SERVICE", "tppr"))
+    region = (
+        os.getenv("GCP_REGION")
+        or os.getenv("CLOUD_RUN_REGION")
+        or gcloud_config_value(gcloud, "run/region")
+        or gcloud_config_value(gcloud, "compute/region")
+        or "australia-southeast1"
+    )
+    project = os.getenv("GCP_PROJECT") or gcloud_config_value(gcloud, "core/project")
+
+    table = Table(title="GCP deploy", box=box.SIMPLE_HEAVY)
+    table.add_column("Setting", style="bold")
+    table.add_column("Value", overflow="fold")
+    table.add_row("Service", service)
+    table.add_row("Region", region)
+    table.add_row("Project", project or "(gcloud default)")
+    table.add_row("Branch", branch)
+    table.add_row("Commit", commit)
+    console.print(table)
+
+    with tempfile.TemporaryDirectory(prefix=f"tppr-deploy-{commit}-") as source_dir:
+        log(f"Preparing source archive from commit {commit}")
+        try:
+            copy_latest_commit(git, source_dir)
+        except subprocess.CalledProcessError as exc:
+            fatal(
+                f"Failed to prepare deploy source from HEAD (exit {exc.returncode})",
+                "Ensure Git is installed and this repository has at least one commit.",
+            )
+
+        deploy_args = [
+            gcloud,
+            "run",
+            "deploy",
+            service,
+            "--source",
+            source_dir,
+            "--region",
+            region,
+            "--quiet",
+        ]
+        if project:
+            deploy_args.extend(["--project", project])
+
+        run_streamed(deploy_args, ROOT, f"Deploying {service} to Cloud Run")
 
 
 def ensure_python_dependencies(tools, skip_install=False, tui=None, live=None):
@@ -881,6 +1018,26 @@ def run_combined_mode(tools, watchers):
 
 
 def main():
+    if "--deploy" in sys.argv:
+        deploy_index = sys.argv.index("--deploy")
+        provider = sys.argv[deploy_index + 1] if deploy_index + 1 < len(sys.argv) else ""
+        if provider != "gcp":
+            fatal(
+                "Unsupported deploy target",
+                "Use `uv run launch.py --deploy gcp`.",
+            )
+        try:
+            run_gcp_deploy()
+        except KeyboardInterrupt:
+            warn("Deployment interrupted.")
+        except subprocess.CalledProcessError as exc:
+            fatal(
+                f"Command failed with exit code {exc.returncode}: {command_text(exc.cmd)}"
+            )
+        except Exception as exc:
+            fatal(str(exc))
+        return
+
     split_mode = "--build" not in sys.argv
     skip_install = "--skip-install" in sys.argv
     watchers = []

@@ -40,7 +40,7 @@ DATABASE_PATH = os.getenv(
 API_ONLY_FLAG = "--api-only"
 PRODUCTION = env_flag("PRODUCTION")
 BACKEND_HOST = os.getenv("BACKEND_HOST", "0.0.0.0")
-BACKEND_PORT = int(os.getenv("BACKEND_PORT", "5000"))
+BACKEND_PORT = int(os.getenv("PORT", os.getenv("BACKEND_PORT", "5000")))
 BACKEND_DEBUG = False if PRODUCTION else env_flag("BACKEND_DEBUG_MODE", env_flag("BACKEND_DEBUG", True))
 
 APP_NAME = "TPPR"
@@ -48,7 +48,7 @@ SECRET_KEY = required_secret("SECRET_KEY", "dev-secret")
 JWT_SECRET_KEY = required_secret("JWT_SECRET_KEY", "dev-jwt-secret")
 JWT_TOKEN_LOCATION = ["cookies"]
 JWT_COOKIE_SECURE = True if PRODUCTION else env_flag("JWT_COOKIE_SECURE")
-JWT_COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "Strict" if PRODUCTION else "Lax")
+JWT_COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "None" if PRODUCTION else "Lax")
 if JWT_COOKIE_SAMESITE not in {"Strict", "Lax", "None"}:
     raise RuntimeError("JWT_COOKIE_SAMESITE must be Strict, Lax, or None")
 if JWT_COOKIE_SAMESITE == "None" and not JWT_COOKIE_SECURE:

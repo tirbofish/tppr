@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 from logging import Logger
 from typing import Optional
 
-from sqlalchemy import or_, select
-from sqlmodel import Field, Session, SQLModel
+from sqlalchemy import or_
+from sqlmodel import Field, Session, SQLModel, select
 
 from questions.db import engine
 

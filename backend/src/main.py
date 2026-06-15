@@ -175,6 +175,24 @@ for endpoint, limit in PUBLIC_ENDPOINT_RATE_LIMITS.items():
     if view:
         app.view_functions[endpoint] = limiter.limit(limit)(view)
 
+
+_runtime_initialized = False
+
+
+def initialize_runtime():
+    global _runtime_initialized
+    if _runtime_initialized:
+        return
+
+    auth_db = AuthenticationDB()
+    auth_db.prepare(app.logger)
+    prepare_paper_db(app.logger)
+    init_admins()
+    _runtime_initialized = True
+
+
+initialize_runtime()
+
 # --- do not add code any further than this line, or else...👻👻👻 ---
 
 if not settings.PRODUCTION:
@@ -186,10 +204,6 @@ if not settings.PRODUCTION:
     print()
 
 if __name__ == "__main__":
-    auth_db = AuthenticationDB()
-    auth_db.prepare(app.logger)
-    prepare_paper_db(app.logger)
-    init_admins()
     try:
         app.run(
             debug=settings.BACKEND_DEBUG,
