@@ -27,11 +27,15 @@ def required_secret(name: str, fallback: str) -> str:
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
 PROJECT_ROOT = os.path.abspath(os.path.join(BACKEND_DIR, ".."))
+ASSETS_DIR = os.getenv("BACKEND_ASSETS_DIR", os.path.join(BACKEND_DIR, "assets"))
+PACKAGED_FRONTEND_DIST_DIR = os.path.join(ASSETS_DIR, "site")
+SOURCE_FRONTEND_DIST_DIR = os.path.join(PROJECT_ROOT, "frontend", "dist")
 FRONTEND_DIST_DIR = os.getenv(
     "FRONTEND_DIST_DIR",
-    os.path.join(PROJECT_ROOT, "frontend", "dist"),
+    PACKAGED_FRONTEND_DIST_DIR
+    if os.path.isfile(os.path.join(PACKAGED_FRONTEND_DIST_DIR, "index.html"))
+    else SOURCE_FRONTEND_DIST_DIR,
 )
-ASSETS_DIR = os.getenv("BACKEND_ASSETS_DIR", os.path.join(BACKEND_DIR, "assets"))
 DATABASE_PATH = os.getenv(
     "DATABASE_PATH",
     os.path.join(PROJECT_ROOT, "database.db"),
@@ -74,7 +78,7 @@ if PRODUCTION:
 elif not BACKEND_ALLOWED_ORIGINS:
     BACKEND_ALLOWED_ORIGINS = ["http://localhost:5173"]
 
-PUBLIC_API_DOCS = env_flag("PUBLIC_API_DOCS", False)
+PUBLIC_API_DOCS = env_flag("PUBLIC_API_DOCS", True)
 SHOW_ERROR_CAUSES = not PRODUCTION
 RATELIMIT_DEFAULT = os.getenv(
     "RATELIMIT_DEFAULT",

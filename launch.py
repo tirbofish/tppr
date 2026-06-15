@@ -380,13 +380,18 @@ def gcloud_config_value(gcloud, key):
 def check_deploy_tools():
     git = find_command("git")
     gcloud = find_command("gcloud")
-    missing = [name for name, cmd in [("git", git), ("gcloud", gcloud)] if not cmd]
+    bun = find_command("bun")
+    missing = [
+        name
+        for name, cmd in [("git", git), ("gcloud", gcloud), ("bun", bun)]
+        if not cmd
+    ]
     if missing:
         fatal(
             "Missing deploy tools: " + ", ".join(missing),
             "Install the missing command(s), then run `uv run launch.py --deploy gcp` again.",
         )
-    return {"git": git, "gcloud": gcloud}
+    return {"git": git, "gcloud": gcloud, "js": bun, "js_name": "bun"}
 
 
 def copy_latest_commit(git, target_dir):
@@ -411,10 +416,25 @@ def copy_latest_commit(git, target_dir):
             pass
 
 
+def copy_deploy_source(target_dir):
+    ignored_dirs = {".git", ".venv", ".uv-cache", "node_modules", "__pycache__", "dist"}
+    ignored_files = {".env", "database.db"}
+
+    def ignore(_dir, names):
+        ignored = set()
+        for name in names:
+            if name in ignored_dirs or name in ignored_files:
+                ignored.add(name)
+        return ignored
+
+    shutil.copytree(ROOT, target_dir, dirs_exist_ok=True, ignore=ignore)
+
+
 def run_gcp_deploy():
     tools = check_deploy_tools()
     git = tools["git"]
     gcloud = tools["gcloud"]
+    js = tools["js"]
 
     commit = run_capture(
         [git, "rev-parse", "--short=12", "HEAD"],
@@ -427,12 +447,12 @@ def run_gcp_deploy():
         "Could not resolve the current git branch",
     ) or "detached HEAD"
     status = run_capture(
-        [git, "status", "--short"],
+        [tools["git"], "status", "--short"],
         ROOT,
         "Could not inspect git status",
     )
     if status:
-        warn("Working tree has uncommitted changes; deploying the latest commit only.")
+        warn("Working tree has uncommitted changes; deploying the current files.")
 
     service = os.getenv("GCP_CLOUD_RUN_SERVICE", os.getenv("CLOUD_RUN_SERVICE", "tppr"))
     region = (
@@ -455,22 +475,38 @@ def run_gcp_deploy():
     console.print(table)
 
     with tempfile.TemporaryDirectory(prefix=f"tppr-deploy-{commit}-") as source_dir:
-        log(f"Preparing source archive from commit {commit}")
-        try:
-            copy_latest_commit(git, source_dir)
-        except subprocess.CalledProcessError as exc:
-            fatal(
-                f"Failed to prepare deploy source from HEAD (exit {exc.returncode})",
-                "Ensure Git is installed and this repository has at least one commit.",
-            )
+        log("Preparing deploy source from the current working tree")
+        copy_deploy_source(source_dir)
 
+        deploy_frontend = os.path.join(source_dir, "frontend")
+        deploy_backend_assets = os.path.join(source_dir, "backend", "assets", "site")
+        deploy_frontend_dist = os.path.join(deploy_frontend, "dist")
+        build_env = os.environ.copy()
+        build_env["VITE_BASE_PATH"] = "/"
+
+        run_streamed(
+            [js, "install", "--frozen-lockfile"],
+            source_dir,
+            "Installing frontend dependencies for deploy",
+        )
+        run_streamed(
+            [js, "run", "build"],
+            deploy_frontend,
+            "Building frontend for deploy",
+            env=build_env,
+        )
+        if os.path.exists(deploy_backend_assets):
+            shutil.rmtree(deploy_backend_assets)
+        shutil.copytree(deploy_frontend_dist, deploy_backend_assets)
+
+        deploy_source = os.path.join(source_dir, "backend")
         deploy_args = [
             gcloud,
             "run",
             "deploy",
             service,
             "--source",
-            source_dir,
+            deploy_source,
             "--region",
             region,
             "--quiet",

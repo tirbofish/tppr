@@ -1,4 +1,5 @@
 import type { Paper } from "@/types/tppr-paper";
+import { apiFetch } from "@/api/client";
 import { paperStore } from "./paper";
 
 export type SyncStatus = "synced" | "syncing" | "pending" | "offline";
@@ -66,9 +67,8 @@ export class SyncService {
                 }),
             );
 
-            const res = await fetch(`/api/papers/${paper.id}/assets`, {
+            const res = await apiFetch(`/api/papers/${paper.id}/assets`, {
                 method: "POST",
-                credentials: "include",
                 body: formData,
             });
             if (!res.ok) throw new Error(`Asset upload failed: ${res.status}`);
@@ -77,18 +77,16 @@ export class SyncService {
 
     private async pushToServer(paper: Paper): Promise<void> {
         this.setStatus("syncing");
-        const res = await fetch(`/api/papers/${paper.id}`, {
+        const res = await apiFetch(`/api/papers/${paper.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            credentials: "include",
             body: JSON.stringify(paper),
         });
 
         if (res.status === 404) {
-            const createRes = await fetch("/api/papers", {
+            const createRes = await apiFetch("/api/papers", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify(paper),
             });
             if (!createRes.ok) throw new Error(`Create failed: ${createRes.status}`);
@@ -143,10 +141,9 @@ export class SyncService {
         const paper = await paperStore.getPaper(paperId);
         if (!paper) throw new Error("Paper not found locally");
         this.setStatus("syncing");
-        const res = await fetch(`/api/papers/${paperId}/publish`, {
+        const res = await apiFetch(`/api/papers/${paperId}/publish`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            credentials: "include",
             body: JSON.stringify(paper),
         });
         if (!res.ok) throw new Error(`Publish failed: ${res.status}`);
@@ -156,9 +153,8 @@ export class SyncService {
 
     async unpublish(paperId: string): Promise<void> {
         this.setStatus("syncing");
-        const res = await fetch(`/api/papers/${paperId}/publish`, {
+        const res = await apiFetch(`/api/papers/${paperId}/publish`, {
             method: "DELETE",
-            credentials: "include",
         });
         if (!res.ok) throw new Error(`Unpublish failed: ${res.status}`);
         this.setStatus("synced");

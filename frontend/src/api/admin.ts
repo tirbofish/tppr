@@ -1,4 +1,5 @@
 import type { PaperMeta } from "@/types/tppr-paper";
+import { apiFetch } from "./client";
 
 interface AdminPapersResponse {
     papers: PaperMeta[];
@@ -29,9 +30,8 @@ export async function getTakenDownPapers(
 }
 
 export async function restoreTakenDownPaper(paperId: string): Promise<void> {
-    const res = await fetch(`/api/admin/takedown/${paperId}`, {
+    const res = await apiFetch(`/api/admin/takedown/${paperId}`, {
         method: "DELETE",
-        credentials: "include",
     });
     if (!res.ok) throw new Error(`Failed to restore takedown: ${res.status}`);
 }

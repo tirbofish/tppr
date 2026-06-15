@@ -12,6 +12,7 @@ import {
     withRecalculatedTotals,
 } from "@/lib/paper";
 import { getPapers, remixQuestionIntoPaper } from "@/api/papers";
+import { apiFetch } from "@/api/client";
 import type {
     Paper,
     PaperMeta,
@@ -271,7 +272,7 @@ export default function PaperEditor() {
     }, [questionRemixId, user]);
 
     useEffect(() => {
-        if (!id) return;
+        if (!id || authLoading) return;
         async function load() {
             setTakenDown(false); // reset stale state
             setPaper(null);
@@ -296,7 +297,12 @@ export default function PaperEditor() {
                     const local = await paperStore.getPaper(id!);
                     if (local) {
                         setPaper(local);
-                        void syncService.sync(local);
+                        if (
+                            user &&
+                            String(user.user_id) === String(local.author_id)
+                        ) {
+                            void syncService.sync(local);
+                        }
                         return;
                     }
                 }
@@ -313,13 +319,12 @@ export default function PaperEditor() {
             }
         }
         void load();
-    }, [id]);
+    }, [authLoading, id, user]);
 
     async function handleRemix() {
         if (!paper) return;
-        const res = await fetch(`/api/papers/${paper.id}/remix`, {
+        const res = await apiFetch(`/api/papers/${paper.id}/remix`, {
             method: "POST",
-            credentials: "include",
         });
         if (!res.ok) {
             toast.error("Failed to remix paper");

@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiFetch } from "./client";
 
 interface User {
   user_id: number;
@@ -85,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function logout() {
-    fetch("/api/logout", { method: "POST", credentials: "include" })
+    apiFetch("/api/logout", { method: "POST" })
       .then(() => {
         setUser(null);
         navigate("/login", { replace: true });

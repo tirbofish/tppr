@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { PanelRightClose, PanelRightOpen, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/api/auth";
+import { apiFetch } from "@/api/client";
 
 interface AdminSidebarProps {
     paperId: string;
@@ -25,9 +26,8 @@ export function AdminSidebar({ paperId, isTakenDown }: AdminSidebarProps) {
 
         setLoading(true);
         try {
-            const res = await fetch(`/api/admin/takedown/${paperId}`, {
+            const res = await apiFetch(`/api/admin/takedown/${paperId}`, {
                 method: "POST",
-                credentials: "include",
             });
             const data = await res.json();
             if (!res.ok) {
@@ -48,9 +48,8 @@ export function AdminSidebar({ paperId, isTakenDown }: AdminSidebarProps) {
 
         setLoading(true);
         try {
-            const res = await fetch(`/api/admin/takedown/${paperId}`, {
+            const res = await apiFetch(`/api/admin/takedown/${paperId}`, {
                 method: "DELETE",
-                credentials: "include",
             });
             const data = await res.json();
             if (!res.ok) {

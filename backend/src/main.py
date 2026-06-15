@@ -3,13 +3,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
+import sys
 
 import auth
 import swagger
 import settings
 from admin import admin_bp, init_admins, teardown_admins
 from auth.db import AuthenticationDB
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, redirect, request, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, verify_jwt_in_request
 from flask_limiter import Limiter
@@ -18,7 +19,9 @@ from questions.db import prepare as prepare_paper_db
 from questions.endpoints import q_bp
 from shared import BLOCKLIST
 
-assets_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../assets"))
+assets_dir = settings.ASSETS_DIR
+frontend_dist_dir = settings.FRONTEND_DIST_DIR
+api_only = settings.API_ONLY_FLAG in sys.argv
 
 app = Flask(__name__)
 
@@ -59,6 +62,9 @@ limiter = Limiter(
 )
 
 PUBLIC_API_ENDPOINTS = {
+    "api_landing",
+    "api_docs_redirect",
+    "api_not_found",
     "ping",
     "tppr-account-authentication.register",
     "tppr-account-authentication.login",
@@ -98,7 +104,7 @@ def check_if_token_revoked(jwt_header, jwt_payload):
 def require_auth_for_private_api_routes():
     if request.method == "OPTIONS":
         return None
-    if not settings.PRODUCTION or not request.path.startswith("/api/"):
+    if not settings.PRODUCTION or not request.path.startswith("/api"):
         return None
     if request.endpoint in PUBLIC_API_ENDPOINTS:
         return None
@@ -121,12 +127,18 @@ def set_security_headers(response):
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
 
     if response.content_type.startswith("text/html"):
+        script_src = "'self'"
+        if request.path.startswith("/api/docs"):
+            script_src = (
+                "'self' "
+                "'sha256-JMCk0gh0T7mj34/FjHVW9GGJLM7La5rqNFHXGSyz+aU='"
+            )
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "base-uri 'self'; "
             "frame-ancestors 'none'; "
             "object-src 'none'; "
-            "script-src 'self'; "
+            f"script-src {script_src}; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob:; "
             "font-src 'self' data:; "
@@ -138,17 +150,60 @@ def set_security_headers(response):
             "max-age=63072000; includeSubDomains; preload"
         )
 
-    if request.path.startswith("/api/") and "Cache-Control" not in response.headers:
+    if request.path.startswith("/api") and "Cache-Control" not in response.headers:
         response.headers["Cache-Control"] = "no-store"
     return response
 
 
 # --- basic routes ---
 
+def serve_api_landing():
+    return send_from_directory(assets_dir, "missing.html")
+
+
+def frontend_dist_available():
+    return os.path.isfile(os.path.join(frontend_dist_dir, "index.html"))
+
+
+@app.route("/api")
+@app.route("/api/")
+def api_landing():
+    return serve_api_landing()
+
+
+@app.route("/api/docs")
+def api_docs_redirect():
+    return redirect("/api/docs/", code=308)
+
+
+@app.route("/api/<path:path>")
+def api_not_found(path):
+    body = {"message": "404, requested API resource not found"}
+    if settings.SHOW_ERROR_CAUSES:
+        body["cause"] = f"/api/{path}"
+    return jsonify(body), 404
+
+
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def index(path):
-    return send_from_directory(assets_dir, "missing.html")
+    if api_only or not frontend_dist_available():
+        return serve_api_landing()
+
+    if path:
+        requested_file = os.path.join(frontend_dist_dir, path)
+        if os.path.isfile(requested_file):
+            response = send_from_directory(frontend_dist_dir, path)
+            if path.startswith("assets/"):
+                response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return response
+        # Don't serve index.html for missing static assets
+        if "." in path.split("/")[-1]:
+            return jsonify({"message": "404, resource not found"}), 404
+
+    response = send_from_directory(frontend_dist_dir, "index.html")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 @app.route("/ping")

@@ -1,4 +1,5 @@
 import type { Paper, PaperMeta } from "@/types/tppr-paper";
+import { apiFetch } from "./client";
 
 interface PapersListResponse {
     papers: PaperMeta[];
@@ -21,9 +22,8 @@ export async function getPaper(id: string): Promise<Paper> {
 }
 
 export async function deletePaper(id: string): Promise<void> {
-    const res = await fetch(`/api/papers/${id}`, {
+    const res = await apiFetch(`/api/papers/${id}`, {
         method: "DELETE",
-        credentials: "include",
     });
     if (!res.ok) throw new Error(`Failed to delete paper: ${res.status}`);
 }
@@ -33,10 +33,9 @@ export async function remixQuestionIntoPaper(
     questionId: string,
     targetPaperId: string,
 ): Promise<Paper> {
-    const res = await fetch(`/api/papers/${paperId}/questions/${questionId}/remix`, {
+    const res = await apiFetch(`/api/papers/${paperId}/questions/${questionId}/remix`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ target_paper_id: targetPaperId }),
     });
     if (!res.ok) throw new Error(`Failed to remix question: ${res.status}`);
