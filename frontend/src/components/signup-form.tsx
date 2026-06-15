@@ -15,9 +15,10 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Link, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useState } from "react"
 import { toast } from "sonner"
+import { loginPath, safeRedirectPath } from "@/lib/routes"
 
 export function SignupForm({
   className,
@@ -26,8 +27,9 @@ export function SignupForm({
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const redirectTo = searchParams.get("redirect") || "/"
+  const redirectTo = safeRedirectPath(searchParams.get("redirect"))
 
   function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -40,15 +42,16 @@ export function SignupForm({
     fetch('/api/register', {
       method: 'POST',
       body: formData,
+      credentials: 'include',
     })
       .then((res) => res.json())
       .then((data) => {
         if (data.requires_2fa === false && data.user) {
           toast.success("Account created successfully")
-          window.location.href = redirectTo
+          navigate(redirectTo, { replace: true })
         } else if (data.requires_2fa === true) {
           toast.success("Account created, please log in")
-          window.location.href = `/login?redirect=${encodeURIComponent(redirectTo)}`
+          navigate(loginPath(redirectTo), { replace: true })
         } else {
           setError(data.message || 'Signup failed')
         }
@@ -138,7 +141,7 @@ export function SignupForm({
                   </Button>
 
                   <FieldDescription className="px-6 text-center">
-                    Already have an account? <Link to={`/login${redirectTo !== "/" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}>Login</Link>
+                    Already have an account? <Link to={loginPath(redirectTo)}>Login</Link>
                   </FieldDescription>
                 </Field>
               </FieldGroup>

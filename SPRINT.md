@@ -26,6 +26,11 @@ Status: Completed! ✅✅✅
 Status: Completed! ✅✅✅
 
 # Sprint 3
-Goal: "Make this secure and easy to access"
 
 - Add Supabase integration (for authentication)
+- Add a user settings page
+- Add an avatar
+- Add friend adding + leaderboard
+- Add a dashboard showing stats of users
+
+Status: Work in progress...

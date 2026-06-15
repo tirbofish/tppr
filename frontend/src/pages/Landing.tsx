@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { loginPath, signupPath } from "@/lib/routes";
 import NavBar from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/api/auth";
@@ -56,10 +57,10 @@ export default function Landing() {
               : (
                 <>
                   <Button asChild size="lg">
-                    <Link to="/signup?redirect=%2Fpapers">Get Started</Link>
+                    <Link to={signupPath("/papers")}>Get Started</Link>
                   </Button>
                   <Button asChild variant="outline" size="lg">
-                    <Link to="/login?redirect=%2Fpapers">Log In</Link>
+                    <Link to={loginPath("/papers")}>Log In</Link>
                   </Button>
                 </>
               )}

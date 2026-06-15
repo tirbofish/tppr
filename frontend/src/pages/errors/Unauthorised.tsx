@@ -1,10 +1,13 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import NavBar from "@/components/navbar";
 import { ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { loginPath } from "@/lib/routes";
 
 export default function Unauthorized() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const currentPath = `${location.pathname}${location.search}${location.hash}`;
 
     return (
         <>
@@ -16,12 +19,7 @@ export default function Unauthorized() {
                     This paper is private. Please log in to view it.
                 </p>
                 <Button
-                    onClick={() =>
-                        navigate(
-                            `/login?redirect=${
-                                encodeURIComponent(window.location.pathname)
-                            }`,
-                        )}
+                    onClick={() => navigate(loginPath(currentPath))}
                 >
                     Go to Login
                 </Button>

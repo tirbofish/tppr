@@ -10,6 +10,7 @@ import type { Paper, PaperMeta } from "@/types/tppr-paper";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/api/auth";
 import { syncService } from "@/lib/cloud";
+import { loginPath } from "@/lib/routes";
 
 type ListedPaper = PaperMeta & { isLocal?: boolean };
 
@@ -39,7 +40,7 @@ export function PapersViewer() {
 
     useEffect(() => {
         if (!authLoading && !user) {
-            navigate(`/login?redirect=${encodeURIComponent("/papers")}`);
+            navigate(loginPath("/papers"));
         }
     }, [user, authLoading, navigate]);
 

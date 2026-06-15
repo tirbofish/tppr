@@ -19,6 +19,7 @@ import { useAuth } from "@/api/auth";
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { safeRedirectPath, signupPath } from "@/lib/routes";
 
 export function LoginForm(
   { className, ...props }: React.ComponentProps<"div">,
@@ -27,7 +28,7 @@ export function LoginForm(
   const { login } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/";
+  const redirectTo = safeRedirectPath(searchParams.get("redirect"));
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -92,7 +93,7 @@ export function LoginForm(
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit">Login</Button>
                 <FieldDescription className="text-center">
-                  Don&apos;t have an account? <Link to={`/signup${redirectTo !== "/" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}>Sign up</Link>
+                  Don&apos;t have an account? <Link to={signupPath(redirectTo)}>Sign up</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>

@@ -5,6 +5,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface User {
   user_id: number;
@@ -30,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   function fetchUser() {
     fetch("/api/whoami", { credentials: "include" })
@@ -86,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetch("/api/logout", { method: "POST", credentials: "include" })
       .then(() => {
         setUser(null);
-        window.location.href = "/login";
+        navigate("/login", { replace: true });
       });
   }
 

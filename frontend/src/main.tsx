@@ -14,6 +14,13 @@ declare global {
 
 installBackendUrlFetch();
 
+const spaRedirect = window.sessionStorage.getItem("tppr:spa-redirect");
+if (spaRedirect) {
+    window.sessionStorage.removeItem("tppr:spa-redirect");
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    window.history.replaceState(null, "", `${base}${spaRedirect}`);
+}
+
 createRoot(document.getElementById("root")!).render(
     <ThemeProvider>
         <StrictMode>

@@ -4,7 +4,7 @@ name: Deploy Frontend
 on:
   push:
     branches:
-      - main
+      - "**"
   workflow_dispatch:
 
 permissions:
@@ -22,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
+    outputs:
+      short_sha: ${{ steps.build-pages.outputs.short_sha }}
+      has_preview: ${{ steps.build-pages.outputs.has_preview }}
 
     steps:
       - name: Checkout
@@ -33,13 +36,17 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build frontend
-        working-directory: frontend
-        run: bun run build
-        env:
-          BACKEND_URL: ${{ vars.BACKEND_URL }}
-          VITE_BACKEND_URL: ${{ vars.BACKEND_URL }}
-          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+      - name: Checkout main for branch preview root
+        if: github.ref_name != 'main'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-source
+
+      - name: Install main dependencies
+        if: github.ref_name != 'main'
+        working-directory: main-source
+        run: bun install --frozen-lockfile
 
       - name: Check BACKEND_URL
         run: |
@@ -50,12 +57,66 @@ jobs:
         env:
           BACKEND_URL: ${{ vars.BACKEND_URL }}
 
-      - name: Build frontend
-        run: bun run build
+      - name: Build Pages artifact
+        id: build-pages
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          repo="${GITHUB_REPOSITORY##*/}"
+          short_sha="${GITHUB_SHA::7}"
+          site_dir="$PWD/pages-dist"
+          has_preview="false"
+
+          rm -rf "$site_dir"
+          mkdir -p "$site_dir"
+
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            VITE_BASE_PATH="/${repo}/" bun run build
+            cp -R frontend/dist/. "$site_dir/"
+          else
+            has_preview="true"
+
+            (cd main-source && VITE_BASE_PATH="/${repo}/" bun run build)
+            cp -R main-source/frontend/dist/. "$site_dir/"
+
+            VITE_BASE_PATH="/${repo}/${short_sha}/" bun run build
+            mkdir -p "$site_dir/${short_sha}"
+            cp -R frontend/dist/. "$site_dir/${short_sha}/"
+          fi
+
+          cat > "$site_dir/404.html" <<EOF
+          <!doctype html>
+          <meta charset="utf-8">
+          <script>
+          (() => {
+            const repoBase = "/${repo}/";
+            const path = window.location.pathname;
+            const rest = path.startsWith(repoBase) ? path.slice(repoBase.length) : "";
+            const parts = rest.split("/").filter(Boolean);
+            const isPreview = /^[0-9a-f]{7,40}$/i.test(parts[0] || "");
+            const base = isPreview ? repoBase + parts[0] + "/" : repoBase;
+            const routeParts = isPreview ? parts.slice(1) : parts;
+            const route = "/" + routeParts.join("/");
+            const fullRoute = route + window.location.search + window.location.hash;
+            window.sessionStorage.setItem("tppr:spa-redirect", fullRoute);
+            window.location.replace(window.location.origin + base);
+          })();
+          </script>
+          EOF
+
+          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
+          echo "has_preview=${has_preview}" >> "$GITHUB_OUTPUT"
         env:
           BACKEND_URL: ${{ vars.BACKEND_URL }}
           VITE_BACKEND_URL: ${{ vars.BACKEND_URL }}
-          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+
+      - name: Preview link
+        if: github.ref_name != 'main'
+        run: |
+          echo "### Frontend preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Preview for this push: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ steps.build-pages.outputs.short_sha }}/" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -63,7 +124,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: frontend/dist
+          path: pages-dist
 
   deploy:
     name: Deploy to GitHub Pages
@@ -77,3 +138,10 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Deployment links
+        run: |
+          echo "Main: ${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ needs.build.outputs.has_preview }}" = "true" ]; then
+            echo "Preview: ${{ steps.deployment.outputs.page_url }}${{ needs.build.outputs.short_sha }}/" >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -37,6 +37,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useOnline } from "@/lib/hooks";
+import { loginPath, signupPath } from "@/lib/routes";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
@@ -60,6 +61,7 @@ export default function NavBar() {
   );
   const location = useLocation();
   const isSearchPage = location.pathname === "/search";
+  const currentPath = `${location.pathname}${location.search}${location.hash}`;
 
   const [showConfetti, setShowConfetti] = useState(false);
   const confettiDoneCount = useRef(0);
@@ -312,20 +314,12 @@ export default function NavBar() {
             : (
               <>
                 <Button asChild variant="outline">
-                  <Link
-                    to={`/login?redirect=${
-                      encodeURIComponent(location.pathname + location.search)
-                    }`}
-                  >
+                  <Link to={loginPath(currentPath)}>
                     Login
                   </Link>
                 </Button>
                 <Button asChild>
-                  <Link
-                    to={`/signup?redirect=${
-                      encodeURIComponent(location.pathname + location.search)
-                    }`}
-                  >
+                  <Link to={signupPath(currentPath)}>
                     Signup
                   </Link>
                 </Button>
