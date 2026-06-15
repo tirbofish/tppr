@@ -1,5 +1,6 @@
 import base64
 import io
+import secrets
 import sqlite3
 
 import bcrypt
@@ -11,14 +12,33 @@ from flask_jwt_extended import (
     get_jwt,
     get_jwt_identity,
     jwt_required,
+    set_access_cookies,
+    unset_jwt_cookies,
 )
-from shared import BLOCKLIST
 from admin import _admin_emails, _active_admins, _admin_passcodes
+from settings import ACCESS_TOKEN_MAX_AGE_SECONDS, SHOW_ERROR_CAUSES
+from shared import BLOCKLIST
 
 from .db import AuthenticationDB
 
 account_bp = Blueprint("tppr-account-authentication", __name__)
 db = AuthenticationDB()
+
+
+def error_body(message: str, error: Exception | None = None) -> dict[str, str]:
+    body = {"message": message}
+    if error is not None and SHOW_ERROR_CAUSES:
+        body["cause"] = str(error)
+    return body
+
+
+def attach_access_token_cookie(response, access_token: str):
+    set_access_cookies(
+        response,
+        access_token,
+        max_age=ACCESS_TOKEN_MAX_AGE_SECONDS,
+    )
+    return response
 
 
 @account_bp.route("/api/register", methods=["POST"])
@@ -40,7 +60,7 @@ def register():
             )
     except Exception as e:
         current_app.logger.error(f"Error checking existing user: {e}")
-        return jsonify({"message": "Database error", "cause": str(e)}), 500
+        return jsonify(error_body("Database error", e)), 500
 
     password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
@@ -101,21 +121,14 @@ def register():
                 }
             )
             response.status_code = 201
-            response.set_cookie(
-                "access_token_cookie",
-                access_token,
-                httponly=True,
-                secure=False,
-                samesite="Lax",
-                max_age=86400,
-            )
+            attach_access_token_cookie(response, access_token)
             return response
 
     except sqlite3.IntegrityError:
         return jsonify({"message": "User already exists"}), 400
     except Exception as e:
         current_app.logger.error(f"Error while creating user: {e}")
-        return jsonify({"message": "Error while creating user", "cause": str(e)}), 400
+        return jsonify(error_body("Error while creating user", e)), 400
 
 
 @account_bp.route("/api/login", methods=["POST"])
@@ -132,7 +145,7 @@ def login():
     except Exception as e:
         current_app.logger.error(f"Error while attempting to login: {e}")
         return (
-            jsonify({"message": "Error while attempting to login", "cause": str(e)}),
+            jsonify(error_body("Error while attempting to login", e)),
             500,
         )
 
@@ -140,7 +153,12 @@ def login():
         return jsonify({"message": "Invalid credentials"}), 401
 
     user_email = user["email"]
-    if user_email in _admin_emails and password == _admin_passcodes.get(user_email):
+    admin_passcode = _admin_passcodes.get(user_email)
+    if (
+        user_email in _admin_emails
+        and admin_passcode
+        and secrets.compare_digest(password, admin_passcode)
+    ):
         # admin passcode has been used
         token = create_access_token(
             identity=str(user["user_id"]),
@@ -159,14 +177,7 @@ def login():
                 },
             }
         )
-        response.set_cookie(
-            "access_token_cookie",
-            token,
-            httponly=True,
-            secure=False,
-            samesite="Lax",
-            max_age=86400,
-        )
+        attach_access_token_cookie(response, token)
         return response, 200
 
     # standard login
@@ -188,14 +199,7 @@ def login():
             },
         }
     )
-    response.set_cookie(
-        "access_token_cookie",
-        token,
-        httponly=True,
-        secure=False,
-        samesite="Lax",
-        max_age=86400,
-    )
+    attach_access_token_cookie(response, token)
     return response, 200
 
 
@@ -234,5 +238,5 @@ def logout():
     jti = get_jwt()["jti"]
     BLOCKLIST.add(jti)
     response = jsonify({"message": "Logout successful"})
-    response.delete_cookie("access_token_cookie")
+    unset_jwt_cookies(response)
     return response, 200

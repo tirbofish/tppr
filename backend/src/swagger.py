@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify
 from flask_swagger_ui import get_swaggerui_blueprint
+from settings import PRODUCTION, PUBLIC_API_DOCS
 
 swagger_bp = Blueprint("swagger", __name__)
 SWAGGER_URL = "/api/docs"
@@ -852,6 +853,9 @@ def swagger_json():
 
 
 def register_blueprint(app):
+    if PRODUCTION and not PUBLIC_API_DOCS:
+        return
+
     swaggerui_blueprint = get_swaggerui_blueprint(
         SWAGGER_URL,
         API_URL,

@@ -23,4 +23,9 @@ Status: Completed! ✅✅✅
 - Remixing: Copy a public past paper (show where its remixed from) and allow editing (should be pretty ez) 
 - Sync status icon
 
-Status: Work in progress...
+Status: Completed! ✅✅✅
+
+# Sprint 3
+Goal: "Make this secure and easy to access"
+
+- Add Supabase integration (for authentication)

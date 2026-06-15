@@ -1,6 +1,29 @@
 import os
 from datetime import timedelta
 
+
+def env_flag(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name: str) -> list[str]:
+    return [item.strip() for item in os.getenv(name, "").split(",") if item.strip()]
+
+
+def required_secret(name: str, fallback: str) -> str:
+    value = os.getenv(name)
+    if not PRODUCTION:
+        return value or fallback
+
+    weak_values = {"", fallback, "dev-secret", "dev-jwt-secret", "your-secret-key-here", "your-jwt-secret-here"}
+    if value is None or value.strip() in weak_values or len(value.strip()) < 32:
+        raise RuntimeError(f"{name} must be set to a strong secret when PRODUCTION=1")
+    return value
+
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
 PROJECT_ROOT = os.path.abspath(os.path.join(BACKEND_DIR, ".."))
@@ -15,20 +38,49 @@ DATABASE_PATH = os.getenv(
 )
 
 API_ONLY_FLAG = "--api-only"
+PRODUCTION = env_flag("PRODUCTION")
 BACKEND_HOST = os.getenv("BACKEND_HOST", "0.0.0.0")
 BACKEND_PORT = int(os.getenv("BACKEND_PORT", "5000"))
-BACKEND_DEBUG = os.getenv("BACKEND_DEBUG", "1") == "1"
+BACKEND_DEBUG = False if PRODUCTION else env_flag("BACKEND_DEBUG_MODE", env_flag("BACKEND_DEBUG", True))
 
 APP_NAME = "TPPR"
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")
+SECRET_KEY = required_secret("SECRET_KEY", "dev-secret")
+JWT_SECRET_KEY = required_secret("JWT_SECRET_KEY", "dev-jwt-secret")
 JWT_TOKEN_LOCATION = ["cookies"]
-JWT_COOKIE_SECURE = os.getenv("JWT_COOKIE_SECURE", "0") == "1"
-JWT_COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "Lax")
-JWT_COOKIE_CSRF_PROTECT = False
+JWT_COOKIE_SECURE = True if PRODUCTION else env_flag("JWT_COOKIE_SECURE")
+JWT_COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "Strict" if PRODUCTION else "Lax")
+if JWT_COOKIE_SAMESITE not in {"Strict", "Lax", "None"}:
+    raise RuntimeError("JWT_COOKIE_SAMESITE must be Strict, Lax, or None")
+if JWT_COOKIE_SAMESITE == "None" and not JWT_COOKIE_SECURE:
+    raise RuntimeError("JWT_COOKIE_SAMESITE=None requires secure cookies")
+JWT_COOKIE_CSRF_PROTECT = True
+JWT_CSRF_IN_COOKIES = True
+JWT_SESSION_COOKIE = False
 ACCESS_TOKEN_COOKIE_NAME = os.getenv("ACCESS_TOKEN_COOKIE_NAME", "access_token_cookie")
 ACCESS_TOKEN_MAX_AGE_SECONDS = int(os.getenv("ACCESS_TOKEN_MAX_AGE_SECONDS", "86400"))
 JWT_ACCESS_TOKEN_EXPIRES = timedelta(seconds=ACCESS_TOKEN_MAX_AGE_SECONDS)
+
+BACKEND_ALLOWED_ORIGINS = env_list("BACKEND_ALLOWED_ORIGINS")
+if PRODUCTION:
+    if "*" in BACKEND_ALLOWED_ORIGINS:
+        raise RuntimeError("BACKEND_ALLOWED_ORIGINS cannot contain '*' when PRODUCTION=1")
+    insecure_origins = [
+        origin for origin in BACKEND_ALLOWED_ORIGINS if not origin.startswith("https://")
+    ]
+    if insecure_origins:
+        raise RuntimeError(
+            "BACKEND_ALLOWED_ORIGINS must contain only https:// origins when PRODUCTION=1"
+        )
+elif not BACKEND_ALLOWED_ORIGINS:
+    BACKEND_ALLOWED_ORIGINS = ["http://localhost:5173"]
+
+PUBLIC_API_DOCS = env_flag("PUBLIC_API_DOCS", False)
+SHOW_ERROR_CAUSES = not PRODUCTION
+RATELIMIT_DEFAULT = os.getenv(
+    "RATELIMIT_DEFAULT",
+    "60 per minute" if PRODUCTION else "200 per minute",
+)
+RATELIMIT_STORAGE_URI = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
 
 TOTP_ISSUER_NAME = os.getenv("TOTP_ISSUER_NAME", APP_NAME)
 TOTP_VALID_WINDOW = int(os.getenv("TOTP_VALID_WINDOW", "1"))

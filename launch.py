@@ -3,7 +3,8 @@
 # dependencies = [
 #   "requests>=2.32.0",
 #   "pydantic>=2.7.0",
-#   "rich>=13.7.0",
+#   "rich>=13.7.0", 
+#   "python-dotenv>=1.2.2",
 # ]
 # ///
 
@@ -177,6 +178,37 @@ class DependencyTUI:
         )
 
 
+def check_postgres_connection():
+    """Check that DATABASE_URL is set and PostgreSQL is reachable."""
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        fatal(
+            "DATABASE_URL is not set",
+            "Set DATABASE_URL in your .env file. See backend/README.md for setup instructions.",
+        )
+
+    try:
+        import socket
+        from urllib.parse import urlparse
+
+        parsed = urlparse(db_url)
+        host = parsed.hostname or "localhost"
+        port = parsed.port or 5432
+
+        sock = socket.create_connection((host, port), timeout=5)
+        sock.close()
+        return True
+    except OSError:
+        warn(
+            f"Cannot reach PostgreSQL at {host}:{port}. "
+            "Ensure the database server is running and accessible."
+        )
+        return False
+
+
 def check_dependencies():
     missing = []
 
@@ -202,12 +234,27 @@ def check_dependencies():
         "[green]found[/]" if bun else "[red]missing[/]",
         f"{runner} ({runner_reason})" if runner else "-",
     )
+
+    pg_reachable = check_postgres_connection()
+    table.add_row(
+        "PostgreSQL",
+        "[green]reachable[/]" if pg_reachable else "[yellow]unreachable[/]",
+        os.getenv("DATABASE_URL", "(not set)").split("@")[-1] if os.getenv("DATABASE_URL") else "-",
+    )
+
     console.print(table)
 
     if missing:
         fatal(
             "Missing required tools: " + ", ".join(missing),
             "Install uv and bun, then run launch.py again.",
+        )
+
+    if not pg_reachable:
+        fatal(
+            "PostgreSQL is not reachable",
+            "Start your PostgreSQL server or update DATABASE_URL in .env.\n"
+            "See backend/README.md for setup options (local install, Docker, or hosted).",
         )
 
     return {

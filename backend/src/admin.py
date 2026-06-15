@@ -2,6 +2,7 @@ import os
 import secrets
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
+from settings import PRODUCTION
 
 from questions.db import get_session
 from questions.types import PaperDB, paper_db_to_meta_read
@@ -34,6 +35,13 @@ def _get_child_remixes(session, paper_id: str) -> list[PaperDB]:
 def init_admins():
     raw = os.getenv("VALID_ADMIN_EMAILS", "")
     emails = [e.strip() for e in raw.split(",") if e.strip()]
+    configured_passcodes = {
+        email.strip(): passcode.strip()
+        for item in os.getenv("ADMIN_PASSCODES", "").split(",")
+        if ":" in item
+        for email, passcode in [item.split(":", 1)]
+        if email.strip() and passcode.strip()
+    }
 
     _admin_emails.clear()
     _admin_passcodes.clear()
@@ -41,6 +49,25 @@ def init_admins():
 
     if not emails:
         print("  No admin emails configured.")
+        return
+
+    if PRODUCTION:
+        missing = [email for email in emails if email not in configured_passcodes]
+        weak = [
+            email
+            for email in emails
+            if email in configured_passcodes and len(configured_passcodes[email]) < 32
+        ]
+        if missing or weak:
+            raise RuntimeError(
+                "ADMIN_PASSCODES must provide a passcode of at least 32 characters "
+                "for every VALID_ADMIN_EMAILS entry when PRODUCTION=1"
+            )
+
+        for email in emails:
+            _admin_emails.add(email)
+            _admin_passcodes[email] = configured_passcodes[email]
+        print(f"  Admin access configured for {len(emails)} email(s).")
         return
 
     print("  Admin passcodes (valid until shutdown):")
@@ -86,7 +113,8 @@ def verify_admin():
     if not passcode:
         return jsonify({"message": "Passcode is required"}), 400
 
-    if _admin_passcodes.get(email) != passcode:
+    expected_passcode = _admin_passcodes.get(email)
+    if not expected_passcode or not secrets.compare_digest(expected_passcode, passcode):
         return jsonify({"message": "Invalid credentials"}), 401
 
     _active_admins.add(user_id)

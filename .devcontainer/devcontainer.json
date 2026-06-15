@@ -1,6 +1,8 @@
 {
   "name": "tppr Development Container",
-  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
@@ -43,7 +45,7 @@
           "typescript": false,
           "javascript": false,
           "sql": false
-        },
+        }
       },
 
       "extensions": [
@@ -61,13 +63,12 @@
         "oderwat.indent-rainbow",
         "streetsidesoftware.code-spell-checker",
         "saeris.markdown-github-alerts",
-        "yy0931.vscode-sqlite3-editor",
         "github.copilot"
       ]
     }
   },
 
-  "forwardPorts": [5000, 5173],
+  "forwardPorts": [5000, 5173, 5432],
 
   "portsAttributes": {
     "5000": {
@@ -77,6 +78,10 @@
     "5173": {
       "label": "tppr Frontend Dev Server",
       "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
     }
   },
 

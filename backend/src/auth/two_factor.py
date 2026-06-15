@@ -4,12 +4,25 @@ import io
 import pyotp
 import qrcode
 from flask import Blueprint, current_app, jsonify, request
-from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
+from flask_jwt_extended import (
+    create_access_token,
+    get_jwt_identity,
+    jwt_required,
+    set_access_cookies,
+)
+from settings import ACCESS_TOKEN_MAX_AGE_SECONDS, SHOW_ERROR_CAUSES
 
 from .db import AuthenticationDB
 
 two_fa_bp = Blueprint("tppr-account-2fa", __name__)
 db = AuthenticationDB()
+
+
+def error_body(message: str, error: Exception | None = None) -> dict[str, str]:
+    body = {"message": message}
+    if error is not None and SHOW_ERROR_CAUSES:
+        body["cause"] = str(error)
+    return body
 
 
 @two_fa_bp.route("/api/verify_2fa", methods=["POST"])
@@ -54,18 +67,15 @@ def verify_2fa():
                 },
             }
         )
-        response.set_cookie(
-            "access_token_cookie",
+        set_access_cookies(
+            response,
             access_token,
-            httponly=True,
-            secure=False,
-            samesite="Lax",
-            max_age=86400,
+            max_age=ACCESS_TOKEN_MAX_AGE_SECONDS,
         )
         return response, 200
     except Exception as e:
         current_app.logger.error(f"Error verifying 2FA: {e}")
-        return jsonify({"message": "Error verifying 2FA", "cause": str(e)}), 500
+        return jsonify(error_body("Error verifying 2FA", e)), 500
 
 
 @two_fa_bp.route("/api/account/enable_2fa", methods=["POST"])
@@ -108,7 +118,7 @@ def enable_2fa():
         ), 200
     except Exception as e:
         current_app.logger.error(f"Error enabling 2FA: {e}")
-        return jsonify({"message": "Failed to enable 2FA", "cause": str(e)}), 500
+        return jsonify(error_body("Failed to enable 2FA", e)), 500
 
 
 @two_fa_bp.route("/api/account/disable_2fa", methods=["POST"])
@@ -138,4 +148,4 @@ def disable_2fa():
         return jsonify({"message": "2FA disabled"}), 200
     except Exception as e:
         current_app.logger.error(f"Error disabling 2FA: {e}")
-        return jsonify({"message": "Failed to disable 2FA", "cause": str(e)}), 500
+        return jsonify(error_body("Failed to disable 2FA", e)), 500

@@ -1,13 +1,22 @@
 import bcrypt
 import pyotp
 from flask import Blueprint, current_app, jsonify, request
-from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
+from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required, unset_jwt_cookies
+from settings import SHOW_ERROR_CAUSES
 from shared import BLOCKLIST
 
 from .db import AuthenticationDB
 
 management_bp = Blueprint("tppr-account-management", __name__)
 db = AuthenticationDB()
+
+
+def error_body(message: str, error: Exception | None = None) -> dict[str, str]:
+    body = {"message": message}
+    if error is not None and SHOW_ERROR_CAUSES:
+        body["cause"] = str(error)
+    return body
+
 
 @management_bp.route("/api/whotf", methods=["GET"])
 def whotfisthis():
@@ -47,7 +56,7 @@ def update_username():
         return jsonify({"message": "Username updated", "username": new_username}), 200
     except Exception as e:
         current_app.logger.error(f"Error updating username: {e}")
-        return jsonify({"message": "Failed to update username", "cause": str(e)}), 500
+        return jsonify(error_body("Failed to update username", e)), 500
 
 
 @management_bp.route("/api/account/password", methods=["PUT"])
@@ -92,7 +101,7 @@ def update_password():
         return jsonify({"message": "Password updated"}), 200
     except Exception as e:
         current_app.logger.error(f"Error updating password: {e}")
-        return jsonify({"message": "Failed to update password", "cause": str(e)}), 500
+        return jsonify(error_body("Failed to update password", e)), 500
 
 
 @management_bp.route("/api/account", methods=["DELETE"])
@@ -114,8 +123,8 @@ def delete_account():
             current_app.logger.warning(f"delete_account: unable to blocklist JWT: {e}")
 
         response = jsonify({"message": "Account deleted"})
-        response.delete_cookie("access_token_cookie")
+        unset_jwt_cookies(response)
         return response, 200
     except Exception as e:
         current_app.logger.error(f"Error deleting account: {e}")
-        return jsonify({"message": "Failed to delete account", "cause": str(e)}), 500
+        return jsonify(error_body("Failed to delete account", e)), 500
