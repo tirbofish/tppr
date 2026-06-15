@@ -27,3 +27,18 @@ export async function deletePaper(id: string): Promise<void> {
     });
     if (!res.ok) throw new Error(`Failed to delete paper: ${res.status}`);
 }
+
+export async function remixQuestionIntoPaper(
+    paperId: string,
+    questionId: string,
+    targetPaperId: string,
+): Promise<Paper> {
+    const res = await fetch(`/api/papers/${paperId}/questions/${questionId}/remix`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ target_paper_id: targetPaperId }),
+    });
+    if (!res.ok) throw new Error(`Failed to remix question: ${res.status}`);
+    return res.json();
+}

@@ -12,9 +12,4 @@ this requires **uv** to be installed.
 uv run src/main.py
 ```
 
-### api only
-
-sicne you can launch the frontend as its own server, it would only be right to serve the backend by itself. for that, we have a specific flag:
-```bash
-uv run src/main.py --api-only
-```
+this will launch the backend as an API. for the frontend, you should use the [frontend](../frontend/README.md) folder and launch with those instructions

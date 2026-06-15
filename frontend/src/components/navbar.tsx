@@ -55,30 +55,39 @@ export default function NavBar() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [showSearchGuide, setShowSearchGuide] = useState(false);
+  const [showSearchGuide, setShowSearchGuide] = useState(() =>
+    !localStorage.getItem("hasSeenSearchGuide")
+  );
   const location = useLocation();
   const isSearchPage = location.pathname === "/search";
 
   const [showConfetti, setShowConfetti] = useState(false);
+  const confettiDoneCount = useRef(0);
   const { width, height } = useWindowSize();
-
-  useEffect(() => {
-    if (!localStorage.getItem("hasSeenSearchGuide")) {
-      setShowSearchGuide(true);
-    }
-  }, []);
 
   function dismissGuide() {
     localStorage.setItem("hasSeenSearchGuide", "true");
     setShowSearchGuide((prev) => {
-      if (prev) setShowConfetti(true);
+      if (prev) {
+        confettiDoneCount.current = 0;
+        setShowConfetti(true);
+      }
       return false;
     });
   }
 
   useEffect(() => {
-    setShowConfetti(false);
+    confettiDoneCount.current = 0;
+    const timeout = setTimeout(() => setShowConfetti(false), 0);
+    return () => clearTimeout(timeout);
   }, [location.key]);
+
+  function handleConfettiComplete() {
+    confettiDoneCount.current += 1;
+    if (confettiDoneCount.current >= 2) {
+      setShowConfetti(false);
+    }
+  }
 
   function handleSearch(e: React.SubmitEvent) {
     e.preventDefault();
@@ -111,24 +120,32 @@ export default function NavBar() {
         <>
           {/* Left cannon */}
           <Confetti
-            width={width}
-            height={height}
+            width={width || window.innerWidth}
+            height={height || window.innerHeight}
+            style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 50 }}
             recycle={false}
             numberOfPieces={100}
-            confettiSource={{ x: 0, y: height, w: 10, h: 0 }}
+            confettiSource={{ x: 0, y: height || window.innerHeight, w: 10, h: 0 }}
             initialVelocityX={{ min: 5, max: 15 }}
             initialVelocityY={{ min: -35, max: -15 }}
-            onConfettiComplete={() => setShowConfetti(false)}
+            onConfettiComplete={handleConfettiComplete}
           />
           {/* Right cannon */}
           <Confetti
-            width={width}
-            height={height}
+            width={width || window.innerWidth}
+            height={height || window.innerHeight}
+            style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 50 }}
             recycle={false}
             numberOfPieces={100}
-            confettiSource={{ x: width - 10, y: height, w: 10, h: 0 }}
+            confettiSource={{
+              x: (width || window.innerWidth) - 10,
+              y: height || window.innerHeight,
+              w: 10,
+              h: 0,
+            }}
             initialVelocityX={{ min: -15, max: -5 }}
             initialVelocityY={{ min: -35, max: -15 }}
+            onConfettiComplete={handleConfettiComplete}
           />
         </>
       )}

@@ -137,6 +137,10 @@ export interface Question {
     topics?: string[];
     syllabus_points?: SyllabusPoint[];
     difficulty?: Difficulty;
+    remixed_from?: string;
+    source_question_id?: string;
+    source_paper_id?: string;
+    source_removed?: boolean;
     created_at: string;
     updated_at: string;
 }

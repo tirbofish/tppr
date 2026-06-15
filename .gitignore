@@ -43,3 +43,4 @@ database.db
 # make sure that no sort of outputs from testing is used.
 output.*
 output/
+paper-assets/

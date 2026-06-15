@@ -1,12 +1,16 @@
+import os
+import re
 from uuid import uuid4
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlmodel import col, select
 from datetime import datetime, UTC
 
+from settings import ASSETS_DIR
 from questions.db import get_session
 from questions.types import (
+    AssetDB,
     PaperCreate,
     PaperDB,
     PaperOutcome,
@@ -14,18 +18,199 @@ from questions.types import (
     QuestionDB,
     paper_db_to_meta_read,
     paper_db_to_read,
+    question_db_to_read,
 )
 from questions.utils import _build_question_db
 from admin import is_admin
 
 
 q_bp = Blueprint("tppr-questions", __name__)
+ASSET_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
+PAPER_ASSETS_DIR = os.path.join(ASSETS_DIR, "paper-assets")
 
 
 def _removed_response():
     response = jsonify({"message": "Paper has been removed", "visibility": "removed"})
     response.headers["Cache-Control"] = "no-store"
     return response, 410
+
+
+def _asset_path(asset_id: str) -> str:
+    return os.path.join(PAPER_ASSETS_DIR, asset_id)
+
+
+def _valid_asset_id(asset_id: str) -> bool:
+    return bool(ASSET_ID_RE.fullmatch(asset_id))
+
+
+def _can_view_paper(paper: PaperDB, user_id: str | None) -> bool:
+    if user_id and is_admin(str(user_id)):
+        return True
+    if paper.visibility == "removed":
+        return False
+    if paper.visibility == "public":
+        return True
+    return bool(user_id and paper.author_id == str(user_id))
+
+
+def _removed_source_paper_ids(session, paper: PaperDB) -> set[str]:
+    source_ids = {
+        q.source_paper_id
+        for q in paper.questions
+        if q.source_paper_id
+    }
+    if not source_ids:
+        return set()
+
+    removed = session.exec(
+        select(PaperDB).where(
+            col(PaperDB.id).in_(source_ids),
+            PaperDB.visibility == "removed",
+        )
+    ).all()
+    return {p.id for p in removed}
+
+
+def _paper_read_for_viewer(session, paper: PaperDB, user_id: str | None):
+    admin_viewer = bool(user_id and is_admin(str(user_id)))
+    owner_viewer = bool(user_id and paper.author_id == str(user_id))
+    removed_sources = _removed_source_paper_ids(session, paper)
+    visible_questions = []
+
+    for q in paper.questions:
+        source_removed = bool(q.source_paper_id and q.source_paper_id in removed_sources)
+        if source_removed and not (admin_viewer or owner_viewer):
+            continue
+        visible_questions.append(
+            question_db_to_read(
+                q,
+                source_removed=source_removed and owner_viewer and not admin_viewer,
+            )
+        )
+
+    if admin_viewer or owner_viewer:
+        return paper_db_to_read(paper, questions=visible_questions)
+
+    return paper_db_to_read(
+        paper,
+        questions=visible_questions,
+        question_count=len(visible_questions),
+        total_marks=sum(q.marks for q in paper.questions if not (
+            q.source_paper_id and q.source_paper_id in removed_sources
+        )),
+    )
+
+
+def _clone_question_for_remix(
+    source: QuestionDB,
+    *,
+    target_paper_id: str,
+    author_id: str,
+    number: int,
+    now: datetime,
+) -> QuestionDB:
+    return QuestionDB(
+        id=str(uuid4()),
+        paper_id=target_paper_id,
+        author_id=author_id,
+        number=number,
+        type=source.type,
+        marks=source.marks,
+        stimulus_json=source.stimulus_json,
+        content_json=source.content_json,
+        parts_json=source.parts_json,
+        options_json=source.options_json,
+        topics_json=source.topics_json,
+        answer=source.answer,
+        difficulty=source.difficulty,
+        remixed_from=source.id,
+        source_question_id=source.source_question_id or source.id,
+        source_paper_id=source.source_paper_id or source.paper_id,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+# --- Assets ---
+
+@q_bp.route("/api/papers/<string:paper_id>/assets", methods=["POST"])
+@jwt_required()
+def upload_asset(paper_id):
+    user_id = str(get_jwt_identity())
+    asset_file = request.files.get("file")
+    asset_id = request.form.get("asset_id") or str(uuid4())
+
+    if not asset_file:
+        return jsonify({"message": "No file provided"}), 400
+    if not _valid_asset_id(asset_id):
+        return jsonify({"message": "Invalid asset id"}), 400
+    if not (asset_file.mimetype or "").startswith("image/"):
+        return jsonify({"message": "Only image assets are supported"}), 400
+
+    with get_session() as session:
+        paper = session.get(PaperDB, paper_id)
+        if not paper:
+            return jsonify({"message": "Paper not found"}), 404
+        if paper.visibility == "removed":
+            return _removed_response()
+        if paper.author_id != user_id:
+            return jsonify({"message": "Forbidden"}), 403
+
+        existing = session.get(AssetDB, asset_id)
+        if existing and existing.paper_id != paper_id:
+            return jsonify({"message": "Asset id already belongs to another paper"}), 409
+
+        os.makedirs(PAPER_ASSETS_DIR, exist_ok=True)
+        asset_file.save(_asset_path(asset_id))
+
+        now = datetime.now(UTC)
+        asset = existing or AssetDB(
+            id=asset_id,
+            paper_id=paper_id,
+            uploader_id=user_id,
+            mime_type=asset_file.mimetype,
+            filename=asset_file.filename,
+            created_at=now,
+            updated_at=now,
+        )
+        asset.uploader_id = user_id
+        asset.mime_type = asset_file.mimetype
+        asset.filename = asset_file.filename
+        asset.updated_at = now
+        session.add(asset)
+        session.commit()
+
+        return jsonify({
+            "id": asset.id,
+            "paper_id": asset.paper_id,
+            "mime_type": asset.mime_type,
+        }), 201
+
+
+@q_bp.route("/api/assets/<string:asset_id>", methods=["GET"])
+@jwt_required(optional=True)
+def get_asset(asset_id):
+    if not _valid_asset_id(asset_id):
+        return jsonify({"message": "Asset not found"}), 404
+
+    user_id = get_jwt_identity()
+    with get_session() as session:
+        asset = session.get(AssetDB, asset_id)
+        if not asset:
+            return jsonify({"message": "Asset not found"}), 404
+
+        paper = session.get(PaperDB, asset.paper_id)
+        if not paper or not _can_view_paper(paper, str(user_id) if user_id else None):
+            return jsonify({"message": "Asset not found"}), 404
+
+        path = _asset_path(asset_id)
+        if not os.path.isfile(path):
+            return jsonify({"message": "Asset file missing"}), 404
+
+        response = send_file(path, mimetype=asset.mime_type)
+        response.headers["X-Paper-Id"] = asset.paper_id
+        response.headers["Cache-Control"] = "private, max-age=31536000"
+        return response
 
 
 # --- Papers ---
@@ -122,7 +307,9 @@ def get_paper(paper_id):
 
         # Admins can view everything
         if user_id and is_admin(str(user_id)):
-            return jsonify(paper_db_to_read(paper).model_dump(mode="json"))
+            return jsonify(
+                _paper_read_for_viewer(session, paper, str(user_id)).model_dump(mode="json")
+            )
 
         # Removed papers — tell the user it's gone (owner included)
         if paper.visibility == "removed":
@@ -132,7 +319,13 @@ def get_paper(paper_id):
         if paper.visibility == "private" and str(paper.author_id) != str(user_id):
             return jsonify({"message": "Paper not found"}), 404
 
-        return jsonify(paper_db_to_read(paper).model_dump(mode="json"))
+        return jsonify(
+            _paper_read_for_viewer(
+                session,
+                paper,
+                str(user_id) if user_id else None,
+            ).model_dump(mode="json")
+        )
 
 
 # --- SYNCING ---
@@ -383,24 +576,66 @@ def remix_paper(paper_id):
 
         # clone questions
         for q in original.questions:
-            session.add(QuestionDB(
-                id=str(uuid4()),
-                paper_id=new_id,
+            session.add(_clone_question_for_remix(
+                q,
+                target_paper_id=new_id,
                 author_id=str(user_id),
                 number=q.number,
-                type=q.type,
-                marks=q.marks,
-                stimulus_json=q.stimulus_json,
-                content_json=q.content_json,
-                parts_json=q.parts_json,
-                options_json=q.options_json,
-                topics_json=q.topics_json,
-                answer=q.answer,
-                difficulty=q.difficulty,
-                created_at=now,
-                updated_at=now,
+                now=now,
             ))
 
         session.commit()
         session.refresh(remix)
-        return jsonify(paper_db_to_read(remix).model_dump(mode="json")), 201
+        return jsonify(_paper_read_for_viewer(session, remix, str(user_id)).model_dump(mode="json")), 201
+
+
+@q_bp.route(
+    "/api/papers/<string:paper_id>/questions/<string:question_id>/remix",
+    methods=["POST"],
+)
+@jwt_required()
+def remix_question(paper_id, question_id):
+    user_id = str(get_jwt_identity())
+    data = request.get_json() or {}
+    target_paper_id = data.get("target_paper_id")
+    if not target_paper_id:
+        return jsonify({"message": "target_paper_id is required"}), 400
+
+    with get_session() as session:
+        source_paper = session.get(PaperDB, paper_id)
+        if not source_paper:
+            return jsonify({"message": "Paper not found"}), 404
+        if source_paper.visibility != "public":
+            return jsonify({"message": "Cannot remix a private paper"}), 403
+
+        source_question = session.get(QuestionDB, question_id)
+        if not source_question or source_question.paper_id != paper_id:
+            return jsonify({"message": "Question not found"}), 404
+
+        target_paper = session.get(PaperDB, target_paper_id)
+        if not target_paper:
+            return jsonify({"message": "Target paper not found"}), 404
+        if target_paper.visibility == "removed":
+            return _removed_response()
+        if target_paper.author_id != user_id:
+            return jsonify({"message": "Forbidden"}), 403
+
+        now = datetime.now(UTC)
+        next_number = max((q.number for q in target_paper.questions), default=0) + 1
+        target_paper.questions.append(_clone_question_for_remix(
+            source_question,
+            target_paper_id=target_paper.id,
+            author_id=user_id,
+            number=next_number,
+            now=now,
+        ))
+        target_paper.question_count = len(target_paper.questions)
+        target_paper.total_marks = sum(q.marks for q in target_paper.questions)
+        target_paper.updated_at = now
+
+        session.add(target_paper)
+        session.commit()
+        session.refresh(target_paper)
+        return jsonify(
+            _paper_read_for_viewer(session, target_paper, user_id).model_dump(mode="json")
+        ), 201

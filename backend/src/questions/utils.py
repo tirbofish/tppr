@@ -35,6 +35,9 @@ def _build_question_db(
         if isinstance(q_data.get("answer"), dict)
         else q_data.get("answer"),
         difficulty=q_data.get("difficulty"),
+        remixed_from=q_data.get("remixed_from"),
+        source_question_id=q_data.get("source_question_id"),
+        source_paper_id=q_data.get("source_paper_id"),
         created_at=_parse_dt(q_data.get("created_at")),
         updated_at=_parse_dt(q_data.get("updated_at")),
     )

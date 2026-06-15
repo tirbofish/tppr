@@ -1,5 +1,4 @@
 import os
-import sys
 from datetime import timedelta
 
 import auth
@@ -21,14 +20,8 @@ static_dir = os.path.abspath(
 )
 assets_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../assets"))
 
-api_only = "--api-only" in sys.argv
-
-if api_only:
-    app = Flask(__name__)
-    print("Currently using API only configuration (flag passed with `--api-only`)")
-else:
-    app = Flask(__name__, static_folder=static_dir, static_url_path="")
-    print("Currently using static-hosting configuration")
+app = Flask(__name__)
+print("Currently using API only configuration (flag passed with `--api-only`)")
 
 # --- secure stuff ---
 CORS(app, supports_credentials=True)
@@ -56,11 +49,7 @@ def check_if_token_revoked(jwt_header, jwt_payload):
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def index(path):
-    if api_only:
-        return send_from_directory(assets_dir, "missing.html")
-    if path and os.path.isfile(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    return send_from_directory(app.static_folder, "index.html")
+    return send_from_directory(assets_dir, "missing.html")
 
 
 @app.route("/ping")

@@ -224,6 +224,20 @@ class QuestionSyllabusPointDB(SQLModel, table=True):
     label: str | None = None
 
 
+class AssetDB(SQLModel, table=True):
+    """Binary assets referenced by asset:// URLs in paper content."""
+
+    __tablename__ = "assets"
+
+    id: str = Field(primary_key=True)
+    paper_id: str = Field(foreign_key="papers.id")
+    uploader_id: str
+    mime_type: str
+    filename: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 # ---------------------------------------------------------------------------
 # Main table models
 # ---------------------------------------------------------------------------
@@ -297,6 +311,9 @@ class QuestionDB(SQLModel, table=True):
 
     answer: str | None = None
     difficulty: str | None = None  # Difficulty
+    remixed_from: str | None = Field(default=None)
+    source_question_id: str | None = Field(default=None)
+    source_paper_id: str | None = Field(default=None)
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -387,6 +404,10 @@ class QuestionRead(BaseModel):
     outcomes: list[str] = []
     syllabus_points: list[SyllabusPoint] = []
     difficulty: Difficulty | None = None
+    remixed_from: str | None = None
+    source_question_id: str | None = None
+    source_paper_id: str | None = None
+    source_removed: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -470,6 +491,9 @@ class QuestionCreate(BaseModel):
     outcomes: list[str] | None = None
     syllabus_points: list[SyllabusPoint] | None = None
     difficulty: Difficulty | None = None
+    remixed_from: str | None = None
+    source_question_id: str | None = None
+    source_paper_id: str | None = None
 
 
 class QuestionUpdate(BaseModel):
@@ -486,6 +510,9 @@ class QuestionUpdate(BaseModel):
     outcomes: list[str] | None = None
     syllabus_points: list[SyllabusPoint] | None = None
     difficulty: Difficulty | None = None
+    remixed_from: str | None = None
+    source_question_id: str | None = None
+    source_paper_id: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -517,7 +544,7 @@ def _dump_blocks(blocks: list[Any] | None) -> str | None:
     return json.dumps([b.model_dump() for b in blocks])
 
 
-def question_db_to_read(q: QuestionDB) -> QuestionRead:
+def question_db_to_read(q: QuestionDB, *, source_removed: bool = False) -> QuestionRead:
     """Convert a QuestionDB row into a QuestionRead API model."""
     return QuestionRead(
         id=q.id,
@@ -542,6 +569,10 @@ def question_db_to_read(q: QuestionDB) -> QuestionRead:
             for sp in q.syllabus_points
         ],
         difficulty=q.difficulty,  # type: ignore[arg-type]
+        remixed_from=q.remixed_from,
+        source_question_id=q.source_question_id,
+        source_paper_id=q.source_paper_id,
+        source_removed=source_removed,
         created_at=q.created_at,
         updated_at=q.updated_at,
     )
@@ -569,8 +600,17 @@ def paper_db_to_meta_read(p: PaperDB) -> PaperMetaRead:
         remixed=p.remixed,
     )
 
-def paper_db_to_read(p: PaperDB) -> PaperRead:
+def paper_db_to_read(
+    p: PaperDB,
+    *,
+    questions: list[QuestionRead] | None = None,
+    question_count: int | None = None,
+    total_marks: int | None = None,
+) -> PaperRead:
     """Convert a PaperDB row into a full PaperRead API model."""
+    read_questions = questions if questions is not None else [
+        question_db_to_read(q) for q in p.questions
+    ]
     return PaperRead(
         id=p.id,
         title=p.title,
@@ -584,11 +624,11 @@ def paper_db_to_read(p: PaperDB) -> PaperRead:
         topics=p.get_topics(),
         outcomes=[o.outcome_code for o in p.outcomes],
         visibility=p.visibility,  # type: ignore[arg-type]
-        question_count=p.question_count,
-        total_marks=p.total_marks,
+        question_count=p.question_count if question_count is None else question_count,
+        total_marks=p.total_marks if total_marks is None else total_marks,
         duration_minutes=p.duration_minutes,
         created_at=p.created_at,
         updated_at=p.updated_at,
         remixed=p.remixed,
-        questions=[question_db_to_read(q) for q in p.questions],
+        questions=read_questions,
     )

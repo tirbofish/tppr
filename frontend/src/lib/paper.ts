@@ -1,7 +1,7 @@
 import type { PapersListResponse } from "@/types/responses";
 import type { CourseLevel, Paper, PaperSource, Question, Visibility } from "@/types/tppr-paper";
 
-interface StoredAsset {
+export interface StoredAsset {
     id: string;
     paperId: string;
     blob: Blob;
@@ -70,7 +70,7 @@ class PaperStore {
     }
 
     /** Saves the asset internally inside the paper storage and returns the id */
-    saveAsset(paperId: string, file: Blob, id = crypto.randomUUID()): Promise<string> {
+    saveAsset(paperId: string, file: Blob, id: string = crypto.randomUUID()): Promise<string> {
         const asset: StoredAsset = { id, paperId, blob: file, mimeType: file.type };
         return this.run("assets", "readwrite", (s) => s.put(asset)).then(() => id);
     }

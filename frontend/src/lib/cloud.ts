@@ -2,6 +2,31 @@ import type { Paper } from "@/types/tppr-paper";
 import { paperStore } from "./paper";
 
 export type SyncStatus = "synced" | "syncing" | "pending" | "offline";
+
+function collectAssetIds(value: unknown, ids = new Set<string>()): Set<string> {
+    if (!value || typeof value !== "object") return ids;
+
+    if (Array.isArray(value)) {
+        for (const item of value) collectAssetIds(item, ids);
+        return ids;
+    }
+
+    const record = value as Record<string, unknown>;
+    if (
+        record.kind === "image" &&
+        typeof record.url === "string" &&
+        record.url.startsWith("asset://")
+    ) {
+        ids.add(record.url.slice("asset://".length));
+    }
+
+    for (const child of Object.values(record)) {
+        collectAssetIds(child, ids);
+    }
+
+    return ids;
+}
+
 export class SyncService {
     private timeout: ReturnType<typeof setTimeout> | null = null;
     private pending: Paper | null = null;
@@ -24,6 +49,30 @@ export class SyncService {
     private async saveServerPaper(res: Response): Promise<void> {
         const saved = await res.json() as Paper;
         await paperStore.savePaper(saved);
+    }
+
+    private async uploadAssets(paper: Paper): Promise<void> {
+        const assetIds = collectAssetIds(paper);
+        for (const assetId of assetIds) {
+            const asset = await paperStore.getAsset(assetId).catch(() => undefined);
+            if (!asset) continue;
+
+            const formData = new FormData();
+            formData.set("asset_id", asset.id);
+            formData.set(
+                "file",
+                new File([asset.blob], asset.id, {
+                    type: asset.mimeType || asset.blob.type || "application/octet-stream",
+                }),
+            );
+
+            const res = await fetch(`/api/papers/${paper.id}/assets`, {
+                method: "POST",
+                credentials: "include",
+                body: formData,
+            });
+            if (!res.ok) throw new Error(`Asset upload failed: ${res.status}`);
+        }
     }
 
     private async pushToServer(paper: Paper): Promise<void> {
@@ -49,6 +98,7 @@ export class SyncService {
         } else {
             await this.saveServerPaper(res);
         }
+        await this.uploadAssets(paper);
         this.setStatus("synced");
     }
 
@@ -100,6 +150,7 @@ export class SyncService {
             body: JSON.stringify(paper),
         });
         if (!res.ok) throw new Error(`Publish failed: ${res.status}`);
+        await this.uploadAssets(paper);
         this.setStatus("synced");
     }
 

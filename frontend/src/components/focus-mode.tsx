@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Paper, Question as QuestionData } from "@/types/tppr-paper";
 import { ContentBlocks } from "@/components/question";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import Confetti from "react-confetti";
+import { useWindowSize } from "react-use";
 
 type FocusSlide =
     | { kind: "cover"; paper: Paper }
-    | { kind: "question"; question: QuestionData; partIndex?: number };
+    | { kind: "question"; question: QuestionData; partIndex?: number }
+    | { kind: "complete"; paper: Paper };
 
 function buildSlides(paper: Paper): FocusSlide[] {
     const slides: FocusSlide[] = [{ kind: "cover", paper }];
@@ -20,6 +23,7 @@ function buildSlides(paper: Paper): FocusSlide[] {
             slides.push({ kind: "question", question: q });
         }
     }
+    slides.push({ kind: "complete", paper });
     return slides;
 }
 
@@ -66,6 +70,44 @@ function CoverSlide({ paper }: { paper: Paper }) {
                 </kbd>{" "}
                 to start
             </p>
+        </div>
+    );
+}
+
+function formatElapsed(seconds: number): string {
+    const safeSeconds = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const remainder = safeSeconds % 60;
+    const parts: string[] = [];
+
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0 || hours > 0) parts.push(`${minutes}m`);
+    const secondsLabel = parts.length > 0
+        ? `${String(remainder).padStart(2, "0")}s`
+        : `${remainder}s`;
+    parts.push(secondsLabel);
+
+    return parts.join(" ");
+}
+
+function CompletionSlide(
+    { paper, elapsedSeconds }: { paper: Paper; elapsedSeconds: number },
+) {
+    const tooSlow = paper.duration_minutes != null &&
+        elapsedSeconds > paper.duration_minutes * 60;
+
+    return (
+        <div className="flex flex-col items-center justify-center gap-4 text-center">
+            <p className="text-4xl font-bold leading-tight">
+                Hooray! You completed {paper.title} in{" "}
+                {formatElapsed(elapsedSeconds)}
+            </p>
+            {tooSlow && (
+                <p className="text-2xl italic text-muted-foreground">
+                    Lock in!
+                </p>
+            )}
         </div>
     );
 }
@@ -258,21 +300,37 @@ export function FocusMode(
 ) {
     const slides = useMemo(() => buildSlides(paper), [paper]);
     const [index, setIndex] = useState(0);
-
-    const goNext = useCallback(
-        () => setIndex((i) => Math.min(i + 1, slides.length - 1)),
-        [slides.length],
+    const startedAt = useRef<number | null>(null);
+    const [completedSeconds, setCompletedSeconds] = useState<number | null>(
+        null,
     );
+    const [showAnswer, setShowAnswer] = useState(false);
+    const { width, height } = useWindowSize();
+
+    const goNext = useCallback(() => {
+        const nextIndex = Math.min(index + 1, slides.length - 1);
+        if (nextIndex !== index) {
+            setShowAnswer(false);
+        }
+        if (startedAt.current == null && nextIndex > 0) {
+            startedAt.current = Date.now();
+        }
+        if (slides[nextIndex]?.kind === "complete" && completedSeconds == null) {
+            setCompletedSeconds(
+                Math.floor(
+                    (Date.now() - (startedAt.current ?? Date.now())) / 1000,
+                ),
+            );
+        }
+        setIndex(nextIndex);
+    }, [completedSeconds, index, slides]);
     const goPrev = useCallback(
-        () => setIndex((i) => Math.max(i - 1, 0)),
+        () => {
+            setShowAnswer(false);
+            setIndex((i) => Math.max(i - 1, 0));
+        },
         [],
     );
-
-    const [showAnswer, setShowAnswer] = useState(false);
-
-    useEffect(() => {
-        setShowAnswer(false);
-    }, [index]);
 
     useEffect(() => {
         function onKey(e: KeyboardEvent) {
@@ -290,7 +348,10 @@ export function FocusMode(
 
     const slide = slides[index];
     const questionCount = paper.questions.length;
-    const currentQuestionIdx = questionIndexFromSlide(slides, index);
+    const isCompleteSlide = slide.kind === "complete";
+    const currentQuestionIdx = isCompleteSlide
+        ? questionCount
+        : questionIndexFromSlide(slides, index);
 
     // For LAQ part dots
     const showPartDots = slide.kind === "question" &&
@@ -301,6 +362,51 @@ export function FocusMode(
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-background">
+            {isCompleteSlide && (
+                <>
+                    <Confetti
+                        width={width || window.innerWidth}
+                        height={height || window.innerHeight}
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            pointerEvents: "none",
+                            zIndex: 60,
+                        }}
+                        recycle={false}
+                        numberOfPieces={140}
+                        confettiSource={{
+                            x: 0,
+                            y: height || window.innerHeight,
+                            w: 10,
+                            h: 0,
+                        }}
+                        initialVelocityX={{ min: 5, max: 15 }}
+                        initialVelocityY={{ min: -35, max: -15 }}
+                    />
+                    <Confetti
+                        width={width || window.innerWidth}
+                        height={height || window.innerHeight}
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            pointerEvents: "none",
+                            zIndex: 60,
+                        }}
+                        recycle={false}
+                        numberOfPieces={140}
+                        confettiSource={{
+                            x: (width || window.innerWidth) - 10,
+                            y: height || window.innerHeight,
+                            w: 10,
+                            h: 0,
+                        }}
+                        initialVelocityX={{ min: -15, max: -5 }}
+                        initialVelocityY={{ min: -35, max: -15 }}
+                    />
+                </>
+            )}
+
             {/* Top bar */}
             <div className="flex items-center justify-between border-b px-4 py-3">
                 <ProgressBar
@@ -331,6 +437,12 @@ export function FocusMode(
                             showAnswer={showAnswer}
                         />
                     )}
+                    {slide.kind === "complete" && (
+                        <CompletionSlide
+                            paper={slide.paper}
+                            elapsedSeconds={completedSeconds ?? 0}
+                        />
+                    )}
                 </div>
 
                 {/* Right-side part dots for LAQ */}
@@ -353,7 +465,7 @@ export function FocusMode(
                     <ArrowLeft className="size-5" />
                 </Button>
                 <span className="text-sm text-muted-foreground">
-                    {index} / {slides.length - 1}
+                    {index} / {slides.length - 2}
                 </span>
                 <Button
                     variant="ghost"

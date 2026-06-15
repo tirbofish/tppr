@@ -5,12 +5,13 @@ import {
     useRef,
     useState,
 } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
     createQuestion,
     paperStore,
     withRecalculatedTotals,
 } from "@/lib/paper";
+import { getPapers, remixQuestionIntoPaper } from "@/api/papers";
 import type {
     Paper,
     PaperMeta,
@@ -63,6 +64,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import { Takendown } from "./errors/Takendown";
 import { GenericError } from "./errors/GenericError";
@@ -72,6 +80,8 @@ const EDITOR_MIN_WIDTH = 384;
 const EDITOR_DEFAULT_WIDTH = 448;
 const EDITOR_MAX_MARGIN = 96;
 const EDITOR_KEYBOARD_STEP = 48;
+
+type RemixTargetPaper = PaperMeta & { isLocal?: boolean };
 
 function clampEditorWidth(width: number) {
     const viewportMax = typeof window === "undefined"
@@ -85,11 +95,14 @@ export default function PaperEditor() {
     const [paper, setPaper] = useState<Paper | null>(null);
     const paperRef = useRef<Paper | null>(null);
     const [loading, setLoading] = useState(true);
+    const paperId = paper?.id;
+    const questionCount = paper?.questions.length;
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [editorWidth, setEditorWidth] = useState(EDITOR_DEFAULT_WIDTH);
     const selected = paper?.questions.find((q) => q.id === selectedId) ?? null;
 
+    const location = useLocation();
     const navigate = useNavigate();
     const [syncing, setSyncing] = useState(false);
 
@@ -111,6 +124,11 @@ export default function PaperEditor() {
     const [takenDown, setTakenDown] = useState(false);
 
     const [focusMode, setFocusMode] = useState(false);
+    const [questionRemixId, setQuestionRemixId] = useState<string | null>(null);
+    const [targetPapers, setTargetPapers] = useState<RemixTargetPaper[]>([]);
+    const [targetPaperId, setTargetPaperId] = useState<string>("");
+    const [loadingTargets, setLoadingTargets] = useState(false);
+    const [addingQuestionRemix, setAddingQuestionRemix] = useState(false);
 
     useEffect(() => {
         function handleKeyDown(e: KeyboardEvent) {
@@ -159,6 +177,36 @@ export default function PaperEditor() {
     }, [paper]);
 
     useEffect(() => {
+        if (loading || !paperId || !location.hash) return;
+
+        const targetId = decodeURIComponent(location.hash.slice(1));
+        let cancelled = false;
+        const timeouts: ReturnType<typeof setTimeout>[] = [];
+        let frame = 0;
+
+        function scrollToHash() {
+            if (cancelled) return true;
+            const element = document.getElementById(targetId);
+            if (!element) return false;
+            element.scrollIntoView({ behavior: "smooth", block: "start" });
+            return true;
+        }
+
+        frame = requestAnimationFrame(() => {
+            if (scrollToHash()) return;
+            for (const delay of [75, 250, 600]) {
+                timeouts.push(setTimeout(scrollToHash, delay));
+            }
+        });
+
+        return () => {
+            cancelled = true;
+            cancelAnimationFrame(frame);
+            for (const timeout of timeouts) clearTimeout(timeout);
+        };
+    }, [loading, location.hash, paperId, questionCount]);
+
+    useEffect(() => {
         if (!paper?.remixed) return;
         fetch(`/api/papers/${paper.remixed}`, { credentials: "include" })
             .then((res) => res.ok ? res.json() : Promise.reject())
@@ -184,11 +232,50 @@ export default function PaperEditor() {
     }, [authorId]);
 
     useEffect(() => {
+        if (!questionRemixId || !user) return;
+
+        const userId = String(user.user_id);
+        let cancelled = false;
+
+        async function loadTargets() {
+            setLoadingTargets(true);
+            setTargetPaperId("");
+            try {
+                const [remote, local] = await Promise.all([
+                    getPapers().catch(() => [] as PaperMeta[]),
+                    paperStore.listPapers().catch(() => []),
+                ]);
+
+                const merged = new Map<string, RemixTargetPaper>();
+                for (const p of remote) merged.set(p.id, p);
+                for (const p of local) merged.set(p.id, { ...p, isLocal: true });
+
+                const targets = [...merged.values()]
+                    .filter((p) =>
+                        p.author_id === userId && p.visibility !== "removed"
+                    )
+                    .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+
+                if (cancelled) return;
+                setTargetPapers(targets);
+                setTargetPaperId(targets[0]?.id ?? "");
+            } finally {
+                if (!cancelled) setLoadingTargets(false);
+            }
+        }
+
+        void loadTargets();
+        return () => {
+            cancelled = true;
+        };
+    }, [questionRemixId, user]);
+
+    useEffect(() => {
         if (!id) return;
-        setTakenDown(false); // reset stale state
-        setPaper(null);
-        setLoading(true);
         async function load() {
+            setTakenDown(false); // reset stale state
+            setPaper(null);
+            setLoading(true);
             try {
                 const res = await fetch(`/api/papers/${id}`, {
                     credentials: "include",
@@ -225,7 +312,7 @@ export default function PaperEditor() {
                 setLoading(false);
             }
         }
-        load();
+        void load();
     }, [id]);
 
     async function handleRemix() {
@@ -242,6 +329,34 @@ export default function PaperEditor() {
         await paperStore.savePaper(remixed);
         toast.success("Remixed!");
         navigate(`/papers/${remixed.id}`);
+    }
+
+    async function handleQuestionRemix() {
+        if (!paper || !questionRemixId || !targetPaperId) return;
+
+        setAddingQuestionRemix(true);
+        try {
+            const localTarget = await paperStore.getPaper(targetPaperId).catch(
+                () => undefined,
+            );
+            if (localTarget) {
+                await syncService.sync(localTarget);
+                await syncService.flush();
+            }
+
+            const updatedPaper = await remixQuestionIntoPaper(
+                paper.id,
+                questionRemixId,
+                targetPaperId,
+            );
+            await paperStore.savePaper(updatedPaper);
+            toast.success(`Added to ${updatedPaper.title}`);
+            setQuestionRemixId(null);
+        } catch {
+            toast.error("Failed to add question to paper");
+        } finally {
+            setAddingQuestionRemix(false);
+        }
     }
 
     const updatePaper = useCallback((
@@ -569,17 +684,21 @@ export default function PaperEditor() {
                                 <Question
                                     key={q.id}
                                     question={q}
-                                    onChange={isOwner
+                                    onChange={isOwner && !q.source_removed
                                         ? handleQuestionChange
                                         : undefined}
-                                    onDelete={isOwner
+                                    onDelete={isOwner && !q.source_removed
                                         ? handleQuestionDelete
                                         : undefined}
-                                    onEdit={isOwner
+                                    onEdit={isOwner && !q.source_removed
                                         ? handleQuestionEdit
                                         : undefined}
-                                    onDuplicate={isOwner
+                                    onDuplicate={isOwner && !q.source_removed
                                         ? handleDuplicate
+                                        : undefined}
+                                    onRemix={user && !isOwner &&
+                                            paper.visibility === "public"
+                                        ? setQuestionRemixId
                                         : undefined}
                                 />
                             ))}
@@ -682,13 +801,99 @@ export default function PaperEditor() {
                 </DialogContent>
             </Dialog>
 
+            <Dialog
+                open={questionRemixId !== null}
+                onOpenChange={(open) => {
+                    if (!open) setQuestionRemixId(null);
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add question</DialogTitle>
+                        <DialogDescription>
+                            Choose where this public question should be added.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-2">
+                        <label
+                            htmlFor="question-remix-target"
+                            className="text-sm font-medium"
+                        >
+                            Add to paper:
+                        </label>
+                        {loadingTargets
+                            ? (
+                                <p className="text-sm text-muted-foreground">
+                                    Loading papers...
+                                </p>
+                            )
+                            : targetPapers.length === 0
+                            ? (
+                                <p className="text-sm text-muted-foreground">
+                                    You do not have any papers yet.
+                                </p>
+                            )
+                            : (
+                                <Select
+                                    value={targetPaperId}
+                                    onValueChange={setTargetPaperId}
+                                >
+                                    <SelectTrigger
+                                        id="question-remix-target"
+                                        className="w-full"
+                                    >
+                                        <SelectValue placeholder="Select paper" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {targetPapers.map((target) => (
+                                            <SelectItem
+                                                key={target.id}
+                                                value={target.id}
+                                            >
+                                                {target.title}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setQuestionRemixId(null)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleQuestionRemix}
+                            disabled={!targetPaperId || addingQuestionRemix}
+                        >
+                            {addingQuestionRemix ? "Adding..." : "Add"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <AdminSidebar
                 paperId={id!}
                 isTakenDown={paper.visibility === "removed"}
             />
             {focusMode && paper && (
                 <FocusMode
-                    paper={paper}
+                    paper={{
+                        ...paper,
+                        questions: paper.questions.filter((q) =>
+                            !q.source_removed
+                        ),
+                        question_count: paper.questions.filter((q) =>
+                            !q.source_removed
+                        ).length,
+                        total_marks: paper.questions
+                            .filter((q) => !q.source_removed)
+                            .reduce((sum, q) => sum + q.marks, 0),
+                    }}
                     onExit={() => setFocusMode(false)}
                 />
             )}

@@ -4,22 +4,16 @@ This is the frontend, powered by `React` and `shadcn/ui`.
 
 ## running
 
-You will need the **bun** javascript runtime to compile the frontend into a static website.
+You will need the **bun** javascript runtime. 
 
-Currently, _tppr_ is configured so the backend deals with serving the website (which allows for templates)
+```bash
+bun install
+bun run dev
+```
 
 ### compiling
 
 ```bash
 bun install
 bun run build
-```
-
-## running independently
-
-the website can also be run independently:
-
-```bash
-# from the repo root
-bun run dev
 ```

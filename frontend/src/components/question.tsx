@@ -18,11 +18,17 @@ import type {
     Question as QuestionData,
     QuestionRubric,
 } from "@/types/tppr-paper";
-import { Copy, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
+import { Copy, Eye, EyeOff, Pencil, Shell, Trash2, XCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { MathText } from "./math-text";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "./ui/tooltip";
 
 /** Resolves asset:// URLs from IndexedDB to object URLs. */
 function useAssetUrl(url: string): string | undefined {
@@ -35,12 +41,35 @@ function useAssetUrl(url: string): string | undefined {
 
         let objectUrl: string | undefined;
         let cancelled = false;
+        const assetId = url.slice("asset://".length);
 
-        paperStore.getAsset(url.slice("asset://".length)).then((asset) => {
-            if (!asset || cancelled) return;
-            objectUrl = URL.createObjectURL(asset.blob);
+        async function resolveAsset() {
+            const localAsset = await paperStore.getAsset(assetId).catch(() =>
+                undefined
+            );
+            if (localAsset) {
+                if (cancelled) return;
+                objectUrl = URL.createObjectURL(localAsset.blob);
+                setResolvedAsset({ source: url, objectUrl });
+                return;
+            }
+
+            const res = await fetch(`/api/assets/${assetId}`, {
+                credentials: "include",
+            }).catch(() => undefined);
+            if (!res?.ok) return;
+
+            const blob = await res.blob();
+            const paperId = res.headers.get("X-Paper-Id");
+            if (paperId) {
+                await paperStore.saveAsset(paperId, blob, assetId).catch(() => {});
+            }
+            if (cancelled) return;
+            objectUrl = URL.createObjectURL(blob);
             setResolvedAsset({ source: url, objectUrl });
-        });
+        }
+
+        void resolveAsset();
 
         return () => {
             cancelled = true;
@@ -496,12 +525,13 @@ function RubricBlock({ rubric }: { rubric?: QuestionRubric }) {
 }
 
 export const Question = memo(function Question(
-    { question, onDelete, onEdit, onDuplicate, onChange }: {
+    { question, onDelete, onEdit, onDuplicate, onChange, onRemix }: {
         question: QuestionData;
         onDelete?: (id: string) => void;
         onEdit?: (id: string) => void;
         onDuplicate?: (id: string) => void;
         onChange?: (q: QuestionData) => void;
+        onRemix?: (id: string) => void;
     },
 ) {
     const [showAnswer, setShowAnswer] = useState(false);
@@ -523,11 +553,57 @@ export const Question = memo(function Question(
         );
     const showGroupedPartAnswers = false;
 
+    if (question.source_removed) {
+        return (
+            <Card
+                id={`question-${question.id}`}
+                className="border-dashed bg-muted/30 opacity-75"
+            >
+                <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                        <span>Question {question.number}</span>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span
+                                        tabIndex={0}
+                                        className="inline-flex size-9 items-center justify-center rounded-md text-destructive"
+                                    >
+                                        <XCircle className="size-5" />
+                                    </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    The original paper for this question has
+                                    been takendown, and therefore unavailable
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </CardTitle>
+                </CardHeader>
+            </Card>
+        );
+    }
+
     return (
-        <Card>
+        <Card id={`question-${question.id}`}>
             <CardHeader className="border-b">
                 <CardTitle className="flex items-center justify-between">
-                    <span>Question {question.number}</span>
+                    <span className="flex items-center gap-2">
+                        Question {question.number}
+                        {question.source_paper_id && (
+                            <a
+                                href={`/papers/${question.source_paper_id}${
+                                    question.source_question_id
+                                        ? `#question-${question.source_question_id}`
+                                        : ""
+                                }`}
+                                className="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground hover:underline"
+                            >
+                                <Shell className="size-3" />
+                                Source
+                            </a>
+                        )}
+                    </span>
                     <span className="flex items-center gap-1">
                         {question.difficulty && (
                             <Badge variant="outline">
@@ -575,6 +651,27 @@ export const Question = memo(function Question(
                             >
                                 <Copy />
                             </Button>
+                        )}
+
+                        {/** remix */}
+                        {onRemix && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => onRemix(question.id)}
+                                            aria-label="Remix question"
+                                        >
+                                            <Shell />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        Add this question to one of your papers
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         )}
 
                         {/** delete */}

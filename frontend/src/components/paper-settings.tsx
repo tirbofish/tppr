@@ -100,17 +100,6 @@ export const PaperSettings = memo(function PaperSettings(
         save();
     }
 
-    function sameSettingsPaper(a: PaperMeta, b: PaperMeta) {
-        return a.id === b.id &&
-            a.title === b.title &&
-            a.subject === b.subject &&
-            a.course_level === b.course_level &&
-            a.year === b.year &&
-            a.source === b.source &&
-            a.visibility === b.visibility &&
-            a.duration_minutes === b.duration_minutes;
-    }
-
     async function save() {
         const isPublishing = paper.visibility === "private" &&
             visibility === "public";
