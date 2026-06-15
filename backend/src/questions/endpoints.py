@@ -22,21 +22,17 @@ from questions.types import (
 )
 from questions.utils import _build_question_db
 from admin import is_admin
+from io import BytesIO
+from flask import Response
 
 
 q_bp = Blueprint("tppr-questions", __name__)
 ASSET_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
-PAPER_ASSETS_DIR = os.path.join(ASSETS_DIR, "paper-assets")
-
 
 def _removed_response():
     response = jsonify({"message": "Paper has been removed", "visibility": "removed"})
     response.headers["Cache-Control"] = "no-store"
     return response, 410
-
-
-def _asset_path(asset_id: str) -> str:
-    return os.path.join(PAPER_ASSETS_DIR, asset_id)
 
 
 def _valid_asset_id(asset_id: str) -> bool:
@@ -160,23 +156,27 @@ def upload_asset(paper_id):
         if existing and existing.paper_id != paper_id:
             return jsonify({"message": "Asset id already belongs to another paper"}), 409
 
-        os.makedirs(PAPER_ASSETS_DIR, exist_ok=True)
-        asset_file.save(_asset_path(asset_id))
-
+        file_data = asset_file.read()
         now = datetime.now(UTC)
-        asset = existing or AssetDB(
-            id=asset_id,
-            paper_id=paper_id,
-            uploader_id=user_id,
-            mime_type=asset_file.mimetype,
-            filename=asset_file.filename,
-            created_at=now,
-            updated_at=now,
-        )
-        asset.uploader_id = user_id
-        asset.mime_type = asset_file.mimetype
-        asset.filename = asset_file.filename
-        asset.updated_at = now
+
+        if existing:
+            existing.uploader_id = user_id
+            existing.mime_type = asset_file.mimetype
+            existing.filename = asset_file.filename
+            existing.data = file_data
+            existing.updated_at = now
+            asset = existing
+        else:
+            asset = AssetDB(
+                id=asset_id,
+                paper_id=paper_id,
+                uploader_id=user_id,
+                mime_type=asset_file.mimetype,
+                filename=asset_file.filename,
+                data=file_data,
+                created_at=now,
+                updated_at=now,
+            )
         session.add(asset)
         session.commit()
 
@@ -185,7 +185,6 @@ def upload_asset(paper_id):
             "paper_id": asset.paper_id,
             "mime_type": asset.mime_type,
         }), 201
-
 
 @q_bp.route("/api/assets/<string:asset_id>", methods=["GET"])
 @jwt_required(optional=True)
@@ -203,15 +202,14 @@ def get_asset(asset_id):
         if not paper or not _can_view_paper(paper, str(user_id) if user_id else None):
             return jsonify({"message": "Asset not found"}), 404
 
-        path = _asset_path(asset_id)
-        if not os.path.isfile(path):
-            return jsonify({"message": "Asset file missing"}), 404
-
-        response = send_file(path, mimetype=asset.mime_type)
+        response = send_file(
+            BytesIO(asset.data),
+            mimetype=asset.mime_type,
+            download_name=asset.filename,
+        )
         response.headers["X-Paper-Id"] = asset.paper_id
         response.headers["Cache-Control"] = "private, max-age=31536000"
         return response
-
 
 # --- Papers ---
 

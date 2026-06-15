@@ -49,9 +49,6 @@ FRONTEND = os.path.join(ROOT, "frontend")
 BACKEND = os.path.join(ROOT, "backend")
 PAPER_UTILS = os.path.join(ROOT, "tppr-paper-utils")
 UV_CACHE_DIR = os.path.join(ROOT, ".uv-cache")
-ENV_FILE = os.path.join(ROOT, ".env")
-
-DEFAULT_DATABASE_URL = "postgresql://localhost:5432/tppr"
 
 console = Console()
 
@@ -430,61 +427,6 @@ def prepare_dependencies(tools, skip_install=False):
             tools, skip_install=skip_install, tui=tui, live=live
         )
         live.update(tui.render())
-
-
-def load_env_file():
-    values = {}
-    if not os.path.exists(ENV_FILE):
-        return values
-
-    with open(ENV_FILE, "r", encoding="utf-8") as env:
-        for line in env:
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#") or "=" not in stripped:
-                continue
-            key, value = stripped.split("=", 1)
-            values[key] = value
-
-    return values
-
-
-def write_env_values(updates):
-    existing_lines = []
-    seen = set()
-
-    if os.path.exists(ENV_FILE):
-        with open(ENV_FILE, "r", encoding="utf-8") as env:
-            existing_lines = env.readlines()
-
-    next_lines = []
-    for line in existing_lines:
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#") and "=" in stripped:
-            key = stripped.split("=", 1)[0]
-            if key in updates:
-                next_lines.append(f"{key}={updates[key]}\n")
-                seen.add(key)
-                continue
-        next_lines.append(line)
-
-    if next_lines and not next_lines[-1].endswith("\n"):
-        next_lines[-1] += "\n"
-
-    for key, value in updates.items():
-        if key not in seen:
-            next_lines.append(f"{key}={value}\n")
-
-    with open(ENV_FILE, "w", encoding="utf-8") as env:
-        env.writelines(next_lines)
-
-
-def setup_database_env():
-    env_values = load_env_file()
-    if "DATABASE_URL" not in env_values:
-        write_env_values({"DATABASE_URL": DEFAULT_DATABASE_URL})
-        success(f"Added DATABASE_URL to .env (default: {DEFAULT_DATABASE_URL})")
-    else:
-        success(f"DATABASE_URL already configured: {env_values['DATABASE_URL']}")
 
 
 def terminate_process(proc):
@@ -901,7 +843,6 @@ def main():
     try:
         tools = check_dependencies()
         prepare_dependencies(tools, skip_install=skip_install)
-        setup_database_env()
 
         if split_mode:
             run_split_mode(tools, watchers)

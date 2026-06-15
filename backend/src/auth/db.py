@@ -1,91 +1,65 @@
-import sqlite3 as sql
+from datetime import UTC, datetime
 from logging import Logger
 from typing import Optional
 
-from shared import DB_PATH
+from sqlalchemy import or_, select
+from sqlmodel import Field, Session, SQLModel
+
+from questions.db import engine
+
+
+class UserDB(SQLModel, table=True):
+    __tablename__ = "users"
+
+    user_id: int | None = Field(default=None, primary_key=True)
+    username: str = Field(unique=True, nullable=False)
+    email: str = Field(unique=True, nullable=False)
+    password_hash: str = Field(nullable=False)
+    totp_secret: str | None = None
+    totp_enabled: int = Field(default=0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    last_login: datetime | None = None
 
 
 class AuthenticationDB:
-    def __init__(self):
-        self._db_path = DB_PATH
-
-    def _connect(self, row_factory: bool = False):
-        conn = sql.connect(self._db_path)
-        if row_factory:
-            conn.row_factory = sql.Row
-        return conn
-
     def prepare(self, log: Logger):
-        conn = self._connect()
-        cur = conn.cursor()
-        log.info("Connected to database")
-
-        try:
-            cur.execute("PRAGMA foreign_keys = ON;")
-
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
-                    email TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    totp_secret TEXT,
-                    totp_enabled INTEGER DEFAULT 0,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    last_login DATETIME
-                );
-                """
-            )
-            log.info("Users table ready")
-
-            conn.commit()
-            log.info("Database schema committed successfully")
-
-        except sql.Error as e:
-            conn.rollback()
-            log.error(f"Database preparation failed: {e}")
-            raise
-        finally:
-            conn.close()
-            log.info("Database connection closed")
+        log.info("Preparing auth database tables")
+        SQLModel.metadata.create_all(engine)
+        log.info("Users table ready")
 
     def get_user_by_email(self, email: str) -> Optional[dict]:
-        conn = self._connect(row_factory=True)
-        cur = conn.cursor()
-
-        cur.execute("SELECT * FROM users WHERE email = ?", (email,))
-        row = cur.fetchone()
-
-        conn.close()
-        return dict(row) if row else None
+        with Session(engine) as session:
+            user = session.exec(
+                select(UserDB).where(UserDB.email == email)
+            ).first()
+            return user.model_dump() if user else None
 
     def get_user_by_email_or_username(self, identifier: str) -> Optional[dict]:
-        conn = self._connect(row_factory=True)
-        cur = conn.cursor()
-
-        cur.execute(
-            "SELECT user_id, username, email, password_hash, totp_secret, totp_enabled "
-            "FROM users WHERE email = ? OR username = ?",
-            (identifier, identifier),
-        )
-        row = cur.fetchone()
-
-        conn.close()
-        return dict(row) if row else None
+        with Session(engine) as session:
+            user = session.exec(
+                select(UserDB).where(
+                    or_(UserDB.email == identifier, UserDB.username == identifier)
+                )
+            ).first()
+            if not user:
+                return None
+            return {
+                "user_id": user.user_id,
+                "username": user.username,
+                "email": user.email,
+                "password_hash": user.password_hash,
+                "totp_secret": user.totp_secret,
+                "totp_enabled": user.totp_enabled,
+            }
 
     def user_exists(self, email: str, username: str) -> bool:
-        conn = self._connect()
-        cur = conn.cursor()
-
-        cur.execute(
-            "SELECT user_id FROM users WHERE email = ? OR username = ?",
-            (email, username),
-        )
-        exists = cur.fetchone() is not None
-
-        conn.close()
-        return exists
+        with Session(engine) as session:
+            user = session.exec(
+                select(UserDB.user_id).where(
+                    or_(UserDB.email == email, UserDB.username == username)
+                )
+            ).first()
+            return user is not None
 
     def create_user(
         self,
@@ -95,119 +69,79 @@ class AuthenticationDB:
         totp_secret: Optional[str] = None,
         totp_enabled: bool = False,
     ) -> int | None:
-        conn = self._connect()
-        cur = conn.cursor()
-
-        cur.execute(
-            "INSERT INTO users (username, email, password_hash, totp_secret, totp_enabled) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (username, email, password_hash, totp_secret, 1 if totp_enabled else 0),
-        )
-        user_id = cur.lastrowid
-        conn.commit()
-        conn.close()
-        return user_id
+        with Session(engine) as session:
+            user = UserDB(
+                username=username,
+                email=email,
+                password_hash=password_hash,
+                totp_secret=totp_secret,
+                totp_enabled=1 if totp_enabled else 0,
+            )
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            return user.user_id
 
     def get_user_by_id(
         self, user_id, fields: Optional[list[str]] = None
     ) -> Optional[dict]:
-        conn = self._connect(row_factory=True)
-        cur = conn.cursor()
-
-        if fields:
-            columns = ", ".join(fields)
-        else:
-            columns = "*"
-
-        cur.execute(f"SELECT {columns} FROM users WHERE user_id = ?", (user_id,))
-        row = cur.fetchone()
-
-        conn.close()
-        return dict(row) if row else None
+        with Session(engine) as session:
+            user = session.get(UserDB, user_id)
+            if not user:
+                return None
+            if fields:
+                return {f: getattr(user, f) for f in fields}
+            return user.model_dump()
 
     def is_username_taken(self, username: str, exclude_user_id=None) -> bool:
-        """Check if a username is taken, optionally excluding a specific user."""
-        conn = self._connect()
-        cur = conn.cursor()
-
-        if exclude_user_id is not None:
-            cur.execute(
-                "SELECT user_id FROM users WHERE username = ? AND user_id != ?",
-                (username, exclude_user_id),
-            )
-        else:
-            cur.execute("SELECT user_id FROM users WHERE username = ?", (username,))
-
-        taken = cur.fetchone() is not None
-        conn.close()
-        return taken
+        with Session(engine) as session:
+            stmt = select(UserDB.user_id).where(UserDB.username == username)
+            if exclude_user_id is not None:
+                stmt = stmt.where(UserDB.user_id != exclude_user_id)
+            return session.exec(stmt).first() is not None
 
     def update_username(self, user_id, new_username: str) -> None:
-        """Update a user's username."""
-        conn = self._connect()
-        cur = conn.cursor()
-
-        cur.execute(
-            "UPDATE users SET username = ? WHERE user_id = ?", (new_username, user_id)
-        )
-        conn.commit()
-        conn.close()
+        with Session(engine) as session:
+            user = session.get(UserDB, user_id)
+            if user:
+                user.username = new_username
+                session.commit()
 
     def update_password(self, user_id, password_hash: str) -> None:
-        """Update a user's password hash."""
-        conn = self._connect()
-        cur = conn.cursor()
-
-        cur.execute(
-            "UPDATE users SET password_hash = ? WHERE user_id = ?",
-            (password_hash, user_id),
-        )
-        conn.commit()
-        conn.close()
+        with Session(engine) as session:
+            user = session.get(UserDB, user_id)
+            if user:
+                user.password_hash = password_hash
+                session.commit()
 
     def delete_user(self, user_id) -> bool:
-        """Delete a user by ID. Returns True if a row was deleted."""
-        conn = self._connect()
-        cur = conn.cursor()
-
-        cur.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
-        deleted = cur.rowcount > 0
-        conn.commit()
-        conn.close()
-        return deleted
+        with Session(engine) as session:
+            user = session.get(UserDB, user_id)
+            if not user:
+                return False
+            session.delete(user)
+            session.commit()
+            return True
 
     def update_last_login(self, user_id) -> None:
-        """Set last_login to the current timestamp."""
-        conn = self._connect()
-        cur = conn.cursor()
-
-        cur.execute(
-            "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?",
-            (user_id,),
-        )
-        conn.commit()
-        conn.close()
+        with Session(engine) as session:
+            user = session.get(UserDB, user_id)
+            if user:
+                user.last_login = datetime.now(UTC)
+                session.commit()
 
     def enable_totp(self, user_id, totp_secret: str) -> None:
-        """Enable 2FA for a user with the given TOTP secret."""
-        conn = self._connect()
-        cur = conn.cursor()
-
-        cur.execute(
-            "UPDATE users SET totp_secret = ?, totp_enabled = 1 WHERE user_id = ?",
-            (totp_secret, user_id),
-        )
-        conn.commit()
-        conn.close()
+        with Session(engine) as session:
+            user = session.get(UserDB, user_id)
+            if user:
+                user.totp_secret = totp_secret
+                user.totp_enabled = 1
+                session.commit()
 
     def disable_totp(self, user_id) -> None:
-        """Disable 2FA for a user, clearing the TOTP secret."""
-        conn = self._connect()
-        cur = conn.cursor()
-
-        cur.execute(
-            "UPDATE users SET totp_secret = NULL, totp_enabled = 0 WHERE user_id = ?",
-            (user_id,),
-        )
-        conn.commit()
-        conn.close()
+        with Session(engine) as session:
+            user = session.get(UserDB, user_id)
+            if user:
+                user.totp_secret = None
+                user.totp_enabled = 0
+                session.commit()

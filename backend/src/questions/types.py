@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
 from pydantic import Field as PydanticField
-from sqlalchemy import Column, Text, UniqueConstraint
+from sqlalchemy import Column, LargeBinary, Text, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 # NOTE: This module was made with AI
@@ -234,6 +234,7 @@ class AssetDB(SQLModel, table=True):
     uploader_id: str
     mime_type: str
     filename: str | None = None
+    data: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
