@@ -1,0 +1,679 @@
+{
+  "id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+  "title": "2025 Tempe High School Mathematics Extension 1 Assessment Task 3",
+  "author_id": "1",
+  "subject": "Mathematics Extension 1",
+  "visibility": "private",
+  "question_count": 12,
+  "total_marks": 38,
+  "duration_minutes": 45,
+  "created_at": "2026-06-16T02:44:43.568005Z",
+  "updated_at": "2026-06-16T02:44:43.568005Z",
+  "questions": [
+    {
+      "id": "bf42b9f8-e801-4a73-90f0-7584b608f808",
+      "paper_id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+      "author_id": "1",
+      "number": 1,
+      "type": "short_answer",
+      "marks": 2,
+      "stimulus": [
+        {
+          "kind": "image",
+          "url": "IMAGE_PLACEHOLDER_1",
+          "mime_type": "image/png"
+        }
+      ],
+      "content": [
+        {
+          "kind": "text",
+          "text": "Sketch the gradient segments for the differential equation $y' = \\frac{x^2}{y^2}$ at the points (1,3), (-2,2), (4,-1), and (0,-2) on the grid below."
+        }
+      ],
+      "parts": null,
+      "options": null,
+      "answer": {
+        "option_label": null,
+        "summary": "Gradient segments at (1,3): 1/9, (-2,2): 1, (4,-1): 16, (0,-2): 0",
+        "content": [
+          {
+            "kind": "text",
+            "text": "Calculate $y' = \\frac{x^2}{y^2}$ for each point: (1,3): $1/9$, (-2,2): $1$, (4,-1): $16$, (0,-2): $0$. Sketch these slopes at the respective points."
+          }
+        ],
+        "alternatives": null
+      },
+      "difficulty": null,
+      "topics": ["Differential Equations"],
+      "syllabus_points": [],
+      "outcomes": [],
+      "rubric": null,
+      "guidelines": null,
+      "created_at": "2026-06-16T02:44:43.568005Z",
+      "updated_at": "2026-06-16T02:44:43.568005Z",
+      "source_paper_id": null,
+      "source_question_id": null,
+      "source_removed": false,
+      "remixed_from": null
+    },
+    {
+      "id": "c943875f-fc1f-47ff-9d50-94550f6a7e69",
+      "paper_id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+      "author_id": "1",
+      "number": 2,
+      "type": "short_answer",
+      "marks": 2,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "Solve the differential equation $\\frac{dy}{dx} = 2y + 5$, given that $y(-2) = 3$. Express your solution as a function of $x$."
+        }
+      ],
+      "parts": null,
+      "options": null,
+      "answer": {
+        "option_label": null,
+        "summary": "$y = -\\frac{5}{2} + \\frac{11}{2}e^{2(x+2)}$",
+        "content": [
+          {
+            "kind": "text",
+            "text": "Separate variables: $\\frac{dy}{2y+5} = dx$. Integrate: $\\frac{1}{2}\\ln|2y+5| = x + C$. Use initial condition to find $C = \\ln\\left(\\frac{11}{2}\\right) - 2$. Solve for $y$ to get $y = -\\frac{5}{2} + \\frac{11}{2}e^{2(x+2)}$."
+          }
+        ],
+        "alternatives": null
+      },
+      "difficulty": null,
+      "topics": ["Differential Equations"],
+      "syllabus_points": [],
+      "outcomes": [],
+      "rubric": null,
+      "guidelines": null,
+      "created_at": "2026-06-16T02:44:43.568005Z",
+      "updated_at": "2026-06-16T02:44:43.568005Z",
+      "source_paper_id": null,
+      "source_question_id": null,
+      "source_removed": false,
+      "remixed_from": null
+    },
+    {
+      "id": "d0e1f2a3-b4c5-46d7-e8f9-a0b1c2d3e4f5",
+      "paper_id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+      "author_id": "1",
+      "number": 3,
+      "type": "long_answer",
+      "marks": 6,
+      "stimulus": [
+        {
+          "kind": "text",
+          "text": "The rate of growth of the population of fish in a pond can be described by the differential equation $\\frac{dp}{dt} = 0.2p\\left(\\frac{P - p}{P}\\right)$ where $t$ is the time in months, $p$ is the current population and $P$ is the carrying capacity of the pond."
+        }
+      ],
+      "content": null,
+      "parts": [
+        {
+          "label": "a",
+          "stimulus": null,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Show that $\\frac{P}{p(P - p)} = \\frac{1}{p} + \\frac{1}{P - p}$."
+            }
+          ],
+          "marks": 1,
+          "is_independent": true,
+          "answer": {
+            "option_label": null,
+            "summary": "$\\frac{P}{p(P - p)} = \\frac{1}{p} + \\frac{1}{P - p}$",
+            "content": [
+              {
+                "kind": "text",
+                "text": "Partial fractions: $\\frac{P}{p(P - p)} = P\\left(\\frac{A}{p} + \\frac{B}{P - p}\\right)$. Solve for $A$ and $B$ to get $A = \\frac{1}{P}$ and $B = \\frac{1}{P}$. Thus, $\\frac{P}{p(P - p)} = \\frac{1}{p} + \\frac{1}{P - p}$."
+              }
+            ],
+            "alternatives": null
+          }
+        },
+        {
+          "label": "b",
+          "stimulus": null,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Hence solve the differential equation, given that there were 100 fish in the pond at the start."
+            }
+          ],
+          "marks": 3,
+          "is_independent": false,
+          "answer": {
+            "option_label": null,
+            "summary": "$p = \\frac{P}{1 + 4e^{-0.2Pt}}$",
+            "content": [
+              {
+                "kind": "text",
+                "text": "Separate variables and integrate using the result from part (a). Use initial condition $p(0) = 100$ to find the constant. The solution is $p = \\frac{P}{1 + 4e^{-0.2Pt}}$."
+              }
+            ],
+            "alternatives": null
+          }
+        },
+        {
+          "label": "c",
+          "stimulus": null,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Given that the population of the fish grew to 250 after 5 months, what is the carrying capacity of the pond?"
+            }
+          ],
+          "marks": 2,
+          "is_independent": false,
+          "answer": {
+            "option_label": null,
+            "summary": "$P = 500$",
+            "content": [
+              {
+                "kind": "text",
+                "text": "Substitute $p(5) = 250$ into the solution from part (b). Solve for $P$ to get $P = 500$."
+              }
+            ],
+            "alternatives": null
+          }
+        }
+      ],
+      "options": null,
+      "answer": null,
+      "difficulty": null,
+      "topics": ["Differential Equations"],
+      "syllabus_points": [],
+      "outcomes": [],
+      "rubric": null,
+      "guidelines": null,
+      "created_at": "2026-06-16T02:44:43.568005Z",
+      "updated_at": "2026-06-16T02:44:43.568005Z",
+      "source_paper_id": null,
+      "source_question_id": null,
+      "source_removed": false,
+      "remixed_from": null
+    },
+    {
+      "id": "e1f2a3b4-c5d6-47e8-f9a0-b1c2d3e4f5a6",
+      "paper_id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+      "author_id": "1",
+      "number": 4,
+      "type": "short_answer",
+      "marks": 3,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "Find the particular solution to the differential equation $(e^{x}+1)\\frac{dy}{dx}=e^{x}\\sec y$ that passes through the origin."
+        }
+      ],
+      "parts": null,
+      "options": null,
+      "answer": {
+        "option_label": null,
+        "summary": "$y = \\sin^{-1}\\left(\\frac{e^x}{e^x + 1}\\right)$",
+        "content": [
+          {
+            "kind": "text",
+            "text": "Separate variables: $\\cos y \\, dy = \\frac{e^x}{e^x + 1} \\, dx$. Integrate: $\\sin y = \\ln(e^x + 1) + C$. Use initial condition $y(0) = 0$ to find $C = 0$. Thus, $y = \\sin^{-1}\\left(\\frac{e^x}{e^x + 1}\\right)$."
+          }
+        ],
+        "alternatives": null
+      },
+      "difficulty": null,
+      "topics": ["Differential Equations"],
+      "syllabus_points": [],
+      "outcomes": [],
+      "rubric": null,
+      "guidelines": null,
+      "created_at": "2026-06-16T02:44:43.568005Z",
+      "updated_at": "2026-06-16T02:44:43.568005Z",
+      "source_paper_id": null,
+      "source_question_id": null,
+      "source_removed": false,
+      "remixed_from": null
+    },
+    {
+      "id": "f2a3b4c5-d6e7-48f9-a0b1-c2d3e4f5a6b7",
+      "paper_id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+      "author_id": "1",
+      "number": 5,
+      "type": "short_answer",
+      "marks": 2,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "Find $\\int \\sin^2 4x \\, dx$."
+        }
+      ],
+      "parts": null,
+      "options": null,
+      "answer": {
+        "option_label": null,
+        "summary": "$\\frac{x}{2} - \\frac{\\sin 8x}{16} + C$",
+        "content": [
+          {
+            "kind": "text",
+            "text": "Use identity $\\sin^2 A = \\frac{1 - \\cos 2A}{2}$. Thus, $\\int \\sin^2 4x \\, dx = \\int \\frac{1 - \\cos 8x}{2} \\, dx = \\frac{x}{2} - \\frac{\\sin 8x}{16} + C$."
+          }
+        ],
+        "alternatives": null
+      },
+      "difficulty": null,
+      "topics": ["Further Trigonometry"],
+      "syllabus_points": [],
+      "outcomes": [],
+      "rubric": null,
+      "guidelines": null,
+      "created_at": "2026-06-16T02:44:43.568005Z",
+      "updated_at": "2026-06-16T02:44:43.568005Z",
+      "source_paper_id": null,
+      "source_question_id": null,
+      "source_removed": false,
+      "remixed_from": null
+    },
+    {
+      "id": "a3b4c5d6-e7f8-49a0-b1c2-d3e4f5a6b7c8",
+      "paper_id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+      "author_id": "1",
+      "number": 6,
+      "type": "short_answer",
+      "marks": 2,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "Differentiate $y = \\tan^{-1} \\sqrt{x}$."
+        }
+      ],
+      "parts": null,
+      "options": null,
+      "answer": {
+        "option_label": null,
+        "summary": "$\\frac{1}{2\\sqrt{x}(1 + x)}$",
+        "content": [
+          {
+            "kind": "text",
+            "text": "Use chain rule: $\\frac{dy}{dx} = \\frac{1}{1 + (\\sqrt{x})^2} \\cdot \\frac{1}{2\\sqrt{x}} = \\frac{1}{2\\sqrt{x}(1 + x)}$."
+          }
+        ],
+        "alternatives": null
+      },
+      "difficulty": null,
+      "topics": ["Further Trigonometry"],
+      "syllabus_points": [],
+      "outcomes": [],
+      "rubric": null,
+      "guidelines": null,
+      "created_at": "2026-06-16T02:44:43.568005Z",
+      "updated_at": "2026-06-16T02:44:43.568005Z",
+      "source_paper_id": null,
+      "source_question_id": null,
+      "source_removed": false,
+      "remixed_from": null
+    },
+    {
+      "id": "b4c5d6e7-f8a9-40b1-c2d3-e4f5a6b7c8d9",
+      "paper_id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+      "author_id": "1",
+      "number": 7,
+      "type": "short_answer",
+      "marks": 3,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "Evaluate $\\int_0^{\\frac{\\pi}{6}} 2 \\sin 2x \\cos x \\, dx$."
+        }
+      ],
+      "parts": null,
+      "options": null,
+      "answer": {
+        "option_label": null,
+        "summary": "$\\frac{2}{3}$",
+        "content": [
+          {
+            "kind": "text",
+            "text": "Use identity $\\sin 2x = 2\\sin x \\cos x$. Thus, $\\int_0^{\\frac{\\pi}{6}} 4 \\sin x \\cos^2 x \\, dx$. Let $u = \\cos x$, $du = -\\sin x \\, dx$. Evaluate to get $\\frac{2}{3}$."
+          }
+        ],
+        "alternatives": null
+      },
+      "difficulty": null,
+      "topics": ["Further Trigonometry"],
+      "syllabus_points": [],
+      "outcomes": [],
+      "rubric": null,
+      "guidelines": null,
+      "created_at": "2026-06-16T02:44:43.568005Z",
+      "updated_at": "2026-06-16T02:44:43.568005Z",
+      "source_paper_id": null,
+      "source_question_id": null,
+      "source_removed": false,
+      "remixed_from": null
+    },
+    {
+      "id": "c5d6e7f8-a9b0-41c2-d3e4-f5a6b7c8d9e0",
+      "paper_id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+      "author_id": "1",
+      "number": 8,
+      "type": "short_answer",
+      "marks": 2,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "Find $I = \\int \\sqrt{\\frac{4}{1 - 9x^2}} \\, dx$."
+        }
+      ],
+      "parts": null,
+      "options": null,
+      "answer": {
+        "option_label": null,
+        "summary": "$I = \\frac{2}{3}\\sin^{-1}(3x) + C$",
+        "content": [
+          {
+            "kind": "text",
+            "text": "Simplify the integrand: $\\sqrt{\\frac{4}{1 - 9x^2}} = \\frac{2}{\\sqrt{1 - 9x^2}}$. Let $u = 3x$, $du = 3\\,dx$. Thus, $I = \\frac{2}{3}\\sin^{-1}(3x) + C$."
+          }
+        ],
+        "alternatives": null
+      },
+      "difficulty": null,
+      "topics": ["Further Trigonometry"],
+      "syllabus_points": [],
+      "outcomes": [],
+      "rubric": null,
+      "guidelines": null,
+      "created_at": "2026-06-16T02:44:43.568005Z",
+      "updated_at": "2026-06-16T02:44:43.568005Z",
+      "source_paper_id": null,
+      "source_question_id": null,
+      "source_removed": false,
+      "remixed_from": null
+    },
+    {
+      "id": "d6e7f8a9-b0c1-42d3-e4f5-a6b7c8d9e0f1",
+      "paper_id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+      "author_id": "1",
+      "number": 9,
+      "type": "long_answer",
+      "marks": 3,
+      "stimulus": null,
+      "content": null,
+      "parts": [
+        {
+          "label": "a",
+          "stimulus": null,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Show that $\\sin 3\\theta + \\sin \\theta = 2\\sin 2\\theta \\cos \\theta$."
+            }
+          ],
+          "marks": 1,
+          "is_independent": true,
+          "answer": {
+            "option_label": null,
+            "summary": "$\\sin 3\\theta + \\sin \\theta = 2\\sin 2\\theta \\cos \\theta$ using sum-to-product identities.",
+            "content": [
+              {
+                "kind": "text",
+                "text": "Use sum-to-product identity: $\\sin A + \\sin B = 2 \\sin \\left(\\frac{A+B}{2}\\right) \\cos \\left(\\frac{A-B}{2}\\right)$. Thus, $\\sin 3\\theta + \\sin \\theta = 2\\sin 2\\theta \\cos \\theta$."
+              }
+            ],
+            "alternatives": null
+          }
+        },
+        {
+          "label": "b",
+          "stimulus": null,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Hence, solve the equation $\\sin 3\\theta + \\sin \\theta = 0$ for $0 \\leq \\theta \\leq 2\\pi$."
+            }
+          ],
+          "marks": 2,
+          "is_independent": false,
+          "answer": {
+            "option_label": null,
+            "summary": "$\\theta = 0, \\frac{\\pi}{2}, \\pi, \\frac{3\\pi}{2}, 2\\pi$",
+            "content": [
+              {
+                "kind": "text",
+                "text": "From part (a), $2\\sin 2\\theta \\cos \\theta = 0$. Solutions: $\\sin 2\\theta = 0$ or $\\cos \\theta = 0$. For $0 \\leq \\theta \\leq 2\\pi$, $\\theta = 0, \\frac{\\pi}{2}, \\pi, \\frac{3\\pi}{2}, 2\\pi$."
+              }
+            ],
+            "alternatives": null
+          }
+        }
+      ],
+      "options": null,
+      "answer": null,
+      "difficulty": null,
+      "topics": ["Further Trigonometry"],
+      "syllabus_points": [],
+      "outcomes": [],
+      "rubric": null,
+      "guidelines": null,
+      "created_at": "2026-06-16T02:44:43.568005Z",
+      "updated_at": "2026-06-16T02:44:43.568005Z",
+      "source_paper_id": null,
+      "source_question_id": null,
+      "source_removed": false,
+      "remixed_from": null
+    },
+    {
+      "id": "e7f8a9b0-c1d2-43e4-f5a6-b7c8d9e0f1a2",
+      "paper_id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+      "author_id": "1",
+      "number": 10,
+      "type": "short_answer",
+      "marks": 2,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "Solve the equation $\\frac{7\\sin x}{2} + 2\\cos x = 4$ using the substitution $t = \\tan \\frac{x}{2}$ for $0 \\leq x \\leq \\pi$."
+        }
+      ],
+      "parts": null,
+      "options": null,
+      "answer": {
+        "option_label": null,
+        "summary": "$x = \\frac{\\pi}{2}$",
+        "content": [
+          {
+            "kind": "text",
+            "text": "Use substitution $t = \\tan \\frac{x}{2}$. Transform the equation into a quadratic in $t$ and solve. The solution in the interval is $x = \\frac{\\pi}{2}$."
+          }
+        ],
+        "alternatives": null
+      },
+      "difficulty": null,
+      "topics": ["Further Trigonometry"],
+      "syllabus_points": [],
+      "outcomes": [],
+      "rubric": null,
+      "guidelines": null,
+      "created_at": "2026-06-16T02:44:43.568005Z",
+      "updated_at": "2026-06-16T02:44:43.568005Z",
+      "source_paper_id": null,
+      "source_question_id": null,
+      "source_removed": false,
+      "remixed_from": null
+    },
+    {
+      "id": "f8a9b0c1-d2e3-44f5-a6b7-c8d9e0f1a2b3",
+      "paper_id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+      "author_id": "1",
+      "number": 11,
+      "type": "long_answer",
+      "marks": 4,
+      "stimulus": null,
+      "content": null,
+      "parts": [
+        {
+          "label": "a",
+          "stimulus": null,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Convert $\\sqrt{3}\\sin x + 3\\cos x$ into the appropriate auxiliary angle form."
+            }
+          ],
+          "marks": 2,
+          "is_independent": true,
+          "answer": {
+            "option_label": null,
+            "summary": "$2\\sqrt{3}\\sin\\left(x + \\frac{\\pi}{3}\\right)$",
+            "content": [
+              {
+                "kind": "text",
+                "text": "Express as $R\\sin(x + \\alpha)$. $R = \\sqrt{(\\sqrt{3})^2 + 3^2} = 2\\sqrt{3}$, $\\alpha = \\frac{\\pi}{3}$. Thus, $\\sqrt{3}\\sin x + 3\\cos x = 2\\sqrt{3}\\sin\\left(x + \\frac{\\pi}{3}\\right)$."
+              }
+            ],
+            "alternatives": null
+          }
+        },
+        {
+          "label": "b",
+          "stimulus": null,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Hence or otherwise, solve the equation $\\sqrt{3}\\sin x + 3\\cos x = \\sqrt{3}$ for $0 \\leq x \\leq 2\\pi$."
+            }
+          ],
+          "marks": 2,
+          "is_independent": false,
+          "answer": {
+            "option_label": null,
+            "summary": "$x = \\frac{2\\pi}{3}, \\frac{4\\pi}{3}$",
+            "content": [
+              {
+                "kind": "text",
+                "text": "From part (a), $2\\sqrt{3}\\sin\\left(x + \\frac{\\pi}{3}\\right) = \\sqrt{3}$. Thus, $\\sin\\left(x + \\frac{\\pi}{3}\\right) = \\frac{1}{2}$. Solutions: $x + \\frac{\\pi}{3} = \\frac{\\pi}{6} + 2k\\pi$ or $x + \\frac{\\pi}{3} = \\frac{5\\pi}{6} + 2k\\pi$. For $0 \\leq x \\leq 2\\pi$, $x = \\frac{2\\pi}{3}, \\frac{4\\pi}{3}$."
+              }
+            ],
+            "alternatives": null
+          }
+        }
+      ],
+      "options": null,
+      "answer": null,
+      "difficulty": null,
+      "topics": ["Further Trigonometry"],
+      "syllabus_points": [],
+      "outcomes": [],
+      "rubric": null,
+      "guidelines": null,
+      "created_at": "2026-06-16T02:44:43.568005Z",
+      "updated_at": "2026-06-16T02:44:43.568005Z",
+      "source_paper_id": null,
+      "source_question_id": null,
+      "source_removed": false,
+      "remixed_from": null
+    },
+    {
+      "id": "a9b0c1d2-e3f4-45a6-b7c8-d9e0f1a2b3c4",
+      "paper_id": "d76b0a8e-7375-4ff8-8540-0377de77d360",
+      "author_id": "1",
+      "number": 12,
+      "type": "long_answer",
+      "marks": 7,
+      "stimulus": null,
+      "content": null,
+      "parts": [
+        {
+          "label": "a",
+          "stimulus": null,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Show that $8\\cos^4\\theta - 8\\cos^2\\theta + 1 - \\cos 4\\theta = 0$."
+            }
+          ],
+          "marks": 2,
+          "is_independent": true,
+          "answer": {
+            "option_label": null,
+            "summary": "$8\\cos^4\\theta - 8\\cos^2\\theta + 1 - \\cos 4\\theta = 0$ using double angle identities.",
+            "content": [
+              {
+                "kind": "text",
+                "text": "Use double angle identity for $\\cos 4\\theta = 2\\cos^2 2\\theta - 1 = 8\\cos^4\\theta - 8\\cos^2\\theta + 1$. Thus, $8\\cos^4\\theta - 8\\cos^2\\theta + 1 - \\cos 4\\theta = 0$."
+              }
+            ],
+            "alternatives": null
+          }
+        },
+        {
+          "label": "b",
+          "stimulus": null,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Let $x = \\cos \\theta$ in the equation $16x^4 - 16x^2 + 2 - \\sqrt{2} = 0$, show that $\\cos 4\\theta = \\frac{\\sqrt{2}}{2}$."
+            }
+          ],
+          "marks": 2,
+          "is_independent": false,
+          "answer": {
+            "option_label": null,
+            "summary": "$\\cos 4\\theta = \\frac{\\sqrt{2}}{2}$",
+            "content": [
+              {
+                "kind": "text",
+                "text": "Substitute $x = \\cos \\theta$ into the equation and use the result from part (a) to get $2(8\\cos^4\\theta - 8\\cos^2\\theta + 1) - \\sqrt{2} = 0$. Thus, $2\\cos 4\\theta - \\sqrt{2} = 0$ or $\\cos 4\\theta = \\frac{\\sqrt{2}}{2}$."
+              }
+            ],
+            "alternatives": null
+          }
+        },
+        {
+          "label": "c",
+          "stimulus": null,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Hence, prove that $\\cos^2\\frac{\\pi}{16}\\cos^2\\frac{7\\pi}{16} = \\frac{2 - \\sqrt{2}}{16}$."
+            }
+          ],
+          "marks": 3,
+          "is_independent": false,
+          "answer": {
+            "option_label": null,
+            "summary": "$\\cos^2\\frac{\\pi}{16}\\cos^2\\frac{7\\pi}{16} = \\frac{2 - \\sqrt{2}}{16}$",
+            "content": [
+              {
+                "kind": "text",
+                "text": "Use the result from part (b) with $\\theta = \\frac{\\pi}{16}$ and $\\theta = \\frac{7\\pi}{16}$. Simplify using trigonometric identities to get $\\cos^2\\frac{\\pi}{16}\\cos^2\\frac{7\\pi}{16} = \\frac{2 - \\sqrt{2}}{16}$."
+              }
+            ],
+            "alternatives": null
+          }
+        }
+      ],
+      "options": null,
+      "answer": null,
+      "difficulty": null,
+      "topics": ["Further Trigonometry"],
+      "syllabus_points": [],
+      "outcomes": [],
+      "rubric": null,
+      "guidelines": null,
+      "created_at": "2026-06-16T02:44:43.568005Z",
+      "updated_at": "2026-06-16T02:44:43.568005Z",
+      "source_paper_id": null,
+      "source_question_id": null,
+      "source_removed": false,
+      "remixed_from": null
+    }
+  ]
+}

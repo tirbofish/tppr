@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import NavBar from "@/components/navbar";
 import { PaperCard } from "@/components/paper-card";
@@ -36,6 +36,7 @@ export function PapersViewer() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [dragging, setDragging] = useState(false);
+    const importInputRef = useRef<HTMLInputElement>(null);
     const { user, loading: authLoading } = useAuth();
 
     useEffect(() => {
@@ -73,6 +74,87 @@ export function PapersViewer() {
         }
         load();
     }, [user, authLoading]);
+
+    const handleImportFile = useCallback(async (file: File | undefined) => {
+        if (!user || !file) return;
+
+        if (!file.name.endsWith(".json")) {
+            toast.error("Please choose a .json file.");
+            return;
+        }
+
+        let data: unknown;
+        try {
+            const text = await file.text();
+            data = JSON.parse(text);
+        } catch (error) {
+            const message = error instanceof Error
+                ? error.message
+                : "Could not parse the selected file.";
+            toast.error(`Invalid JSON: ${message}`);
+            return;
+        }
+
+        if (!isValidTpprPaper(data)) {
+            toast.error(
+                "Invalid file - does not match the TPPR paper format.",
+            );
+            return;
+        }
+
+        const alreadyExists = papers.some(
+            (p) => p.title === data.title && p.subject === data.subject,
+        );
+        if (alreadyExists) {
+            toast.error(`A paper called "${data.title}" already exists.`);
+            return;
+        }
+
+        try {
+            const now = new Date().toISOString();
+            const imported: Paper = {
+                ...data,
+                id: crypto.randomUUID(),
+                author_id: String(user.user_id),
+                visibility: "private",
+                created_at: now,
+                updated_at: now,
+                questions: data.questions.map((q) => ({
+                    ...q,
+                    author_id: String(user.user_id),
+                    paper_id: "",
+                })),
+            };
+            imported.questions = imported.questions.map((q) => ({
+                ...q,
+                paper_id: imported.id,
+            }));
+
+            await syncService.sync(imported);
+            await syncService.flush();
+
+            setPapers((prev) => [
+                { ...imported, isLocal: true },
+                ...prev,
+            ]);
+            toast.success(`Imported "${imported.title}" successfully!`);
+        } catch (error) {
+            console.warn(error);
+            toast.error("Failed to import paper. Please try again.");
+        }
+    }, [papers, user]);
+
+    useEffect(() => {
+        function handleKeyDown(e: KeyboardEvent) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "i") {
+                e.preventDefault();
+                importInputRef.current?.click();
+            }
+        }
+
+        document.addEventListener("keydown", handleKeyDown);
+        return () => document.removeEventListener("keydown", handleKeyDown);
+    }, []);
 
     const handleDrop = useCallback(
         async (e: React.DragEvent) => {
@@ -139,12 +221,14 @@ export function PapersViewer() {
                 toast.success(`Imported "${imported.title}" successfully!`);
             } catch (error) {
                 console.warn(error);
-                toast.error(
-                    "Failed to import paper. Make sure it's valid JSON and try again.",
-                );
+                if (error instanceof SyntaxError) {
+                    toast.error(`Invalid JSON: ${error.message}`);
+                } else {
+                    toast.error("Failed to import paper. Please try again.");
+                }
             }
         },
-        [user],
+        [papers, user],
     );
 
     async function handleDelete(paper: ListedPaper) {
@@ -162,6 +246,16 @@ export function PapersViewer() {
     return (
         <>
             <NavBar />
+            <input
+                ref={importInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={(e) => {
+                    void handleImportFile(e.target.files?.[0]);
+                    e.target.value = "";
+                }}
+            />
             <main
                 className="mx-auto w-full max-w-6xl px-6 py-8"
                 onDragOver={(e) => {
@@ -213,7 +307,7 @@ export function PapersViewer() {
                                                     : p
                                             )
                                         );
-                                        paperStore.savePaper(updated as any);
+                                        paperStore.savePaper(updated as Paper);
                                     }}
                                     onDelete={() => handleDelete(paper)}
                                 />

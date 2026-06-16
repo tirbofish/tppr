@@ -14,11 +14,19 @@ import { Separator } from "@/components/ui/separator";
 import { paperStore } from "@/lib/paper";
 import type {
     ContentBlock,
-    QuestionAnswer,
     Question as QuestionData,
+    QuestionAnswer,
     QuestionRubric,
 } from "@/types/tppr-paper";
-import { Copy, Eye, EyeOff, Pencil, Shell, Trash2, XCircle } from "lucide-react";
+import {
+    Copy,
+    Eye,
+    EyeOff,
+    Pencil,
+    Shell,
+    Trash2,
+    XCircle,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { MathText } from "./math-text";
 import ReactMarkdown from "react-markdown";
@@ -30,55 +38,53 @@ import {
     TooltipTrigger,
 } from "./ui/tooltip";
 
-/** Resolves asset:// URLs from IndexedDB to object URLs. */
+/** Resolves asset:// URLs to server-backed URLs (falls back to blob for local-only). */
 function useAssetUrl(url: string): string | undefined {
-    const [resolvedAsset, setResolvedAsset] = useState<
-        { source: string; objectUrl: string } | undefined
+    const [resolved, setResolved] = useState<
+        { source: string; url: string } | undefined
     >();
 
     useEffect(() => {
         if (!url.startsWith("asset://")) return;
 
-        let objectUrl: string | undefined;
         let cancelled = false;
         const assetId = url.slice("asset://".length);
+        const serverUrl = `/api/assets/${assetId}`;
 
-        async function resolveAsset() {
-            const localAsset = await paperStore.getAsset(assetId).catch(() =>
-                undefined
-            );
-            if (localAsset) {
-                if (cancelled) return;
-                objectUrl = URL.createObjectURL(localAsset.blob);
-                setResolvedAsset({ source: url, objectUrl });
+        async function resolve() {
+            const res = await fetch(serverUrl, {
+                method: "HEAD",
+                credentials: "include",
+            }).catch(() => undefined);
+
+            if (cancelled) return;
+
+            if (res?.ok) {
+                setResolved({ source: url, url: serverUrl });
                 return;
             }
 
-            const res = await fetch(`/api/assets/${assetId}`, {
-                credentials: "include",
-            }).catch(() => undefined);
-            if (!res?.ok) return;
-
-            const blob = await res.blob();
-            const paperId = res.headers.get("X-Paper-Id");
-            if (paperId) {
-                await paperStore.saveAsset(paperId, blob, assetId).catch(() => {});
-            }
-            if (cancelled) return;
-            objectUrl = URL.createObjectURL(blob);
-            setResolvedAsset({ source: url, objectUrl });
+            const localAsset = await paperStore.getAsset(assetId).catch(() =>
+                undefined
+            );
+            if (cancelled || !localAsset) return;
+            const objectUrl = URL.createObjectURL(localAsset.blob);
+            setResolved({ source: url, url: objectUrl });
         }
 
-        void resolveAsset();
+        void resolve();
 
         return () => {
             cancelled = true;
-            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            // Only revoke if it's a blob URL
+            if (resolved?.url.startsWith("blob:")) {
+                URL.revokeObjectURL(resolved.url);
+            }
         };
     }, [url]);
 
     if (!url.startsWith("asset://")) return url;
-    return resolvedAsset?.source === url ? resolvedAsset.objectUrl : undefined;
+    return resolved?.source === url ? resolved.url : undefined;
 }
 
 function AssetImage({
@@ -229,8 +235,13 @@ function safeHtmlNodeToReact(node: Node, key: string): ReactNode {
             continue;
         }
         if (SAFE_TABLE_ATTRS.has(name)) {
-            props[name === "colspan" ? "colSpan" : name === "rowspan" ? "rowSpan" : name] =
-                /^\d+$/.test(value) ? Number(value) : value;
+            props[
+                name === "colspan"
+                    ? "colSpan"
+                    : name === "rowspan"
+                    ? "rowSpan"
+                    : name
+            ] = /^\d+$/.test(value) ? Number(value) : value;
         }
     }
 
@@ -243,7 +254,9 @@ function safeHtmlNodeToReact(node: Node, key: string): ReactNode {
 
 function SafeHtml({ html }: { html: string }) {
     const children = useMemo(() => {
-        if (typeof DOMParser === "undefined") return [<MathText key="0" text={html} />];
+        if (typeof DOMParser === "undefined") {
+            return [<MathText key="0" text={html} />];
+        }
         const document = new DOMParser().parseFromString(html, "text/html");
         return Array.from(document.body.childNodes).map((node, i) =>
             safeHtmlNodeToReact(node, String(i))
@@ -314,7 +327,9 @@ function parseMarkdownTable(text: string): MarkdownTableData | undefined {
         headers,
         alignments: separators.map((cell) => {
             const trimmed = cell.trim();
-            if (trimmed.startsWith(":") && trimmed.endsWith(":")) return "center";
+            if (trimmed.startsWith(":") && trimmed.endsWith(":")) {
+                return "center";
+            }
             if (trimmed.endsWith(":")) return "right";
             return "left";
         }),
@@ -540,12 +555,10 @@ export const Question = memo(function Question(
     );
     const [selectedOption, setSelectedOption] = useState<string | null>(null);
     const [flashLabel, setFlashLabel] = useState<string | null>(null);
-    const hasQuestionAnswer =
-        hasAnswerValue(question.answer) ||
+    const hasQuestionAnswer = hasAnswerValue(question.answer) ||
         hasRubric(question.rubric) ||
         hasContentBlocks(question.guidelines);
-    const hasAnswer =
-        hasQuestionAnswer ||
+    const hasAnswer = hasQuestionAnswer ||
         !!question.parts?.some((part) =>
             hasAnswerValue(part.answer) ||
             hasRubric(part.rubric) ||
@@ -778,81 +791,96 @@ export const Question = memo(function Question(
 
                                     return (
                                         <>
-                                {i > 0 && part.is_independent && (
-                                    <Separator className="mb-4" />
-                                )}
-                                <div className="flex gap-3">
-                                    <span className="font-semibold">
-                                        ({part.label})
-                                    </span>
-                                    <div className="flex-1 space-y-2">
-                                        <ContentBlocks blocks={part.stimulus} />
-                                        <ContentBlocks blocks={part.content} />
-                                    </div>
-                                    <span className="flex items-center gap-1">
-                                        {part.marks != null && (
-                                            <span className="text-sm text-muted-foreground">
-                                                {part.marks}{" "}
-                                                mark{part.marks === 1
-                                                    ? ""
-                                                    : "s"}
-                                            </span>
-                                        )}
-                                        {partHasAnswer && (
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="size-8"
-                                                onClick={() =>
-                                                    setOpenPartAnswers(
-                                                        (current) => {
-                                                            const next =
-                                                                new Set(
-                                                                    current,
-                                                                );
-                                                            if (
-                                                                next.has(
-                                                                    part.label,
+                                            {i > 0 && part.is_independent && (
+                                                <Separator className="mb-4" />
+                                            )}
+                                            <div className="flex gap-3">
+                                                <span className="font-semibold">
+                                                    ({part.label})
+                                                </span>
+                                                <div className="flex-1 space-y-2">
+                                                    <ContentBlocks
+                                                        blocks={part.stimulus}
+                                                    />
+                                                    <ContentBlocks
+                                                        blocks={part.content}
+                                                    />
+                                                </div>
+                                                <span className="flex items-center gap-1">
+                                                    {part.marks != null && (
+                                                        <span className="text-sm text-muted-foreground">
+                                                            {part.marks}{" "}
+                                                            mark{part.marks ===
+                                                                    1
+                                                                ? ""
+                                                                : "s"}
+                                                        </span>
+                                                    )}
+                                                    {partHasAnswer && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="size-8"
+                                                            onClick={() =>
+                                                                setOpenPartAnswers(
+                                                                    (
+                                                                        current,
+                                                                    ) => {
+                                                                        const next =
+                                                                            new Set(
+                                                                                current,
+                                                                            );
+                                                                        if (
+                                                                            next.has(
+                                                                                part.label,
+                                                                            )
+                                                                        ) {
+                                                                            next.delete(
+                                                                                part.label,
+                                                                            );
+                                                                        } else {
+                                                                            next.add(
+                                                                                part.label,
+                                                                            );
+                                                                        }
+                                                                        return next;
+                                                                    },
+                                                                )}
+                                                            aria-label={partAnswerOpen
+                                                                ? `Hide part ${part.label} answer`
+                                                                : `Show part ${part.label} answer`}
+                                                        >
+                                                            {partAnswerOpen
+                                                                ? (
+                                                                    <EyeOff className="size-4" />
                                                                 )
-                                                            ) {
-                                                                next.delete(
-                                                                    part.label,
-                                                                );
-                                                            } else {
-                                                                next.add(
-                                                                    part.label,
-                                                                );
-                                                            }
-                                                            return next;
-                                                        },
+                                                                : (
+                                                                    <Eye className="size-4" />
+                                                                )}
+                                                        </Button>
                                                     )}
-                                                aria-label={partAnswerOpen
-                                                    ? `Hide part ${part.label} answer`
-                                                    : `Show part ${part.label} answer`}
-                                            >
-                                                {partAnswerOpen
-                                                    ? (
-                                                        <EyeOff className="size-4" />
-                                                    )
-                                                    : (
-                                                        <Eye className="size-4" />
-                                                    )}
-                                            </Button>
-                                        )}
-                                    </span>
-                                </div>
-                                {partAnswerOpen && partHasAnswer && (
-                                    <>
-                                        <Separator className="my-3 ml-7" />
-                                        <div className="ml-7 space-y-2 rounded-md border border-dashed border-green-500/40 bg-green-50/50 p-3 dark:bg-green-950/20">
-                                            <AnswerValue answer={part.answer} />
-                                            <RubricBlock rubric={part.rubric} />
-                                            <ContentBlocks
-                                                blocks={part.guidelines}
-                                            />
-                                        </div>
-                                    </>
-                                )}
+                                                </span>
+                                            </div>
+                                            {partAnswerOpen && partHasAnswer &&
+                                                (
+                                                    <>
+                                                        <Separator className="my-3 ml-7" />
+                                                        <div className="ml-7 space-y-2 rounded-md border border-dashed border-green-500/40 bg-green-50/50 p-3 dark:bg-green-950/20">
+                                                            <AnswerValue
+                                                                answer={part
+                                                                    .answer}
+                                                            />
+                                                            <RubricBlock
+                                                                rubric={part
+                                                                    .rubric}
+                                                            />
+                                                            <ContentBlocks
+                                                                blocks={part
+                                                                    .guidelines}
+                                                            />
+                                                        </div>
+                                                    </>
+                                                )}
                                         </>
                                     );
                                 })()}

@@ -25,9 +25,14 @@ launch with the [launch.py](launch.py) script, which deals with all the dependen
 uv run launch.py
 ```
 
-it will launch the frontend at [localhost:5173](http://localhost:5173) and the backend at [localhost:5000](http://localhost:5000).a
+it will launch the frontend at [localhost:5173](http://localhost:5173) and the backend at [localhost:5000](http://localhost:5000).
 
-### AI Usage
+## docs
+Documentation relating to deployment and other useful files are located in the [docs](./docs) folder. 
+
+---
+
+## AI Usage
 This disclaimer is required by markers. 
 
 Certain files and scripts were generated fully with the use of AI. Specific ones will be signified with a warning at the top of the file/script. 

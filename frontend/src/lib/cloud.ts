@@ -34,11 +34,15 @@ export class SyncService {
     private status: SyncStatus = "synced";
     private listeners = new Set<(s: SyncStatus) => void>();
 
-    getStatus() { return this.status; }
+    getStatus() {
+        return this.status;
+    }
 
     subscribe(fn: (s: SyncStatus) => void) {
         this.listeners.add(fn);
-        return () => { this.listeners.delete(fn); };
+        return () => {
+            this.listeners.delete(fn);
+        };
     }
 
     private setStatus(s: SyncStatus) {
@@ -52,10 +56,13 @@ export class SyncService {
         await paperStore.savePaper(saved);
     }
 
+    /** Uploads all assets in a paper */
     private async uploadAssets(paper: Paper): Promise<void> {
         const assetIds = collectAssetIds(paper);
         for (const assetId of assetIds) {
-            const asset = await paperStore.getAsset(assetId).catch(() => undefined);
+            const asset = await paperStore.getAsset(assetId).catch(() =>
+                undefined
+            );
             if (!asset) continue;
 
             const formData = new FormData();
@@ -63,7 +70,8 @@ export class SyncService {
             formData.set(
                 "file",
                 new File([asset.blob], asset.id, {
-                    type: asset.mimeType || asset.blob.type || "application/octet-stream",
+                    type: asset.mimeType || asset.blob.type ||
+                        "application/octet-stream",
                 }),
             );
 
@@ -73,6 +81,28 @@ export class SyncService {
             });
             if (!res.ok) throw new Error(`Asset upload failed: ${res.status}`);
         }
+    }
+
+    /** Uploads only a single asset from a paper */
+    async uploadAsset(paperId: string, assetId: string): Promise<void> {
+        const asset = await paperStore.getAsset(assetId).catch(() => undefined);
+        if (!asset) return;
+
+        const formData = new FormData();
+        formData.set("asset_id", asset.id);
+        formData.set(
+            "file",
+            new File([asset.blob], asset.id, {
+                type: asset.mimeType || asset.blob.type ||
+                    "application/octet-stream",
+            }),
+        );
+
+        const res = await apiFetch(`/api/papers/${paperId}/assets`, {
+            method: "POST",
+            body: formData,
+        });
+        if (!res.ok) console.warn(`Asset upload failed: ${res.status}`);
     }
 
     private async pushToServer(paper: Paper): Promise<void> {
@@ -89,7 +119,9 @@ export class SyncService {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(paper),
             });
-            if (!createRes.ok) throw new Error(`Create failed: ${createRes.status}`);
+            if (!createRes.ok) {
+                throw new Error(`Create failed: ${createRes.status}`);
+            }
             await this.saveServerPaper(createRes);
         } else if (!res.ok) {
             throw new Error(`Sync failed: ${res.status}`);

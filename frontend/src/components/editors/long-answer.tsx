@@ -21,6 +21,7 @@ import {
 } from "../ui/tooltip";
 import { FileUpload, FileUploadDropzone } from "../ui/file-upload";
 import { paperStore } from "@/lib/paper";
+import { syncService } from "@/lib/cloud";
 
 const MIN_PARTS = 1;
 const MAX_PARTS = 8;
@@ -125,6 +126,10 @@ export function LongAnswerEditor({ question, onChange }: {
                                         question.paper_id,
                                         file,
                                     ).then((assetId) => {
+                                        void syncService.uploadAsset(
+                                            question.paper_id,
+                                            assetId,
+                                        );
                                         updatePart(i, {
                                             stimulus: [
                                                 ...(part.stimulus ?? []),
@@ -149,6 +154,10 @@ export function LongAnswerEditor({ question, onChange }: {
                                     question.paper_id,
                                     files[0],
                                 ).then((assetId) => {
+                                    void syncService.uploadAsset(
+                                        question.paper_id,
+                                        assetId,
+                                    );
                                     updatePart(i, {
                                         stimulus: [
                                             ...(part.stimulus ?? []),

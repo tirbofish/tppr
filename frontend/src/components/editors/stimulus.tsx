@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { paperStore } from "@/lib/paper";
 import type { ContentBlock, Question } from "@/types/tppr-paper";
 import { firstText, withFirstText } from "./helpers";
+import { syncService } from "@/lib/cloud";
 
 export function StimulusSection({ question, onChange }: {
     question: Question;
@@ -16,11 +17,16 @@ export function StimulusSection({ question, onChange }: {
 
     async function addImage(file: File) {
         const assetId = await paperStore.saveAsset(question.paper_id, file);
+        void syncService.uploadAsset(question.paper_id, assetId);
         onChange({
             ...question,
             stimulus: [
                 ...(question.stimulus ?? []),
-                { kind: "image", url: `asset://${assetId}`, mime_type: file.type },
+                {
+                    kind: "image",
+                    url: `asset://${assetId}`,
+                    mime_type: file.type,
+                },
             ],
         });
     }
@@ -34,7 +40,9 @@ export function StimulusSection({ question, onChange }: {
 
     const images = (question.stimulus ?? [])
         .map((b, i) => [b, i] as const)
-        .filter((entry): entry is [Extract<ContentBlock, { kind: "image" }>, number] =>
+        .filter((
+            entry,
+        ): entry is [Extract<ContentBlock, { kind: "image" }>, number] =>
             entry[0].kind === "image"
         );
 
@@ -47,7 +55,9 @@ export function StimulusSection({ question, onChange }: {
             >
                 Stimulus
                 <ChevronDown
-                    className={`size-4 transition-transform ${open ? "rotate-180" : ""}`}
+                    className={`size-4 transition-transform ${
+                        open ? "rotate-180" : ""
+                    }`}
                 />
             </button>
 
@@ -56,9 +66,9 @@ export function StimulusSection({ question, onChange }: {
                     className="space-y-4 border-t p-3"
                     // Paste an image anywhere inside the section
                     onPaste={(e) => {
-                        const file = Array.from(e.clipboardData.files).find((f) =>
-                            f.type.startsWith("image/")
-                        );
+                        const file = Array.from(e.clipboardData.files).find((
+                            f,
+                        ) => f.type.startsWith("image/"));
                         if (file) {
                             e.preventDefault();
                             addImage(file);
@@ -66,7 +76,9 @@ export function StimulusSection({ question, onChange }: {
                     }}
                 >
                     <Field>
-                        <FieldLabel htmlFor="q-stimulus">Stimulus text</FieldLabel>
+                        <FieldLabel htmlFor="q-stimulus">
+                            Stimulus text
+                        </FieldLabel>
                         <Textarea
                             id="q-stimulus"
                             value={firstText(question.stimulus)}
@@ -96,8 +108,13 @@ export function StimulusSection({ question, onChange }: {
 
                     {/* Existing images */}
                     {images.map(([img, i]) => (
-                        <div key={i} className="flex items-center justify-between rounded-md border p-2 text-sm">
-                            <span className="truncate text-muted-foreground">{img.url}</span>
+                        <div
+                            key={i}
+                            className="flex items-center justify-between rounded-md border p-2 text-sm"
+                        >
+                            <span className="truncate text-muted-foreground">
+                                {img.url}
+                            </span>
                             <Button
                                 type="button"
                                 variant="ghost"
