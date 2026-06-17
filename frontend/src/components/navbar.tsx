@@ -260,7 +260,7 @@ export default function NavBar() {
                       New Paper
                     </Button>
                   </DialogTrigger>
-                  <CreatePaperDialog onCreated={() => setNewPaperOpen(true)} />
+                  <CreatePaperDialog onCreated={() => setNewPaperOpen(false)} />
                 </Dialog>
 
                 <DropdownMenu>

@@ -113,6 +113,51 @@ def paper_id_parameter():
     }
 
 
+def asset_id_parameter():
+    return {
+        "name": "asset_id",
+        "in": "path",
+        "required": True,
+        "schema": {"type": "string", "pattern": "^[A-Za-z0-9_-]{8,128}$"},
+    }
+
+
+def question_id_parameter():
+    return {
+        "name": "question_id",
+        "in": "path",
+        "required": True,
+        "schema": {"type": "string"},
+    }
+
+
+def multipart_request_body(fields, required=None):
+    required = required or []
+    return {
+        "required": True,
+        "content": {
+            "multipart/form-data": {
+                "schema": {
+                    "type": "object",
+                    "properties": fields,
+                    "required": required,
+                }
+            }
+        },
+    }
+
+
+def binary_response(description, content_type="application/octet-stream"):
+    return {
+        "description": description,
+        "content": {
+            content_type: {
+                "schema": {"type": "string", "format": "binary"}
+            }
+        },
+    }
+
+
 @swagger_bp.route(API_URL)
 def swagger_json():
     return jsonify(
@@ -129,6 +174,8 @@ def swagger_json():
                 {"name": "Authentication", "description": "Supabase identity and session validation."},
                 {"name": "Account", "description": "Local account profile and 2FA management."},
                 {"name": "Papers", "description": "Past paper search, authoring, publishing, and remixing."},
+                {"name": "Assets", "description": "Paper image asset upload and retrieval."},
+                {"name": "Admin", "description": "Admin verification and takedown moderation."},
             ],
             "components": {
                 "securitySchemes": {
@@ -490,6 +537,46 @@ def swagger_json():
                         },
                         "required": ["papers", "total", "page", "per_page"],
                     },
+                    "AssetUploadResult": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"},
+                            "paper_id": {"type": "string"},
+                            "mime_type": {"type": "string"},
+                        },
+                        "required": ["id", "paper_id", "mime_type"],
+                    },
+                    "QuestionRemixRequest": {
+                        "type": "object",
+                        "properties": {
+                            "target_paper_id": {
+                                "type": "string",
+                                "description": "Authenticated user's paper that will receive the cloned question.",
+                            },
+                        },
+                        "required": ["target_paper_id"],
+                    },
+                    "AdminVerifyRequest": {
+                        "type": "object",
+                        "properties": {
+                            "passcode": {"type": "string", "format": "password"},
+                        },
+                        "required": ["passcode"],
+                    },
+                    "AdminStatus": {
+                        "type": "object",
+                        "properties": {"admin": {"type": "boolean"}},
+                        "required": ["admin"],
+                    },
+                    "AdminTakedownResult": {
+                        "type": "object",
+                        "properties": {
+                            "message": {"type": "string"},
+                            "taken_down": {"type": "array", "items": {"type": "string"}},
+                            "restored": {"type": "array", "items": {"type": "string"}},
+                        },
+                        "required": ["message"],
+                    },
                 },
             },
             "paths": {
@@ -586,24 +673,10 @@ def swagger_json():
                     "put": {
                         "tags": ["Account"],
                         "summary": "Update password",
+                        "description": "Password changes are handled by Supabase Auth, so this legacy local endpoint is disabled.",
                         "security": [{"bearerAuth": []}],
-                        "requestBody": form_request_body(
-                            {
-                                "current_password": {"type": "string", "format": "password"},
-                                "new_password": {"type": "string", "format": "password"},
-                                "totp_code": {
-                                    "type": "string",
-                                    "description": "Required when 2FA is enabled for the account.",
-                                },
-                            },
-                            ["current_password", "new_password"],
-                        ),
                         "responses": {
-                            "200": message_response("Password updated"),
-                            "400": error_response("Missing password details"),
-                            "401": error_response("Invalid password, 2FA code, or Supabase token"),
-                            "404": error_response("User not found"),
-                            "500": error_response("Failed to update password"),
+                            "410": message_response("Password changes are handled by Supabase Auth"),
                         },
                     }
                 },
@@ -649,6 +722,48 @@ def swagger_json():
                             "401": error_response("Invalid 2FA code or Supabase token"),
                             "404": error_response("User not found"),
                             "500": error_response("Failed to disable 2FA"),
+                        },
+                    }
+                },
+                "/api/papers/{paper_id}/assets": {
+                    "post": {
+                        "tags": ["Assets"],
+                        "summary": "Upload a paper image asset",
+                        "description": "Uploads an image asset for an author-owned paper. Removed papers cannot receive new assets.",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [paper_id_parameter()],
+                        "requestBody": multipart_request_body(
+                            {
+                                "file": {"type": "string", "format": "binary"},
+                                "asset_id": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9_-]{8,128}$",
+                                    "description": "Optional client-generated asset id. A UUID is generated if omitted.",
+                                },
+                            },
+                            ["file"],
+                        ),
+                        "responses": {
+                            "201": response("Asset uploaded", ref("AssetUploadResult")),
+                            "400": error_response("Missing file, invalid asset id, or unsupported file type"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user is not the paper author"),
+                            "404": error_response("Paper not found"),
+                            "409": error_response("Asset id already belongs to another paper"),
+                            "410": error_response("Paper has been removed"),
+                        },
+                    }
+                },
+                "/api/assets/{asset_id}": {
+                    "get": {
+                        "tags": ["Assets"],
+                        "summary": "Get an uploaded asset",
+                        "description": "Returns an asset only if the caller can view the parent paper. Public paper assets can be read without login; private paper assets require the author or an admin.",
+                        "security": [{"bearerAuth": []}, {}],
+                        "parameters": [asset_id_parameter()],
+                        "responses": {
+                            "200": binary_response("Asset bytes", "image/*"),
+                            "404": error_response("Asset not found or not visible"),
                         },
                     }
                 },
@@ -777,6 +892,94 @@ def swagger_json():
                             "500": error_response("Failed to remix paper"),
                         },
                     }
+                },
+                "/api/papers/{paper_id}/questions/{question_id}/remix": {
+                    "post": {
+                        "tags": ["Papers"],
+                        "summary": "Remix a question into one of the user's papers",
+                        "description": "Copies one question from a public source paper into an authenticated user's target paper.",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [paper_id_parameter(), question_id_parameter()],
+                        "requestBody": json_request_body(ref("QuestionRemixRequest")),
+                        "responses": {
+                            "201": response("Target paper with cloned question", ref("Paper")),
+                            "400": error_response("target_paper_id is required"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Source paper is private or target paper is not owned by the caller"),
+                            "404": error_response("Source paper, source question, or target paper not found"),
+                            "410": error_response("Target paper has been removed"),
+                        },
+                    }
+                },
+                "/api/admin/verify": {
+                    "post": {
+                        "tags": ["Admin"],
+                        "summary": "Activate admin mode",
+                        "description": "Validates the authenticated user's configured admin email and passcode.",
+                        "security": [{"bearerAuth": []}],
+                        "requestBody": json_request_body(ref("AdminVerifyRequest")),
+                        "responses": {
+                            "200": response("Admin mode activated", ref("AdminStatus")),
+                            "400": error_response("Missing request body or passcode"),
+                            "401": error_response("Invalid credentials or Supabase token"),
+                        },
+                    }
+                },
+                "/api/admin/status": {
+                    "get": {
+                        "tags": ["Admin"],
+                        "summary": "Get admin status",
+                        "security": [{"bearerAuth": []}],
+                        "responses": {
+                            "200": response("Current admin status", ref("AdminStatus")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    }
+                },
+                "/api/admin/takedowns": {
+                    "get": {
+                        "tags": ["Admin"],
+                        "summary": "List removed papers",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [
+                            {"name": "q", "in": "query", "schema": {"type": "string"}},
+                            {"name": "page", "in": "query", "schema": {"type": "integer", "minimum": 1, "default": 1}},
+                            {"name": "per_page", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20}},
+                        ],
+                        "responses": {
+                            "200": response("Removed paper results", ref("PaperList")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user is not an active admin"),
+                        },
+                    }
+                },
+                "/api/admin/takedown/{paper_id}": {
+                    "post": {
+                        "tags": ["Admin"],
+                        "summary": "Take down a paper and its remixes",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [paper_id_parameter()],
+                        "responses": {
+                            "200": response("Papers taken down", ref("AdminTakedownResult")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user is not an active admin"),
+                            "404": error_response("Paper not found"),
+                        },
+                    },
+                    "delete": {
+                        "tags": ["Admin"],
+                        "summary": "Restore a taken-down paper and its remixes",
+                        "description": "Restores remembered previous visibility where available; otherwise restores papers to private.",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [paper_id_parameter()],
+                        "responses": {
+                            "200": response("Papers restored", ref("AdminTakedownResult")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user is not an active admin"),
+                            "404": error_response("Paper not found"),
+                            "409": error_response("Paper is not taken down"),
+                        },
+                    },
                 },
             },
         }

@@ -4,32 +4,15 @@ import NavBar from "@/components/navbar";
 import { PaperCard } from "@/components/paper-card";
 import { deletePaper, getPapers } from "@/api/papers";
 import { paperStore } from "@/lib/paper";
+import { importPaperFromJsonFile } from "@/lib/paper-import";
 import { FileQuestion } from "lucide-react";
 import { toast } from "sonner";
-import type { Paper, PaperMeta } from "@/types/tppr-paper";
+import type { PaperMeta } from "@/types/tppr-paper";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/api/auth";
-import { syncService } from "@/lib/cloud";
 import { loginPath } from "@/lib/routes";
 
 type ListedPaper = PaperMeta & { isLocal?: boolean };
-
-function isValidTpprPaper(data: unknown): data is Paper {
-    if (typeof data !== "object" || data === null) return false;
-    const d = data as Record<string, unknown>;
-    return (
-        typeof d.id === "string" &&
-        typeof d.title === "string" &&
-        typeof d.subject === "string" &&
-        typeof d.visibility === "string" &&
-        ["private", "public"].includes(d.visibility as string) &&
-        typeof d.question_count === "number" &&
-        typeof d.total_marks === "number" &&
-        typeof d.created_at === "string" &&
-        typeof d.updated_at === "string" &&
-        Array.isArray(d.questions)
-    );
-}
 
 export function PapersViewer() {
     const [papers, setPapers] = useState<ListedPaper[]>([]);
@@ -48,6 +31,8 @@ export function PapersViewer() {
 
     useEffect(() => {
         if (authLoading || !user) return;
+        const currentUser = user;
+
         async function load() {
             try {
                 const [remote, local] = await Promise.all([
@@ -56,15 +41,15 @@ export function PapersViewer() {
                 ]);
 
                 const merged = new Map<string, ListedPaper>();
-                for (const p of remote) merged.set(p.id, p);
-                for (const p of local) {
-                    merged.set(p.id, { ...p, isLocal: true });
+                for (const paper of remote) merged.set(paper.id, paper);
+                for (const paper of local) {
+                    merged.set(paper.id, { ...paper, isLocal: true });
                 }
 
-                const userId = String(user?.user_id);
+                const userId = String(currentUser.user_id);
                 setPapers(
                     [...merged.values()]
-                        .filter((p) => p.author_id === userId)
+                        .filter((paper) => paper.author_id === userId)
                         .sort((a, b) =>
                             b.updated_at.localeCompare(a.updated_at)
                         ),
@@ -73,71 +58,20 @@ export function PapersViewer() {
                 setLoading(false);
             }
         }
-        load();
+
+        void load();
     }, [user, authLoading]);
 
     const handleImportFile = useCallback(async (file: File | undefined) => {
         if (!user || !file) return;
 
-        if (!file.name.endsWith(".json")) {
-            toast.error("Please choose a .json file.");
-            return;
-        }
-
-        let data: unknown;
         setImporting(true);
         try {
-            const text = await file.text();
-            data = JSON.parse(text);
-        } catch (error) {
-            const message = error instanceof Error
-                ? error.message
-                : "Could not parse the selected file.";
-            toast.error(`Invalid JSON: ${message}`);
-            return;
-        } finally {
-            setImporting(false);
-        }
-
-        if (!isValidTpprPaper(data)) {
-            toast.error(
-                "Invalid file - does not match the TPPR paper format.",
+            const imported = await importPaperFromJsonFile(
+                file,
+                String(user.user_id),
+                papers,
             );
-            setImporting(false);
-            return;
-        }
-
-        const alreadyExists = papers.some(
-            (p) => p.title === data.title && p.subject === data.subject,
-        );
-        if (alreadyExists) {
-            toast.error(`A paper called "${data.title}" already exists.`);
-            setImporting(false);
-            return;
-        }
-
-        try {
-            const now = new Date().toISOString();
-            const imported: Paper = {
-                ...data,
-                id: crypto.randomUUID(),
-                author_id: String(user.user_id),
-                visibility: "private",
-                created_at: now,
-                updated_at: now,
-                questions: data.questions.map((q) => ({
-                    ...q,
-                    author_id: String(user.user_id),
-                    paper_id: "",
-                })),
-            };
-            imported.questions = imported.questions.map((q) => ({
-                ...q,
-                paper_id: imported.id,
-            }));
-
-            await syncService.sync(imported);
-            await syncService.flush();
 
             setPapers((prev) => [
                 { ...imported, isLocal: true },
@@ -146,7 +80,11 @@ export function PapersViewer() {
             toast.success(`Imported "${imported.title}" successfully!`);
         } catch (error) {
             console.warn(error);
-            toast.error("Failed to import paper. Please try again.");
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Failed to import paper. Please try again.",
+            );
         } finally {
             setImporting(false);
         }
@@ -168,75 +106,9 @@ export function PapersViewer() {
         async (e: React.DragEvent) => {
             e.preventDefault();
             setDragging(false);
-
-            if (!user) return;
-
-            const file = e.dataTransfer.files[0];
-            if (!file || !file.name.endsWith(".json")) {
-                toast.error("Please drop a .json file.");
-                return;
-            }
-
-            try {
-                const text = await file.text();
-                const data = JSON.parse(text);
-
-                if (!isValidTpprPaper(data)) {
-                    toast.error(
-                        "Invalid file — does not match the TPPR paper format.",
-                    );
-                    return;
-                }
-
-                const alreadyExists = papers.some(
-                    (p) =>
-                        p.title === data.title &&
-                        p.subject === data.subject,
-                );
-                if (alreadyExists) {
-                    toast.error(
-                        `A paper called "${data.title}" already exists.`,
-                    );
-                    return;
-                }
-
-                const now = new Date().toISOString();
-                const imported: Paper = {
-                    ...data,
-                    id: crypto.randomUUID(),
-                    author_id: String(user.user_id),
-                    visibility: "private",
-                    created_at: now,
-                    updated_at: now,
-                    questions: data.questions.map((q) => ({
-                        ...q,
-                        author_id: String(user.user_id),
-                        paper_id: "",
-                    })),
-                };
-                imported.questions = imported.questions.map((q) => ({
-                    ...q,
-                    paper_id: imported.id,
-                }));
-
-                await syncService.sync(imported);
-                await syncService.flush();
-
-                setPapers((prev) => [
-                    { ...imported, isLocal: true },
-                    ...prev,
-                ]);
-                toast.success(`Imported "${imported.title}" successfully!`);
-            } catch (error) {
-                console.warn(error);
-                if (error instanceof SyntaxError) {
-                    toast.error(`Invalid JSON: ${error.message}`);
-                } else {
-                    toast.error("Failed to import paper. Please try again.");
-                }
-            }
+            await handleImportFile(e.dataTransfer.files[0]);
         },
-        [papers, user],
+        [handleImportFile],
     );
 
     async function handleDelete(paper: ListedPaper) {
@@ -248,6 +120,19 @@ export function PapersViewer() {
             toast.success("Paper deleted");
         } catch {
             toast.error("Failed to delete paper");
+        }
+    }
+
+    async function handleEdit(updated: PaperMeta) {
+        setPapers((prev) =>
+            prev.map((paper) =>
+                paper.id === updated.id ? { ...paper, ...updated } : paper
+            )
+        );
+
+        const stored = await paperStore.getPaper(updated.id).catch(() => undefined);
+        if (stored) {
+            await paperStore.savePaper({ ...stored, ...updated });
         }
     }
 
@@ -279,7 +164,7 @@ export function PapersViewer() {
                     <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
                         <div className="flex flex-col items-center gap-2">
                             <Spinner className="size-8" />
-                            <p className="text-sm font-medium">Importing…</p>
+                            <p className="text-sm font-medium">Importing...</p>
                         </div>
                     </div>
                 )}
@@ -288,7 +173,7 @@ export function PapersViewer() {
                     <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
                         <div className="rounded-xl border-2 border-dashed border-primary p-12 text-center">
                             <p className="text-lg font-medium">
-                                Drop your tppr json to import it
+                                Drop your TPPR JSON to import it
                             </p>
                         </div>
                     </div>
@@ -298,14 +183,14 @@ export function PapersViewer() {
                     ? (
                         <div className="flex flex-col items-center gap-2 py-24 text-muted-foreground">
                             <Spinner className="size-8" />
-                            <p>Loading…</p>
+                            <p>Loading...</p>
                         </div>
                     )
                     : papers.length === 0
                     ? (
                         <div className="flex flex-col items-center gap-2 py-24 text-muted-foreground">
                             <FileQuestion className="size-10" />
-                            <p>No papers yet. Create one from the navbar!</p>
+                            <p>No papers yet. Create one from the navbar.</p>
                         </div>
                     )
                     : (
@@ -317,14 +202,7 @@ export function PapersViewer() {
                                     onOpen={() =>
                                         navigate(`/papers/${paper.id}`)}
                                     onEdit={(updated) => {
-                                        setPapers((prev) =>
-                                            prev.map((p) =>
-                                                p.id === updated.id
-                                                    ? { ...p, ...updated }
-                                                    : p
-                                            )
-                                        );
-                                        paperStore.savePaper(updated as Paper);
+                                        void handleEdit(updated);
                                     }}
                                     onDelete={() => handleDelete(paper)}
                                 />
