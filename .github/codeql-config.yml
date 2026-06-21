@@ -1,0 +1,12 @@
+paths-ignore:
+  - '**/.git/**'
+  - '**/node_modules/**'
+  - '**/.venv/**'
+  - '**/.sec-venv/**'
+  - '**/.security-tools/**'
+  - '**/.uv-cache/**'
+  - '**/.uv-tools/**'
+  - '**/codeql-cli/**'
+  - '**/__pycache__/**'
+  - '**/.pytest_cache/**'
+  - '**/frontend/dist/**'

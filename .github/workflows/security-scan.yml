@@ -1,0 +1,67 @@
+﻿name: Security Scan (SAST / DAST)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  security-scan:
+    name: Bandit + CodeQL
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python, javascript
+          config-file: .github/codeql-config.yml
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Run CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          output: codeql-results
+          upload: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Run Bandit
+        run: bandit -r . -x ./.git,./node_modules,./frontend/node_modules,./.venv,./.security-tools -f json -o bandit-report.json || true
+
+      - name: Prepare CodeQL SARIF files
+        run: |
+          shopt -s nullglob
+          for f in codeql-results/*.sarif; do
+            lang="$(basename "$f" .sarif)"
+            cp "$f" "codeql-${lang}.sarif"
+          done
+
+      - name: Generate security report
+        run: python .github/scripts/security_report.py
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: |
+            security_report.md
+            bandit-report.json
+            codeql-*.sarif
+          if-no-files-found: ignore
