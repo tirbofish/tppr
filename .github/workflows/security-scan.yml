@@ -33,6 +33,7 @@ jobs:
         with:
           output: codeql-results
           upload: false
+          upload-database: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
