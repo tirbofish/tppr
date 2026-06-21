@@ -1,5 +1,8 @@
 // THIS IS MADE WITH AI, EXPECT TO READY FOR DEPLOYMENT
-const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim().replace(/\/+$/, "");
+const backendUrl = (
+    localStorage.getItem("tppr-custom-backend-url") ||
+    import.meta.env.VITE_BACKEND_URL || ""
+).trim().replace(/\/+$/, "");
 
 function withBackendUrl(input: RequestInfo | URL): RequestInfo | URL {
     if (!backendUrl) return input;

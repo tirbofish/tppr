@@ -124,10 +124,20 @@ export default function NavBar() {
           <Confetti
             width={width || window.innerWidth}
             height={height || window.innerHeight}
-            style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 50 }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              pointerEvents: "none",
+              zIndex: 50,
+            }}
             recycle={false}
             numberOfPieces={100}
-            confettiSource={{ x: 0, y: height || window.innerHeight, w: 10, h: 0 }}
+            confettiSource={{
+              x: 0,
+              y: height || window.innerHeight,
+              w: 10,
+              h: 0,
+            }}
             initialVelocityX={{ min: 5, max: 15 }}
             initialVelocityY={{ min: -35, max: -15 }}
             onConfettiComplete={handleConfettiComplete}
@@ -136,7 +146,12 @@ export default function NavBar() {
           <Confetti
             width={width || window.innerWidth}
             height={height || window.innerHeight}
-            style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 50 }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              pointerEvents: "none",
+              zIndex: 50,
+            }}
             recycle={false}
             numberOfPieces={100}
             confettiSource={{
@@ -245,7 +260,7 @@ export default function NavBar() {
                       New Paper
                     </Button>
                   </DialogTrigger>
-                  <CreatePaperDialog onCreated={() => setNewPaperOpen(true)} />
+                  <CreatePaperDialog onCreated={() => setNewPaperOpen(false)} />
                 </Dialog>
 
                 <DropdownMenu>
@@ -303,6 +318,10 @@ export default function NavBar() {
                           <DropdownMenuSeparator />
                         </>
                       )}
+                      <DropdownMenuItem asChild>
+                        <Link to="/settings">Settings</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={logout}>
                         Sign out
                       </DropdownMenuItem>

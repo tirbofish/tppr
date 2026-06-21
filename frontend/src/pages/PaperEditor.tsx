@@ -96,6 +96,7 @@ export default function PaperEditor() {
     const [paper, setPaper] = useState<Paper | null>(null);
     const paperRef = useRef<Paper | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadingStep, setLoadingStep] = useState("");
     const paperId = paper?.id;
     const questionCount = paper?.questions.length;
 
@@ -209,7 +210,7 @@ export default function PaperEditor() {
 
     useEffect(() => {
         if (!paper?.remixed) return;
-        fetch(`/api/papers/${paper.remixed}`, { credentials: "include" })
+        apiFetch(`/api/papers/${paper.remixed}`)
             .then((res) => res.ok ? res.json() : Promise.reject())
             .then(async (data) => {
                 const authorRes = await fetch(
@@ -249,7 +250,9 @@ export default function PaperEditor() {
 
                 const merged = new Map<string, RemixTargetPaper>();
                 for (const p of remote) merged.set(p.id, p);
-                for (const p of local) merged.set(p.id, { ...p, isLocal: true });
+                for (const p of local) {
+                    merged.set(p.id, { ...p, isLocal: true });
+                }
 
                 const targets = [...merged.values()]
                     .filter((p) =>
@@ -274,26 +277,30 @@ export default function PaperEditor() {
     useEffect(() => {
         if (!id || authLoading) return;
         async function load() {
-            setTakenDown(false); // reset stale state
+            setTakenDown(false);
             setPaper(null);
             setLoading(true);
+            setLoadingStep("Fetching from server…");
             try {
-                const res = await fetch(`/api/papers/${id}`, {
-                    credentials: "include",
+                const res = await apiFetch(`/api/papers/${id}`, {
                     cache: "no-store",
                 });
                 if (res.status === 410) {
+                    setLoadingStep("Paper was removed…");
                     await paperStore.deletePaper(id!);
                     setTakenDown(true);
                     return;
                 }
                 if (res.ok) {
+                    setLoadingStep("Reading paper data…");
                     const data = await res.json();
                     setPaper(data);
+                    setLoadingStep("Saving to local cache…");
                     await paperStore.savePaper(data);
                     return;
                 }
                 if (res.status === 404) {
+                    setLoadingStep("Checking local storage…");
                     const local = await paperStore.getPaper(id!);
                     if (local) {
                         setPaper(local);
@@ -301,6 +308,7 @@ export default function PaperEditor() {
                             user &&
                             String(user.user_id) === String(local.author_id)
                         ) {
+                            setLoadingStep("Syncing local paper…");
                             void syncService.sync(local);
                         }
                         return;
@@ -308,6 +316,7 @@ export default function PaperEditor() {
                 }
                 setPaper(null);
             } catch {
+                setLoadingStep("Server unavailable, checking local…");
                 const local = await paperStore.getPaper(id!);
                 if (local) {
                     setPaper(local);
@@ -316,10 +325,11 @@ export default function PaperEditor() {
                 }
             } finally {
                 setLoading(false);
+                setLoadingStep("");
             }
         }
         void load();
-    }, [authLoading, id, user]);
+    }, [authLoading, id, user?.user_id]);
 
     async function handleRemix() {
         if (!paper) return;
@@ -496,9 +506,10 @@ export default function PaperEditor() {
         return (
             <>
                 <NavBar />
-                <p className="py-24 text-center text-muted-foreground">
-                    Loading…
-                </p>
+                <div className="flex flex-col items-center gap-2 py-24 text-muted-foreground">
+                    <Loader2 className="size-6 animate-spin" />
+                    <p>{loadingStep || "Loading…"}</p>
+                </div>
             </>
         );
     }

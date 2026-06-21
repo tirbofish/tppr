@@ -64,6 +64,7 @@ class TextBlock(StrictBaseModel):
     kind: Literal["text"]
     text: str
 
+
 class ImageBlock(StrictBaseModel):
     kind: Literal["image"]
     url: str
@@ -601,6 +602,7 @@ def paper_db_to_meta_read(p: PaperDB) -> PaperMetaRead:
         remixed=p.remixed,
     )
 
+
 def paper_db_to_read(
     p: PaperDB,
     *,
@@ -609,9 +611,11 @@ def paper_db_to_read(
     total_marks: int | None = None,
 ) -> PaperRead:
     """Convert a PaperDB row into a full PaperRead API model."""
-    read_questions = questions if questions is not None else [
-        question_db_to_read(q) for q in p.questions
-    ]
+    read_questions = (
+        questions
+        if questions is not None
+        else [question_db_to_read(q) for q in p.questions]
+    )
     return PaperRead(
         id=p.id,
         title=p.title,

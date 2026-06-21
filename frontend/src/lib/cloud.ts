@@ -31,6 +31,7 @@ function collectAssetIds(value: unknown, ids = new Set<string>()): Set<string> {
 export class SyncService {
     private timeout: ReturnType<typeof setTimeout> | null = null;
     private pending: Paper | null = null;
+    private pendingVersion = 0;
     private status: SyncStatus = "synced";
     private listeners = new Set<(s: SyncStatus) => void>();
 
@@ -51,8 +52,13 @@ export class SyncService {
         this.listeners.forEach((fn) => fn(s));
     }
 
-    private async saveServerPaper(res: Response): Promise<void> {
+    private async saveServerPaper(
+        res: Response,
+        pushedVersion: number,
+    ): Promise<void> {
+        if (this.pendingVersion !== pushedVersion) return;
         const saved = await res.json() as Paper;
+        if (this.pendingVersion !== pushedVersion) return;
         await paperStore.savePaper(saved);
     }
 
@@ -105,7 +111,7 @@ export class SyncService {
         if (!res.ok) console.warn(`Asset upload failed: ${res.status}`);
     }
 
-    private async pushToServer(paper: Paper): Promise<void> {
+    private async pushToServer(paper: Paper, version: number): Promise<void> {
         this.setStatus("syncing");
         const res = await apiFetch(`/api/papers/${paper.id}`, {
             method: "PUT",
@@ -122,14 +128,16 @@ export class SyncService {
             if (!createRes.ok) {
                 throw new Error(`Create failed: ${createRes.status}`);
             }
-            await this.saveServerPaper(createRes);
+            await this.saveServerPaper(createRes, version);
         } else if (!res.ok) {
             throw new Error(`Sync failed: ${res.status}`);
         } else {
-            await this.saveServerPaper(res);
+            await this.saveServerPaper(res, version);
         }
         await this.uploadAssets(paper);
-        this.setStatus("synced");
+        this.setStatus(
+            this.pendingVersion === version ? "synced" : "pending",
+        );
     }
 
     async sync(paper: Paper): Promise<void> {
@@ -138,18 +146,23 @@ export class SyncService {
             this.setStatus("offline");
         });
         this.pending = paper;
+        this.pendingVersion += 1;
         this.setStatus("pending");
 
         if (this.timeout) clearTimeout(this.timeout);
         this.timeout = setTimeout(async () => {
             if (!this.pending) return;
+            const version = this.pendingVersion;
+            const toPush = this.pending;
             try {
-                await this.pushToServer(this.pending);
+                await this.pushToServer(toPush, version);
+                if (this.pendingVersion === version) {
+                    this.pending = null;
+                }
             } catch (e) {
                 console.warn(e);
                 this.setStatus("offline");
             }
-            this.pending = null;
         }, 1500);
     }
 
@@ -159,13 +172,17 @@ export class SyncService {
             this.timeout = null;
         }
         if (this.pending) {
+            const version = this.pendingVersion;
+            const toPush = this.pending;
             try {
-                await this.pushToServer(this.pending);
+                await this.pushToServer(toPush, version);
+                if (this.pendingVersion === version) {
+                    this.pending = null;
+                }
             } catch (e) {
                 this.setStatus("offline");
                 throw e;
             }
-            this.pending = null;
         }
     }
 

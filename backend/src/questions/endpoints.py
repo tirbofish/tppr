@@ -3,11 +3,11 @@ import re
 from uuid import uuid4
 
 from flask import Blueprint, jsonify, request, send_file
-from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlmodel import col, select
 from datetime import datetime, UTC
 
 from settings import ASSETS_DIR
+from auth.supabase import get_current_user_id, supabase_auth_required
 from questions.db import get_session
 from questions.types import (
     AssetDB,
@@ -16,6 +16,8 @@ from questions.types import (
     PaperOutcome,
     PaperUpdate,
     QuestionDB,
+    QuestionOutcome,
+    QuestionSyllabusPointDB,
     paper_db_to_meta_read,
     paper_db_to_read,
     question_db_to_read,
@@ -83,6 +85,8 @@ def _paper_read_for_viewer(session, paper: PaperDB, user_id: str | None):
                 source_removed=source_removed and owner_viewer and not admin_viewer,
             )
         )
+    
+    visible_questions.sort(key=lambda q: q.number)
 
     if admin_viewer or owner_viewer:
         return paper_db_to_read(paper, questions=visible_questions)
@@ -130,9 +134,9 @@ def _clone_question_for_remix(
 # --- Assets ---
 
 @q_bp.route("/api/papers/<string:paper_id>/assets", methods=["POST"])
-@jwt_required()
+@supabase_auth_required()
 def upload_asset(paper_id):
-    user_id = str(get_jwt_identity())
+    user_id = str(get_current_user_id())
     asset_file = request.files.get("file")
     asset_id = request.form.get("asset_id") or str(uuid4())
 
@@ -187,12 +191,12 @@ def upload_asset(paper_id):
         }), 201
 
 @q_bp.route("/api/assets/<string:asset_id>", methods=["GET"])
-@jwt_required(optional=True)
+@supabase_auth_required(optional=True)
 def get_asset(asset_id):
     if not _valid_asset_id(asset_id):
         return jsonify({"message": "Asset not found"}), 404
 
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     with get_session() as session:
         asset = session.get(AssetDB, asset_id)
         if not asset:
@@ -253,9 +257,9 @@ def search_papers():
         )
 
 @q_bp.route("/api/papers", methods=["GET"])
-@jwt_required()
+@supabase_auth_required()
 def list_papers():
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     q = request.args.get("q")
     subject = request.args.get("subject")
     source = request.args.get("source")
@@ -294,9 +298,9 @@ def list_papers():
         )
 
 @q_bp.route("/api/papers/<string:paper_id>", methods=["GET"])
-@jwt_required(optional=True)
+@supabase_auth_required(optional=True)
 def get_paper(paper_id):
-    user_id = get_jwt_identity()  # None if not logged in
+    user_id = get_current_user_id()  # None if not logged in
 
     with get_session() as session:
         paper = session.get(PaperDB, paper_id)
@@ -309,7 +313,7 @@ def get_paper(paper_id):
                 _paper_read_for_viewer(session, paper, str(user_id)).model_dump(mode="json")
             )
 
-        # Removed papers — tell the user it's gone (owner included)
+        # Removed papers, tell the user it's gone (owner included)
         if paper.visibility == "removed":
             return _removed_response()
 
@@ -329,9 +333,9 @@ def get_paper(paper_id):
 # --- SYNCING ---
 
 @q_bp.route("/api/papers", methods=["POST"])
-@jwt_required()
+@supabase_auth_required()
 def create_paper():
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     data = request.get_json()
     if not data:
         return jsonify({"message": "No data provided"}), 400
@@ -376,9 +380,9 @@ def create_paper():
 
 
 @q_bp.route("/api/papers/<string:paper_id>", methods=["PUT"])
-@jwt_required()
+@supabase_auth_required()
 def update_paper(paper_id):
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     data = request.get_json()
     if not data:
         return jsonify({"message": "No data provided"}), 400
@@ -437,15 +441,10 @@ def update_paper(paper_id):
         session.refresh(paper)
         return jsonify(paper_db_to_read(paper).model_dump(mode="json")), 200
 
-        session.add(paper)
-        session.commit()
-        session.refresh(paper)
-        return jsonify(paper_db_to_read(paper).model_dump(mode="json")), 200
-
 @q_bp.route("/api/papers/<string:paper_id>", methods=["DELETE"])
-@jwt_required()
+@supabase_auth_required()
 def delete_paper(paper_id):
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
 
     with get_session() as session:
         paper = session.get(PaperDB, paper_id)
@@ -456,6 +455,30 @@ def delete_paper(paper_id):
         if paper.author_id != str(user_id):
             return jsonify({"message": "Forbidden"}), 403
 
+        assets = session.exec(select(AssetDB).where(AssetDB.paper_id == paper_id)).all()
+        for asset in assets:
+            session.delete(asset)
+
+        for question in paper.questions:
+            question_outcomes = session.exec(
+                select(QuestionOutcome).where(QuestionOutcome.question_id == question.id)
+            ).all()
+            for outcome in question_outcomes:
+                session.delete(outcome)
+
+            syllabus_points = session.exec(
+                select(QuestionSyllabusPointDB).where(
+                    QuestionSyllabusPointDB.question_id == question.id
+                )
+            ).all()
+            for syllabus_point in syllabus_points:
+                session.delete(syllabus_point)
+
+            session.delete(question)
+        for outcome in paper.outcomes:
+            session.delete(outcome)
+        session.flush()
+
         session.delete(paper)
         session.commit()
         return jsonify({"message": "Deleted"}), 200
@@ -463,9 +486,9 @@ def delete_paper(paper_id):
 # --- PUBLISHING ---
 
 @q_bp.route("/api/papers/<string:paper_id>/publish", methods=["POST"])
-@jwt_required()
+@supabase_auth_required()
 def publish_paper(paper_id):
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
 
     with get_session() as session:
         paper = session.get(PaperDB, paper_id)
@@ -509,9 +532,9 @@ def publish_paper(paper_id):
         return jsonify(paper_db_to_meta_read(paper).model_dump(mode="json")), 200
 
 @q_bp.route("/api/papers/<string:paper_id>/publish", methods=["DELETE"])
-@jwt_required()
+@supabase_auth_required()
 def unpublish_paper(paper_id):
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
 
     with get_session() as session:
         paper = session.get(PaperDB, paper_id)
@@ -536,9 +559,9 @@ def unpublish_paper(paper_id):
 # --- REMIXING ---
 
 @q_bp.route("/api/papers/<string:paper_id>/remix", methods=["POST"])
-@jwt_required()
+@supabase_auth_required()
 def remix_paper(paper_id):
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
 
     with get_session() as session:
         original = session.get(PaperDB, paper_id)
@@ -591,9 +614,9 @@ def remix_paper(paper_id):
     "/api/papers/<string:paper_id>/questions/<string:question_id>/remix",
     methods=["POST"],
 )
-@jwt_required()
+@supabase_auth_required()
 def remix_question(paper_id, question_id):
-    user_id = str(get_jwt_identity())
+    user_id = str(get_current_user_id())
     data = request.get_json() or {}
     target_paper_id = data.get("target_paper_id")
     if not target_paper_id:

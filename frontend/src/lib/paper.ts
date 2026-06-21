@@ -100,12 +100,12 @@ class PaperStore {
 
 export const paperStore = new PaperStore();
 
-export async function createLocalPaper(input: NewPaperInput, authorId: number): Promise<Paper> {
+export async function createLocalPaper(input: NewPaperInput, authorId: string): Promise<Paper> {
     const now = new Date().toISOString();
     const paper: Paper = {
         id: crypto.randomUUID(),
         title: input.title,
-        author_id: String(authorId),
+        author_id: authorId,
         subject: input.subject,
         course_level: input.course_level ?? undefined,
         year: input.year ?? undefined,

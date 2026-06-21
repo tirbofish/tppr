@@ -15,6 +15,9 @@ import Copyright from "./pages/legal/Copyright";
 import Privacy from "./pages/legal/Privacy";
 import { Footer } from "./components/footer";
 import { useEffect } from "react";
+import ResetPassword from "./pages/ResetPassword";
+import ForgotPassword from "./pages/ForgotPassword";
+import Settings from "./pages/Settings";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -39,6 +42,10 @@ function App() {
               <Route path="/papers" element={<PapersViewer />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
               <Route path="/search" element={<Search />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/settings" element={<Settings />} />
+
               <Route path="/admin/takedowns" element={<AdminTakedowns />} />
 
               <Route path="/legal/copyright" element={<Copyright />} />

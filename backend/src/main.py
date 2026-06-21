@@ -2,26 +2,29 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+import base64
+import hashlib
 import os
+import re
 import sys
 
 import auth
 import swagger
 import settings
 from admin import admin_bp, init_admins, teardown_admins
+from auth.supabase import authenticate_supabase_request
 from auth.db import AuthenticationDB
 from flask import Flask, jsonify, redirect, request, send_from_directory
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager, verify_jwt_in_request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from questions.db import prepare as prepare_paper_db
 from questions.endpoints import q_bp
-from shared import BLOCKLIST
 
 assets_dir = settings.ASSETS_DIR
 frontend_dist_dir = settings.FRONTEND_DIST_DIR
 api_only = settings.API_ONLY_FLAG in sys.argv
+INLINE_SCRIPT_RE = re.compile(r"<script(?:\s[^>]*)?>(.*?)</script>", re.DOTALL)
 
 app = Flask(__name__)
 
@@ -41,19 +44,9 @@ app.config.update(
     SECRET_KEY=settings.SECRET_KEY,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SECURE=settings.PRODUCTION,
-    SESSION_COOKIE_SAMESITE=settings.JWT_COOKIE_SAMESITE,
-    JWT_SECRET_KEY=settings.JWT_SECRET_KEY,
-    JWT_TOKEN_LOCATION=settings.JWT_TOKEN_LOCATION,
-    JWT_COOKIE_SECURE=settings.JWT_COOKIE_SECURE,
-    JWT_COOKIE_SAMESITE=settings.JWT_COOKIE_SAMESITE,
-    JWT_COOKIE_CSRF_PROTECT=settings.JWT_COOKIE_CSRF_PROTECT,
-    JWT_CSRF_IN_COOKIES=settings.JWT_CSRF_IN_COOKIES,
-    JWT_SESSION_COOKIE=settings.JWT_SESSION_COOKIE,
-    JWT_ACCESS_COOKIE_NAME=settings.ACCESS_TOKEN_COOKIE_NAME,
-    JWT_ACCESS_TOKEN_EXPIRES=settings.JWT_ACCESS_TOKEN_EXPIRES,
+    SESSION_COOKIE_SAMESITE=settings.SESSION_COOKIE_SAMESITE,
 )
 
-jwt = JWTManager(app)
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
@@ -94,12 +87,6 @@ PUBLIC_ENDPOINT_RATE_LIMITS = {
 }
 
 
-@jwt.token_in_blocklist_loader
-def check_if_token_revoked(jwt_header, jwt_payload):
-    jti = jwt_payload["jti"]
-    return jti in BLOCKLIST
-
-
 @app.before_request
 def require_auth_for_private_api_routes():
     if request.method == "OPTIONS":
@@ -110,8 +97,7 @@ def require_auth_for_private_api_routes():
         return None
     if settings.PUBLIC_API_DOCS and request.endpoint in PUBLIC_API_DOC_ENDPOINTS:
         return None
-    verify_jwt_in_request()
-    return None
+    return authenticate_supabase_request()
 
 
 @app.after_request
@@ -129,10 +115,17 @@ def set_security_headers(response):
     if response.content_type.startswith("text/html"):
         script_src = "'self'"
         if request.path.startswith("/api/docs"):
-            script_src = (
-                "'self' "
-                "'sha256-JMCk0gh0T7mj34/FjHVW9GGJLM7La5rqNFHXGSyz+aU='"
-            )
+            body = response.get_data(as_text=True)
+            script_hashes = [
+                "'sha256-"
+                + base64.b64encode(
+                    hashlib.sha256(script.encode("utf-8")).digest()
+                ).decode("ascii")
+                + "'"
+                for script in INLINE_SCRIPT_RE.findall(body)
+                if script.strip()
+            ]
+            script_src = " ".join([script_src, *script_hashes])
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "base-uri 'self'; "
@@ -142,7 +135,7 @@ def set_security_headers(response):
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob:; "
             "font-src 'self' data:; "
-            "connect-src 'self'"
+            f"connect-src 'self' {settings.SUPABASE_URL}" if settings.SUPABASE_URL else "connect-src 'self'"
         )
 
     if settings.PRODUCTION:

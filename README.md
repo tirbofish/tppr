@@ -6,8 +6,7 @@ The project uses both <font color="red"><u>**_PYTHON_**</u></font> (looking at y
 
 ## to run online
 
-~~This website is online at [placeholder_link](https://google.com)~~
-This website is currently in development and not able to be hosted yet. Try running this locally with your own files if you wish with the provided steps.
+This website is currently online at [tppr.online](https://tppr.online). 
 
 ## to run locally
 
@@ -28,7 +27,7 @@ uv run launch.py
 it will launch the frontend at [localhost:5173](http://localhost:5173) and the backend at [localhost:5000](http://localhost:5000).
 
 ## docs
-Documentation relating to deployment and other useful files are located in the [docs](./docs) folder. 
+Documentation relating to deployment and other useful files are located in the [docs](./docs/DOCS.md) folder. 
 
 ---
 

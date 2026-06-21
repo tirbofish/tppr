@@ -9,14 +9,14 @@ interface PapersListResponse {
 }
 
 export async function getPapers(): Promise<PaperMeta[]> {
-    const res = await fetch("/api/papers", { credentials: "include" });
+    const res = await apiFetch("/api/papers", { credentials: "include" });
     if (!res.ok) throw new Error(`Failed to fetch papers: ${res.status}`);
     const data: PapersListResponse = await res.json();
     return data.papers;
 }
 
 export async function getPaper(id: string): Promise<Paper> {
-    const res = await fetch(`/api/papers/${id}`, { credentials: "include" });
+    const res = await apiFetch(`/api/papers/${id}`, { credentials: "include" });
     if (!res.ok) throw new Error(`Failed to fetch paper: ${res.status}`);
     return res.json();
 }

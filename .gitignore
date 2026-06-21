@@ -44,3 +44,4 @@ database.db
 output.*
 output/
 paper-assets/
+.gcloud-sdk

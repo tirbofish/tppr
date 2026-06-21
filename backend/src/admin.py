@@ -1,8 +1,12 @@
 import os
 import secrets
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
 from settings import PRODUCTION
+from auth.supabase import (
+    get_current_user_claims,
+    get_current_user_id,
+    supabase_auth_required,
+)
 
 from questions.db import get_session
 from questions.types import PaperDB, paper_db_to_meta_read
@@ -95,10 +99,10 @@ def teardown_admins():
 
 
 @admin_bp.route("/api/admin/verify", methods=["POST"])
-@jwt_required()
+@supabase_auth_required()
 def verify_admin():
-    user_id = get_jwt_identity()
-    claims = get_jwt()
+    user_id = get_current_user_id()
+    claims = get_current_user_claims()
     email = claims.get("email")
 
     user = db.get_user_by_id(user_id, fields=["user_id", "email"])
@@ -122,16 +126,16 @@ def verify_admin():
 
 
 @admin_bp.route("/api/admin/status", methods=["GET"])
-@jwt_required()
+@supabase_auth_required()
 def admin_status():
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     return jsonify({"admin": is_admin(user_id)}), 200
 
 
 @admin_bp.route("/api/admin/takedowns", methods=["GET"])
-@jwt_required()
+@supabase_auth_required()
 def list_takedowns():
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     if not is_admin(user_id):
         return jsonify({"message": "Forbidden"}), 403
 
@@ -173,10 +177,10 @@ def list_takedowns():
         }), 200
 
 @admin_bp.route("/api/admin/takedown/<string:paper_id>", methods=["POST"])
-@jwt_required()
+@supabase_auth_required()
 def takedown_paper(paper_id):
     """Takes down a paper and all of the remixes (recursively)"""
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     if not is_admin(user_id):
         return jsonify({"message": "Forbidden"}), 403
 
@@ -221,13 +225,13 @@ def takedown_paper(paper_id):
         }), 200
 
 @admin_bp.route("/api/admin/takedown/<string:paper_id>", methods=["DELETE"])
-@jwt_required()
+@supabase_auth_required()
 def revert_takedown(paper_id):
     """Revert a takedown 
     
     This restores paper and all its remixes to private.
     """
-    user_id = get_jwt_identity()
+    user_id = get_current_user_id()
     if not is_admin(user_id):
         return jsonify({"message": "Forbidden"}), 403
 

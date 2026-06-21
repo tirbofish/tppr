@@ -1,6 +1,4 @@
 import os
-from datetime import timedelta
-
 
 def env_flag(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -11,6 +9,10 @@ def env_flag(name: str, default: bool = False) -> bool:
 
 def env_list(name: str) -> list[str]:
     return [item.strip() for item in os.getenv(name, "").split(",") if item.strip()]
+
+
+def env_url(name: str) -> str:
+    return os.getenv(name, "").strip().rstrip("/")
 
 
 def required_secret(name: str, fallback: str) -> str:
@@ -49,20 +51,12 @@ BACKEND_DEBUG = False if PRODUCTION else env_flag("BACKEND_DEBUG_MODE", env_flag
 
 APP_NAME = "TPPR"
 SECRET_KEY = required_secret("SECRET_KEY", "dev-secret")
-JWT_SECRET_KEY = required_secret("JWT_SECRET_KEY", "dev-jwt-secret")
-JWT_TOKEN_LOCATION = ["cookies"]
-JWT_COOKIE_SECURE = True if PRODUCTION else env_flag("JWT_COOKIE_SECURE")
-JWT_COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "None" if PRODUCTION else "Lax")
-if JWT_COOKIE_SAMESITE not in {"Strict", "Lax", "None"}:
-    raise RuntimeError("JWT_COOKIE_SAMESITE must be Strict, Lax, or None")
-if JWT_COOKIE_SAMESITE == "None" and not JWT_COOKIE_SECURE:
-    raise RuntimeError("JWT_COOKIE_SAMESITE=None requires secure cookies")
-JWT_COOKIE_CSRF_PROTECT = True
-JWT_CSRF_IN_COOKIES = True
-JWT_SESSION_COOKIE = False
-ACCESS_TOKEN_COOKIE_NAME = os.getenv("ACCESS_TOKEN_COOKIE_NAME", "access_token_cookie")
-ACCESS_TOKEN_MAX_AGE_SECONDS = int(os.getenv("ACCESS_TOKEN_MAX_AGE_SECONDS", "86400"))
-JWT_ACCESS_TOKEN_EXPIRES = timedelta(seconds=ACCESS_TOKEN_MAX_AGE_SECONDS)
+SESSION_COOKIE_SAMESITE = os.getenv(
+    "SESSION_COOKIE_SAMESITE",
+    "None" if PRODUCTION else "Lax",
+)
+if SESSION_COOKIE_SAMESITE not in {"Strict", "Lax", "None"}:
+    raise RuntimeError("SESSION_COOKIE_SAMESITE must be Strict, Lax, or None")
 
 BACKEND_ALLOWED_ORIGINS = env_list("BACKEND_ALLOWED_ORIGINS")
 if PRODUCTION:
@@ -124,7 +118,6 @@ SEAWEEDFS_PDF_HASH_PREFIX = "pdf-sha256"
 
 PDF_SHARE_LINK_SECRET = (
     os.getenv("PDF_SHARE_LINK_SECRET")
-    or JWT_SECRET_KEY
     or SECRET_KEY
     or "dev-share-link-secret"
 )
@@ -141,3 +134,19 @@ UPLOAD_PROGRESS_OCR_STARTED = 40
 UPLOAD_PROGRESS_OCR_COMPLETE = 70
 UPLOAD_PROGRESS_PARSING = 75
 UPLOAD_PROGRESS_DONE = 100
+
+SUPABASE_URL = env_url("SUPABASE_URL") or env_url("VITE_SUPABASE_URL")
+SUPABASE_JWKS_URL = (
+    env_url("SUPABASE_JWKS_URL")
+    or (f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json" if SUPABASE_URL else "")
+)
+SUPABASE_JWT_ISSUER = (
+    env_url("SUPABASE_JWT_ISSUER")
+    or (f"{SUPABASE_URL}/auth/v1" if SUPABASE_URL else "")
+)
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+SUPABASE_JWT_AUDIENCE = os.getenv("SUPABASE_JWT_AUDIENCE", "authenticated").strip()
+if PRODUCTION and not SUPABASE_JWKS_URL and not SUPABASE_JWT_SECRET:
+    raise RuntimeError(
+        "SUPABASE_URL or SUPABASE_JWKS_URL must be set when PRODUCTION=1"
+    )
