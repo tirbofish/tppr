@@ -17,11 +17,13 @@ export interface Friend extends PublicUser {
 
 export interface LeaderboardEntry extends PublicUser {
     rank: number;
-    paper_count: number;
-    public_paper_count: number;
-    question_count: number;
-    total_marks: number;
-    remixes_received: number;
+    attempts_count: number;
+    papers_attempted: number;
+    papers_completed: number;
+    questions_answered: number;
+    total_study_seconds: number;
+    current_streak: number;
+    longest_streak: number;
 }
 
 async function readError(res: Response, fallback: string): Promise<Error> {

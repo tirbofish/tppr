@@ -26,7 +26,7 @@ def verify_2fa():
 
 
 @two_fa_bp.route("/api/account/enable_2fa", methods=["POST"])
-@supabase_auth_required()
+@supabase_auth_required(sync_user=True)
 def enable_2fa():
     user_id = get_current_user_id()
 
@@ -69,7 +69,7 @@ def enable_2fa():
 
 
 @two_fa_bp.route("/api/account/disable_2fa", methods=["POST"])
-@supabase_auth_required()
+@supabase_auth_required(sync_user=True)
 def disable_2fa():
     user_id = get_current_user_id()
     totp_code = (request.form.get("totp_code") or "").strip()

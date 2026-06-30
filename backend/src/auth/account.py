@@ -16,7 +16,7 @@ def error_body(message: str, error: Exception | None = None) -> dict[str, str]:
 
 
 @account_bp.route("/api/whoami", methods=["GET"])
-@supabase_auth_required()
+@supabase_auth_required(sync_user=True)
 def whoami():
     user_id = get_current_user_id()
 

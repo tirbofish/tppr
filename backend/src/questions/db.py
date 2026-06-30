@@ -71,6 +71,105 @@ _INDEX_DDL = [
     "ON question_syllabus_points (question_id)",
 ]
 
+# Keep Supabase advisor hardening idempotent for databases this app prepares.
+_SECURITY_DDL = [
+    """
+DO $$
+DECLARE
+    fn regprocedure;
+    function_name text;
+BEGIN
+    FOREACH function_name IN ARRAY ARRAY[
+        'public."deleteUser"()',
+        'public.delete_own_account()'
+    ] LOOP
+        fn := to_regprocedure(function_name);
+        IF fn IS NOT NULL THEN
+            EXECUTE format(
+                'ALTER FUNCTION %s SET search_path = public, auth, pg_temp',
+                fn
+            );
+            EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC', fn);
+
+            IF to_regrole('anon') IS NOT NULL THEN
+                EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM anon', fn);
+            END IF;
+
+            IF to_regrole('authenticated') IS NOT NULL THEN
+                EXECUTE format(
+                    'REVOKE EXECUTE ON FUNCTION %s FROM authenticated',
+                    fn
+                );
+            END IF;
+
+            IF to_regrole('service_role') IS NOT NULL THEN
+                EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role', fn);
+            END IF;
+        END IF;
+    END LOOP;
+END $$;
+""",
+    """
+DO $$
+DECLARE
+    table_name text;
+    table_oid regclass;
+BEGIN
+    FOREACH table_name IN ARRAY ARRAY[
+        'public.paper_takedown_states',
+        'public.papers',
+        'public.questions',
+        'public.users'
+    ] LOOP
+        table_oid := to_regclass(table_name);
+        IF table_oid IS NOT NULL THEN
+            EXECUTE format(
+                'DROP POLICY IF EXISTS %I ON %s',
+                'Service role full access',
+                table_oid
+            );
+        END IF;
+    END LOOP;
+END $$;
+""",
+    """
+DO $$
+BEGIN
+    IF to_regclass('public.paper_stars') IS NOT NULL THEN
+        CREATE INDEX IF NOT EXISTS ix_paper_stars_user_id
+            ON public.paper_stars (user_id);
+        CREATE INDEX IF NOT EXISTS ix_paper_stars_paper_id
+            ON public.paper_stars (paper_id);
+        ALTER TABLE public.paper_stars ENABLE ROW LEVEL SECURITY;
+
+        DROP POLICY IF EXISTS "Users can read own stars" ON public.paper_stars;
+        DROP POLICY IF EXISTS "Users can star own papers" ON public.paper_stars;
+        DROP POLICY IF EXISTS "Users can unstar own papers" ON public.paper_stars;
+
+        IF to_regrole('authenticated') IS NOT NULL THEN
+            CREATE POLICY "Users can read own stars"
+                ON public.paper_stars
+                FOR SELECT
+                TO authenticated
+                USING ((select auth.uid())::text = user_id);
+
+            CREATE POLICY "Users can star own papers"
+                ON public.paper_stars
+                FOR INSERT
+                TO authenticated
+                WITH CHECK ((select auth.uid())::text = user_id);
+
+            CREATE POLICY "Users can unstar own papers"
+                ON public.paper_stars
+                FOR DELETE
+                TO authenticated
+                USING ((select auth.uid())::text = user_id);
+        END IF;
+    END IF;
+END $$;
+""",
+]
+
 
 def prepare(log: Logger) -> None:
     log.info(
@@ -82,6 +181,8 @@ def prepare(log: Logger) -> None:
         from sqlalchemy import text
 
         for statement in _INDEX_DDL:
+            conn.execute(text(statement))
+        for statement in _SECURITY_DDL:
             conn.execute(text(statement))
     log.info("All tables created / verified")
 

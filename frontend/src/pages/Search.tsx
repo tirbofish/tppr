@@ -23,6 +23,7 @@ import {
 import { Clock, Globe, Search as SearchIcon } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { type SearchFilters, searchPapers } from "@/lib/paper";
+import { StarPaperButton } from "@/components/star-paper-button";
 
 const SUBJECTS_WITH_LEVELS = new Set([
     "Mathematics",
@@ -261,7 +262,10 @@ export default function Search() {
                                                 <CardTitle className="line-clamp-2 text-base">
                                                     {paper.title}
                                                 </CardTitle>
-                                                <Globe className="size-4 shrink-0 text-muted-foreground" />
+                                                <div className="flex shrink-0 items-center gap-1">
+                                                    <StarPaperButton paperId={paper.id} />
+                                                    <Globe className="size-4 text-muted-foreground" />
+                                                </div>
                                             </div>
                                             <CardDescription>
                                                 {paper.subject}

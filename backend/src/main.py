@@ -22,6 +22,8 @@ from questions.db import prepare as prepare_paper_db
 from questions.endpoints import q_bp
 from social import social_bp
 from stats import stats_bp
+from progress import progress_bp
+from stars import stars_bp
 
 assets_dir = settings.ASSETS_DIR
 frontend_dist_dir = settings.FRONTEND_DIST_DIR
@@ -223,6 +225,8 @@ app.register_blueprint(q_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(social_bp)
 app.register_blueprint(stats_bp)
+app.register_blueprint(progress_bp)
+app.register_blueprint(stars_bp)
 
 for endpoint, limit in PUBLIC_ENDPOINT_RATE_LIMITS.items():
     view = app.view_functions.get(endpoint)

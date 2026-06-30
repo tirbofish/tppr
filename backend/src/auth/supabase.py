@@ -47,7 +47,12 @@ def _decode_supabase_token(token: str) -> dict[str, Any]:
 def _get_jwks_client() -> PyJWKClient:
     global _jwks_client
     if _jwks_client is None:
-        _jwks_client = PyJWKClient(SUPABASE_JWKS_URL, lifespan=600)
+        _jwks_client = PyJWKClient(
+            SUPABASE_JWKS_URL,
+            cache_keys=True,
+            lifespan=600,
+            timeout=5,
+        )
     return _jwks_client
 
 
@@ -109,8 +114,25 @@ def _sync_local_user(payload: dict[str, Any]) -> dict:
     )
 
 
-def authenticate_supabase_request(optional: bool = False):
+def _sync_response(payload: dict[str, Any]):
+    try:
+        return _sync_local_user(payload), None
+    except Exception as e:
+        current_app.logger.error(f"Unable to sync Supabase user: {e}")
+        return None, (jsonify({"message": "Unable to sync authenticated user"}), 500)
+
+
+def authenticate_supabase_request(
+    optional: bool = False,
+    *,
+    sync_user: bool = False,
+):
     if getattr(g, "user_id", None) and getattr(g, "supabase_claims", None):
+        if sync_user and getattr(g, "local_user", None) is None:
+            local_user, error_response = _sync_response(g.supabase_claims)
+            if error_response is not None:
+                return error_response
+            g.local_user = local_user
         return None
 
     token = _bearer_token()
@@ -128,7 +150,8 @@ def authenticate_supabase_request(optional: bool = False):
         payload = _decode_supabase_token(token)
         g.user_id = str(payload["sub"])
         g.supabase_claims = payload
-        g.local_user = _sync_local_user(payload)
+        if sync_user:
+            g.local_user = _sync_local_user(payload)
     except jwt.ExpiredSignatureError:
         return jsonify({"message": "Token expired"}), 401
     except (jwt.InvalidTokenError, PyJWKClientError) as e:
@@ -146,12 +169,15 @@ def authenticate_supabase_request(optional: bool = False):
     return None
 
 
-def supabase_auth_required(optional=False):
+def supabase_auth_required(optional=False, *, sync_user: bool = False):
     """Decorator to verify Supabase JWTs from the Authorization header."""
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            auth_response = authenticate_supabase_request(optional=optional)
+            auth_response = authenticate_supabase_request(
+                optional=optional,
+                sync_user=sync_user,
+            )
             if auth_response is not None:
                 return auth_response
             return f(*args, **kwargs)

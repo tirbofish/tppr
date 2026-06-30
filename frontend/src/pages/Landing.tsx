@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { loginPath, signupPath } from "@/lib/routes";
 import NavBar from "@/components/navbar";
 import { Button } from "@/components/ui/button";
@@ -12,8 +13,18 @@ import {
 } from "lucide-react";
 
 export default function Landing() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
+  // Authenticated users land on their dashboard instead of the marketing page.
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  // Render the marketing page for signed-out visitors (and as a brief fallback
+  // while the auth session is being resolved).
   return (
     <>
       <NavBar />
@@ -47,7 +58,7 @@ export default function Landing() {
               ? (
                 <>
                   <Button asChild size="lg">
-                    <Link to="/papers">My Papers</Link>
+                    <Link to="/dashboard">Go to dashboard</Link>
                   </Button>
                   <Button asChild variant="outline" size="lg">
                     <Link to="/search">Browse Questions</Link>
@@ -57,10 +68,10 @@ export default function Landing() {
               : (
                 <>
                   <Button asChild size="lg">
-                    <Link to={signupPath("/papers")}>Get Started</Link>
+                    <Link to={signupPath("/dashboard")}>Get Started</Link>
                   </Button>
                   <Button asChild variant="outline" size="lg">
-                    <Link to={loginPath("/papers")}>Log In</Link>
+                    <Link to={loginPath("/dashboard")}>Log In</Link>
                   </Button>
                 </>
               )}

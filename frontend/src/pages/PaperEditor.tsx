@@ -76,6 +76,7 @@ import { AdminSidebar } from "@/components/admin-sidebar";
 import { Takendown } from "./errors/Takendown";
 import { GenericError } from "./errors/GenericError";
 import { FocusMode } from "@/components/focus-mode";
+import { StarPaperButton } from "@/components/star-paper-button";
 
 const EDITOR_MIN_WIDTH = 384;
 const EDITOR_DEFAULT_WIDTH = 448;
@@ -592,6 +593,7 @@ export default function PaperEditor() {
                         >
                             <Glasses className="size-4" />
                         </Button>
+                        <StarPaperButton paperId={paper.id} />
 
                         {isOwner && (
                             <Popover

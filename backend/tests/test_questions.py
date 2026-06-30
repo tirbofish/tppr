@@ -37,7 +37,7 @@ def client(app):
 
 def _fake_auth(user_id="user-123"):
     """Patch supabase auth so endpoints think the user is authenticated."""
-    def fake_authenticate(optional=False):
+    def fake_authenticate(optional=False, sync_user=False):
         g.user_id = user_id
         g.supabase_claims = {"sub": user_id, "role": "authenticated"}
         g.local_user = {"user_id": user_id}

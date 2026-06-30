@@ -18,6 +18,7 @@ import { QuestionSample } from "@/components/question-sample";
 import type { PaperMeta } from "@/types/tppr-paper";
 import { PaperSettings } from "./paper-settings";
 import { useState } from "react";
+import { StarPaperButton } from "@/components/star-paper-button";
 
 interface PaperCardProps {
     paper: PaperMeta;
@@ -91,6 +92,7 @@ export function PaperCard({ paper, onOpen, onEdit, onDelete }: PaperCardProps) {
                     </CardContent>
 
                     <CardFooter className="justify-end gap-1">
+                        <StarPaperButton paperId={paper.id} />
                         <span onClick={(e) => e.stopPropagation()}>
                             <PaperSettings
                                 paper={paper}

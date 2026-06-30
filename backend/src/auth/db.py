@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from logging import Logger
 import re
 from typing import Optional
@@ -10,6 +10,8 @@ from sqlmodel import Field, Session, SQLModel, select
 
 from questions.db import engine
 from questions.types import AssetDB, PaperDB, QuestionDB
+
+LAST_LOGIN_SYNC_INTERVAL = timedelta(minutes=15)
 
 
 class UserDB(SQLModel, table=True):
@@ -201,11 +203,15 @@ class AuthenticationDB:
         metadata: dict,
     ) -> dict:
         with Session(engine) as session:
+            now = datetime.now(UTC)
             user = session.get(UserDB, user_id)
-            user_by_email = session.exec(
-                select(UserDB).where(UserDB.email == email)
-            ).first()
+            user_by_email = None
+            if not user or user.email != email:
+                user_by_email = session.exec(
+                    select(UserDB).where(UserDB.email == email)
+                ).first()
 
+            changed = False
             if user_by_email and user_by_email.user_id != user_id:
                 if user:
                     self._reassign_owned_records(
@@ -223,31 +229,56 @@ class AuthenticationDB:
                     )
                     user_by_email.user_id = user_id
                     user = user_by_email
+                changed = True
 
-            username = self._unique_username(
-                session,
-                self._preferred_username(email, metadata, user_id),
-                user_id,
-            )
+            username = None
 
             if user:
-                user.email = email
+                if user.email != email:
+                    user.email = email
+                    changed = True
                 if not user.username:
+                    username = self._unique_username(
+                        session,
+                        self._preferred_username(email, metadata, user_id),
+                        user_id,
+                    )
                     user.username = username
-                user.last_login = datetime.now(UTC)
+                    changed = True
+                if self._should_refresh_last_login(user.last_login, now):
+                    user.last_login = now
+                    changed = True
             else:
+                username = self._unique_username(
+                    session,
+                    self._preferred_username(email, metadata, user_id),
+                    user_id,
+                )
                 user = UserDB(
                     user_id=user_id,
                     username=username,
                     email=email,
                     password_hash="",
-                    last_login=datetime.now(UTC),
+                    last_login=now,
                 )
                 session.add(user)
+                changed = True
 
-            session.commit()
-            session.refresh(user)
+            if changed:
+                session.commit()
+                session.refresh(user)
             return user.model_dump()
+
+    def _should_refresh_last_login(
+        self,
+        last_login: datetime | None,
+        now: datetime,
+    ) -> bool:
+        if last_login is None:
+            return True
+        if last_login.tzinfo is None:
+            last_login = last_login.replace(tzinfo=UTC)
+        return now - last_login >= LAST_LOGIN_SYNC_INTERVAL
 
     def _reassign_owned_records(
         self,

@@ -29,6 +29,16 @@ import {
 
 type Scope = "global" | "friends";
 
+function formatDuration(totalSeconds: number): string {
+    const s = Math.max(0, Math.floor(totalSeconds));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${sec}s`;
+    return `${sec}s`;
+}
+
 export default function Leaderboard() {
     const { user } = useAuth();
     const [scope, setScope] = useState<Scope>("global");
@@ -71,7 +81,7 @@ export default function Leaderboard() {
                             Leaderboard
                         </h1>
                         <p className="text-sm text-muted-foreground">
-                            Ranked by total marks authored, then question count.
+                            Ranked by papers completed, then study time.
                         </p>
                     </div>
                     {user && (
@@ -102,7 +112,7 @@ export default function Leaderboard() {
                                 : "Global ranking"}
                         </CardTitle>
                         <CardDescription>
-                            Top {entries.length || 0} authors.
+                            Top {entries.length || 0} students.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -125,19 +135,19 @@ export default function Leaderboard() {
                                             <TableHead className="w-16">#</TableHead>
                                             <TableHead>User</TableHead>
                                             <TableHead className="text-right">
-                                                Papers
+                                                Completed
                                             </TableHead>
                                             <TableHead className="text-right">
-                                                Public
+                                                Practised
                                             </TableHead>
                                             <TableHead className="text-right">
-                                                Questions
+                                                Answered
                                             </TableHead>
                                             <TableHead className="text-right">
-                                                Marks
+                                                Study time
                                             </TableHead>
                                             <TableHead className="text-right">
-                                                Remixes
+                                                Streak
                                             </TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -163,20 +173,20 @@ export default function Leaderboard() {
                                                         </span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-right">
-                                                    {e.paper_count}
+                                                <TableCell className="text-right font-medium tabular-nums">
+                                                    {e.papers_completed}
                                                 </TableCell>
-                                                <TableCell className="text-right">
-                                                    {e.public_paper_count}
+                                                <TableCell className="text-right tabular-nums">
+                                                    {e.papers_attempted}
                                                 </TableCell>
-                                                <TableCell className="text-right">
-                                                    {e.question_count}
+                                                <TableCell className="text-right tabular-nums">
+                                                    {e.questions_answered}
                                                 </TableCell>
-                                                <TableCell className="text-right font-medium">
-                                                    {e.total_marks}
+                                                <TableCell className="text-right tabular-nums">
+                                                    {formatDuration(e.total_study_seconds)}
                                                 </TableCell>
-                                                <TableCell className="text-right">
-                                                    {e.remixes_received}
+                                                <TableCell className="text-right tabular-nums">
+                                                    {e.current_streak}d
                                                 </TableCell>
                                             </TableRow>
                                         ))}

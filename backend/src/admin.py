@@ -99,7 +99,7 @@ def teardown_admins():
 
 
 @admin_bp.route("/api/admin/verify", methods=["POST"])
-@supabase_auth_required()
+@supabase_auth_required(sync_user=True)
 def verify_admin():
     user_id = get_current_user_id()
     claims = get_current_user_claims()

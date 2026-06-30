@@ -47,7 +47,7 @@ def whotfisthis():
     )
 
 @management_bp.route("/api/account/username", methods=["PUT"])
-@supabase_auth_required()
+@supabase_auth_required(sync_user=True)
 def update_username():
     """Update the authenticated user's username."""
     user_id = get_current_user_id()
@@ -72,14 +72,14 @@ def update_username():
 
 
 @management_bp.route("/api/account/password", methods=["PUT"])
-@supabase_auth_required()
+@supabase_auth_required(sync_user=True)
 def update_password():
     """Password changes are handled by Supabase Auth."""
     return jsonify({"message": "Password changes are handled by Supabase Auth"}), 410
 
 
 @management_bp.route("/api/account", methods=["DELETE"])
-@supabase_auth_required()
+@supabase_auth_required(sync_user=True)
 def delete_account():
     """Delete the authenticated user's account."""
     user_id = get_current_user_id()
@@ -96,7 +96,7 @@ def delete_account():
 
 
 @management_bp.route("/api/account/avatar", methods=["PUT"])
-@supabase_auth_required()
+@supabase_auth_required(sync_user=True)
 def update_avatar():
     """Upload (or replace) the authenticated user's avatar image."""
     user_id = get_current_user_id()
@@ -130,7 +130,7 @@ def update_avatar():
 
 
 @management_bp.route("/api/account/avatar", methods=["DELETE"])
-@supabase_auth_required()
+@supabase_auth_required(sync_user=True)
 def delete_user_avatar():
     """Remove the authenticated user's avatar image."""
     user_id = get_current_user_id()

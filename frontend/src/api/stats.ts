@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import type { Attempt } from "./progress";
 import type { LeaderboardEntry } from "./social";
 
 export interface MyStats {
@@ -6,11 +7,16 @@ export interface MyStats {
     username: string;
     avatar_url?: string | null;
     joined_at?: string | null;
-    paper_count: number;
-    public_paper_count: number;
-    question_count: number;
-    total_marks: number;
-    remixes_received: number;
+    attempts_count: number;
+    papers_attempted: number;
+    papers_completed: number;
+    questions_answered: number;
+    total_study_seconds: number;
+    reveal_count: number;
+    current_streak: number;
+    longest_streak: number;
+    last_active_at?: string | null;
+    recent_attempts?: Attempt[];
 }
 
 export type AllUserStats = LeaderboardEntry;

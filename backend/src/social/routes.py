@@ -5,7 +5,7 @@ from auth.supabase import get_current_user_id, supabase_auth_required
 from questions.db import get_session
 from sqlmodel import select
 
-from .aggregations import compute_many
+from progress.aggregations import compute_many_students, ZERO_STUDENT_STATS
 from .db import SocialDB
 from .models import FriendshipDB  # noqa: F401 (ensures table registered)
 
@@ -105,26 +105,33 @@ def _leaderboard_entries(session, users: list[UserDB]) -> list[dict]:
     if not users:
         return []
 
-    stats = compute_many(session, [u.user_id for u in users])
+    stats = compute_many_students(session, [u.user_id for u in users])
 
     entries = []
     for u in users:
-        s = stats.get(u.user_id, {})
+        s = stats.get(u.user_id, dict(ZERO_STUDENT_STATS))
         entries.append(
             {
                 "user_id": u.user_id,
                 "username": u.username,
                 "avatar_url": u.avatar_url,
-                "paper_count": s.get("paper_count", 0),
-                "public_paper_count": s.get("public_paper_count", 0),
-                "question_count": s.get("question_count", 0),
-                "total_marks": s.get("total_marks", 0),
-                "remixes_received": s.get("remixes_received", 0),
+                "attempts_count": s.get("attempts_count", 0),
+                "papers_attempted": s.get("papers_attempted", 0),
+                "papers_completed": s.get("papers_completed", 0),
+                "questions_answered": s.get("questions_answered", 0),
+                "total_study_seconds": s.get("total_study_seconds", 0),
+                "current_streak": s.get("current_streak", 0),
+                "longest_streak": s.get("longest_streak", 0),
             }
         )
 
     entries.sort(
-        key=lambda e: (-e["total_marks"], -e["question_count"], e["username"])
+        key=lambda e: (
+            -e["papers_completed"],
+            -e["total_study_seconds"],
+            -e["questions_answered"],
+            e["username"],
+        )
     )
     for i, entry in enumerate(entries, start=1):
         entry["rank"] = i
