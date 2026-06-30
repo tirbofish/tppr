@@ -1,0 +1,1453 @@
+{
+  "id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+  "title": "Baulkham Hills High School  2019 Mathematics Trial",
+  "author_id": "",
+  "subject": "Mathematics",
+  "year": 2019,
+  "source": "trial",
+  "school": "Baulkham Hills High School",
+  "course_level": null,
+  "syllabus_id": null,
+  "visibility": "private",
+  "question_count": 16,
+  "total_marks": 100,
+  "duration_minutes": 180,
+  "topics": [],
+  "outcomes": [],
+  "created_at": "2026-06-30T13:04:42.027674Z",
+  "updated_at": "2026-06-30T13:04:42.027674Z",
+  "questions": [
+    {
+      "number": 1,
+      "type": "multiple_choice",
+      "marks": 1,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "Evaluate $\\frac{e}{\\sqrt{2.13+0.04^2}}$, correct to four significant figures"
+        }
+      ],
+      "options": [
+        {
+          "label": "A",
+          "content": [
+            {
+              "kind": "text",
+              "text": "1.871"
+            }
+          ]
+        },
+        {
+          "label": "B",
+          "content": [
+            {
+              "kind": "text",
+              "text": "0.8504"
+            }
+          ]
+        },
+        {
+          "label": "C",
+          "content": [
+            {
+              "kind": "text",
+              "text": "1.130"
+            }
+          ]
+        },
+        {
+          "label": "D",
+          "content": [
+            {
+              "kind": "text",
+              "text": "1.863"
+            }
+          ]
+        }
+      ],
+      "parts": null,
+      "answer": null,
+      "id": "0471f3be-b06e-4356-9bdf-7e37fa01ddae",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 2,
+      "type": "multiple_choice",
+      "marks": 1,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "What is the slope of the line with equation $4x - 2y + 3 = 0$?"
+        }
+      ],
+      "options": [
+        {
+          "label": "A",
+          "content": [
+            {
+              "kind": "text",
+              "text": "-2"
+            }
+          ]
+        },
+        {
+          "label": "B",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$$-\\frac{1}{2}$$"
+            }
+          ]
+        },
+        {
+          "label": "C",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$$\\frac{1}{2}$$"
+            }
+          ]
+        },
+        {
+          "label": "D",
+          "content": [
+            {
+              "kind": "text",
+              "text": "2"
+            }
+          ]
+        }
+      ],
+      "parts": null,
+      "answer": null,
+      "id": "98ad172f-07c2-42ee-b583-d5fb65da67ed",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 3,
+      "type": "multiple_choice",
+      "marks": 1,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "The first three terms of an arithmetic series are $-11, -7$ and $-3$. What is the $15^{\\text{th}}$ term of this series?"
+        }
+      ],
+      "options": [
+        {
+          "label": "A",
+          "content": [
+            {
+              "kind": "text",
+              "text": "59"
+            }
+          ]
+        },
+        {
+          "label": "B",
+          "content": [
+            {
+              "kind": "text",
+              "text": "255"
+            }
+          ]
+        },
+        {
+          "label": "C",
+          "content": [
+            {
+              "kind": "text",
+              "text": "45"
+            }
+          ]
+        },
+        {
+          "label": "D",
+          "content": [
+            {
+              "kind": "text",
+              "text": "495"
+            }
+          ]
+        }
+      ],
+      "parts": null,
+      "answer": null,
+      "id": "6901d9ad-1f1f-4234-a9c1-bea6c9d8143d",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 4,
+      "type": "multiple_choice",
+      "marks": 1,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "Sixty tickets are sold in a raffle. There are two prizes. Jane buys five tickets. Which expression gives the probability that Jane wins both prizes?"
+        }
+      ],
+      "options": [
+        {
+          "label": "A",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$$\\frac{5}{60} + \\frac{4}{59}$$"
+            }
+          ]
+        },
+        {
+          "label": "B",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$$\\frac{5}{60} + \\frac{4}{60}$$"
+            }
+          ]
+        },
+        {
+          "label": "C",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$$\\frac{5}{60} \\times \\frac{4}{59}$$"
+            }
+          ]
+        },
+        {
+          "label": "D",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$$\\frac{5}{60} \\times \\frac{4}{60}$$"
+            }
+          ]
+        }
+      ],
+      "parts": null,
+      "answer": null,
+      "id": "955e5bea-61ef-417a-92df-9091964c5a8f",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 5,
+      "type": "multiple_choice",
+      "marks": 1,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "The diagram shows the $x$-intercepts of the curve $y = f(x)$."
+        },
+        {
+          "kind": "image",
+          "url": "data:image/jpeg;base64,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",
+          "mime_type": "image/jpeg",
+          "width": 324,
+          "height": 136
+        },
+        {
+          "kind": "text",
+          "text": "[img-0.jpeg](img-0.jpeg)\nExpression to evaluate the area bounded by this curve and the $x$-axis is"
+        }
+      ],
+      "options": [
+        {
+          "label": "A",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$\\int_{-2}^{1} f(x)dx$"
+            }
+          ]
+        },
+        {
+          "label": "B",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$\\left| \\int_{-2}^{0} f(x)dx \\right| + \\int_{0}^{1} f(x)dx$"
+            }
+          ]
+        },
+        {
+          "label": "C",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$\\left| \\int_{-2}^{0} f(x)dx + \\int_{0}^{1} f(x)dx \\right|$"
+            }
+          ]
+        },
+        {
+          "label": "D",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$\\int_{-2}^{0} f(x)dx + \\left| \\int_{0}^{1} f(x)dx \\right|$"
+            }
+          ]
+        }
+      ],
+      "parts": null,
+      "answer": null,
+      "id": "7c0deff8-1d23-4ad3-84c0-40c9d1b3342a",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 6,
+      "type": "multiple_choice",
+      "marks": 1,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "What is the value of the derivative of $y = 2\\sin 2x - 3\\tan x$ at $x = 0$?"
+        }
+      ],
+      "options": [
+        {
+          "label": "A",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$-1$"
+            }
+          ]
+        },
+        {
+          "label": "B",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$1$"
+            }
+          ]
+        },
+        {
+          "label": "C",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$3$"
+            }
+          ]
+        },
+        {
+          "label": "D",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$0$"
+            }
+          ]
+        }
+      ],
+      "parts": null,
+      "answer": null,
+      "id": "1f5192ad-6b1c-484d-b09e-0178c1377c65",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 7,
+      "type": "multiple_choice",
+      "marks": 1,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "Using Simpson's rule with 4 subintervals, which expression gives the approximate area under the curve $y = xe^x$ between $x = 1$ and $x = 5$?"
+        }
+      ],
+      "options": [
+        {
+          "label": "A",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$\\frac{1}{3}(e + 6e^2 + 4e^3 + 10e^4 + 3e^5)$"
+            }
+          ]
+        },
+        {
+          "label": "B",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$\\frac{2}{3}(e + 6e^2 + 4e^3 + 10e^4 + 3e^5)$"
+            }
+          ]
+        },
+        {
+          "label": "C",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$\\frac{2}{3}(e + 8e^2 + 6e^3 + 16e^4 + 5e^5)$"
+            }
+          ]
+        },
+        {
+          "label": "D",
+          "content": [
+            {
+              "kind": "text",
+              "text": "$\\frac{1}{3}(e + 8e^2 + 6e^3 + 16e^4 + 5e^5)$"
+            }
+          ]
+        }
+      ],
+      "parts": null,
+      "answer": null,
+      "id": "443878e0-ba97-4578-ae30-d2bcfae7652a",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 8,
+      "type": "multiple_choice",
+      "marks": 1,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "The diagram shows a sketch of the graph of $y = 2\\sin x - 1$ and $y = \\frac{1}{2}x$."
+        },
+        {
+          "kind": "image",
+          "url": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAC6AZkDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigDCl8RwQa82jyQSi5IjaLkfvFbOSOe205rdrGbRvP8RR6rc+S/2eMpbAR4dN2N2Wzz0rZoAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKDyMUAec6v4n1S3+IFqts4Gi26tHdKRjc3GWHsuQPzr0RWV0DqQVYZBHeuQudItLbxDpdiqs0EkFwJN7ZL7sZJNdTa2yWdrFbRlikahV3HJwPegCxRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFACEgAknAFZ+l6zZawlw9jL5iQTNC7YwNw649asXlsLuzltmkeNZVKlozhhn0rD8J+GpfDa6jG99JdR3FyZY9+MquAMHAHNAEmpHHjPRveKYfoK6Gub1NgPG+iLnkxTY/KukoAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAOW1YH/AIWB4fI/54zg/wDfNdTXNaoP+K60H/rlP/6DXS0AFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABiiiigAooooAKKKKACiiigDJsPEGn6nqN7YWsjvNZkedlCoGc9CevQ9K1q5bTY9TXxtql1PpcsNlNDHHFcNLGQxQtngMSM5GOK6mgAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigCKUOYnETKsmDtLDIB96w/DN5q90NQj1Q28ot7jyobmCMxiZcAk7STjBJHU5xW3NEs8Lwvu2upU7SQcH0I6Vn6L4fsPD9u8GnrMsbnJEs7yfluJx1oAparn/hNdA9Clx/6BXR1zurZHjHw97i4H/kOuioAKKKKACiiigAooooAKKKKACiiigAooooAKKKgmure3XdNPHGvqzAUAT0VkS+JdHhHOoQt7Idx/SqreLIHB+x6ff3R7bISAfxNAHQ0Vzcer6/czBYdBEEeMl7iYD9BUep6f4l1TSLu2F7aWcksbIhiQkjI45NAHT9R1rgdMj1GfxrfaWt3dNYWV0l6ZjKSCGjI8nP8AvfNj0+tXfAnhjWfD+meXreuTahMV2+WT8iD27npXS6dplppVqLayhWKIHOB1J9Se9AGL4mstbubq3fS3mEYUhxHeeTz9NjZq9okGoQadKl20guC5KGacT4GBjkKvHt+tbNB6UAcvpuqXd3qn2Qa9ody8ZJlgtoW8zAODj96cY+hxWOsl9c/EYqH1hNGlQglkYRtcRsOBxlUwevAbHU0u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",
+          "mime_type": "image/jpeg",
+          "width": 409,
+          "height": 186
+        },
+        {
+          "kind": "text",
+          "text": "[img-1.jpeg](img-1.jpeg)\nHow many solutions are there for the equation $2\\sin x - 1 = \\frac{1}{2}x$, where $-\\pi \\leq x \\leq \\pi$?"
+        }
+      ],
+      "options": [
+        {
+          "label": "A",
+          "content": [
+            {
+              "kind": "text",
+              "text": "3"
+            }
+          ]
+        },
+        {
+          "label": "B",
+          "content": [
+            {
+              "kind": "text",
+              "text": "2"
+            }
+          ]
+        },
+        {
+          "label": "C",
+          "content": [
+            {
+              "kind": "text",
+              "text": "1"
+            }
+          ]
+        },
+        {
+          "label": "D",
+          "content": [
+            {
+              "kind": "text",
+              "text": "0"
+            }
+          ]
+        }
+      ],
+      "parts": null,
+      "answer": null,
+      "id": "40b26d15-9820-4c57-93f2-1f42bbd01da7",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 9,
+      "type": "multiple_choice",
+      "marks": 1,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "What are the solution of $\\cos(x - \\frac{\\pi}{3}) = \\frac{1}{2}$ for $0 \\leq x \\leq 2\\pi$."
+        }
+      ],
+      "options": [
+        {
+          "label": "A",
+          "content": [
+            {
+              "kind": "text",
+              "text": "\\(x = 0,\\frac{\\pi}{6}\\)"
+            }
+          ]
+        },
+        {
+          "label": "B",
+          "content": [
+            {
+              "kind": "text",
+              "text": "\\(x = \\frac{2\\pi}{3}, 2\\pi\\)"
+            }
+          ]
+        },
+        {
+          "label": "C",
+          "content": [
+            {
+              "kind": "text",
+              "text": "\\(x = \\frac{\\pi}{3},\\frac{5\\pi}{6}\\)"
+            }
+          ]
+        },
+        {
+          "label": "D",
+          "content": [
+            {
+              "kind": "text",
+              "text": "\\(x = \\frac{\\pi}{3}, 0\\)"
+            }
+          ]
+        }
+      ],
+      "parts": null,
+      "answer": null,
+      "id": "d67fb284-2501-41da-8293-c697bf54d52d",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 10,
+      "type": "multiple_choice",
+      "marks": 1,
+      "stimulus": null,
+      "content": [
+        {
+          "kind": "text",
+          "text": "The diagram below shows the region bounded by the curve $y = x^2$, the y-axis and the line $y = 16$."
+        },
+        {
+          "kind": "image",
+          "url": "data:image/jpeg;base64,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",
+          "mime_type": "image/jpeg",
+          "width": 478,
+          "height": 226
+        },
+        {
+          "kind": "text",
+          "text": "[img-2.jpeg](img-2.jpeg)\nWhich of the following gives the volume of the solid of revolution when the region is rotated about the y-axis?"
+        }
+      ],
+      "options": [
+        {
+          "label": "A",
+          "content": [
+            {
+              "kind": "text",
+              "text": "\\(\\pi \\int_{0}^{4}x^{4}dx\\)"
+            }
+          ]
+        },
+        {
+          "label": "B",
+          "content": [
+            {
+              "kind": "text",
+              "text": "\\(\\pi \\int_{0}^{16}x^{4}dx\\)"
+            }
+          ]
+        },
+        {
+          "label": "C",
+          "content": [
+            {
+              "kind": "text",
+              "text": "\\(\\pi \\int_{0}^{4}ydy\\)"
+            }
+          ]
+        },
+        {
+          "label": "D",
+          "content": [
+            {
+              "kind": "text",
+              "text": "\\(\\pi \\int_{0}^{16}ydy\\)"
+            }
+          ]
+        }
+      ],
+      "parts": null,
+      "answer": null,
+      "id": "c439c20d-e60b-4924-94ea-8a600920d478",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 11,
+      "type": "long_answer",
+      "marks": 15,
+      "stimulus": null,
+      "content": null,
+      "options": null,
+      "parts": [
+        {
+          "label": "a",
+          "marks": 1,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Simplify: $3x - (8 - 13x)$"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "b",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Factorise fully $81 - 3x^3$"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "c",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Express $\\frac{4}{2-\\sqrt{5}}$ with a rational denominator"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "d",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Solve $|3 - 2x| = 4$"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "e",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Differentiate $(x - e^x)^5$"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "f",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Evaluate $\\int_{0}^{\\frac{\\pi}{2}} \\sin 2x dx$"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "g",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Differentiate $\\ln \\left( \\frac{2x}{x-2} \\right)$"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "h",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "The curve $y = f(x)$ passes through the point $\\left( \\frac{1}{2}, 0 \\right)$ and its derivative function is\n$f'(x) = 2e^{2x-1} - 1$. Find the equation of the curve."
+            }
+          ],
+          "parts": null
+        }
+      ],
+      "answer": null,
+      "id": "fd84367b-d620-4b3a-9f8e-46dee2eed0d4",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 12,
+      "type": "long_answer",
+      "marks": 15,
+      "stimulus": null,
+      "content": null,
+      "options": null,
+      "parts": [
+        {
+          "label": "a",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Find the solutions of $2\\sin\\theta = \\sqrt{3}$ for $0 \\leq \\theta \\leq 2\\pi$"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "b",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Find $\\int(1 + \\sec^2 x)dx$"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "c",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Evaluate the limiting sum of the series $4 - 1 + \\frac{1}{4} - \\frac{1}{16} + \\cdots$"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "d",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Find $f'(x)$, where $f(x) = \\frac{x^2 - 3}{3x - 4}$"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "e",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "For what values of $k$ does the quadratic equation $x^2 - 8x + k = 0$ have real distinct roots?"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "f",
+          "marks": 3,
+          "content": [
+            {
+              "kind": "text",
+              "text": "$P(1, \\frac{1}{4})$ is a point on the parabola $y = \\frac{x^2}{4}$."
+            }
+          ],
+          "parts": [
+            {
+              "label": "i",
+              "marks": 1,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Find the coordinates of the focus"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "ii",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Show that the equation of the tangent to the parabola is $2x - 4y - 1 = 0$"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "iii",
+              "marks": null,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Find the coordinates of the point of intersection of the tangent at P and the directrix of 2 the parabola."
+                }
+              ],
+              "parts": null
+            }
+          ]
+        }
+      ],
+      "answer": null,
+      "id": "7a5f7fb5-95c4-47ff-9462-cea58336f0c2",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 13,
+      "type": "long_answer",
+      "marks": 15,
+      "stimulus": null,
+      "content": null,
+      "options": null,
+      "parts": [
+        {
+          "label": "a",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "One of the roots of $x^2 + mx + n = 0$ is three times the other. Prove that $3m^2 = 16n$"
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "b",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "(i) Find the domain and the range for the function $f(x) = \\sqrt{4 - x^2}$"
+            }
+          ],
+          "parts": [
+            {
+              "label": "ii",
+              "marks": 3,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "On the same number plane, shade the region where the points $P(x, y)$ satisfy both of the inequalities $y < \\sqrt{4 - x^2}$ and $y \\geq x - 5$"
+                }
+              ],
+              "parts": null
+            }
+          ]
+        },
+        {
+          "label": "c",
+          "marks": 8,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Consider the curve $y = (1 + x^2)(2 - x)$."
+            }
+          ],
+          "parts": [
+            {
+              "label": "i",
+              "marks": 3,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Show that there are stationary points at $x = 1$ and at $x = \\frac{1}{3}$. Hence determine their nature"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "ii",
+              "marks": 1,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Find the coordinates of any point of inflexion on the curve"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "iii",
+              "marks": 4,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Sketch the curve, labelling the stationary points, point of inflexion and $y$-intercept, in the domain $-1 \\leq x \\leq 3$"
+                }
+              ],
+              "parts": null
+            }
+          ]
+        }
+      ],
+      "answer": null,
+      "id": "688b5dfc-15de-4e3e-8f2e-d5a921f96e23",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 14,
+      "type": "long_answer",
+      "marks": 15,
+      "stimulus": null,
+      "content": null,
+      "options": null,
+      "parts": [
+        {
+          "label": "a",
+          "marks": 4,
+          "content": [
+            {
+              "kind": "image",
+              "url": "data:image/jpeg;base64,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",
+              "mime_type": "image/jpeg",
+              "width": 228,
+              "height": 225
+            },
+            {
+              "kind": "text",
+              "text": "[img-3.jpeg](img-3.jpeg)\nNOT TO SCALE"
+            }
+          ],
+          "parts": [
+            {
+              "label": "i",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Show that the area, $S$, of the region ACDB is given by $S = \\frac{\\pi}{8}(R^2 - r^2)$"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "ii",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Find the perimeter of the region ACDB in terms of $R$ and $r$\n**Question 14 continues on the following page**\n# Question 14 (continued)"
+                }
+              ],
+              "parts": null
+            }
+          ]
+        },
+        {
+          "label": "b",
+          "marks": 11,
+          "content": [
+            {
+              "kind": "text",
+              "text": "In the diagram A, B and C are the points (1, 0), (0, 8) and (7, 4) respectively."
+            },
+            {
+              "kind": "image",
+              "url": "data:image/jpeg;base64,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",
+              "mime_type": "image/jpeg",
+              "width": 353,
+              "height": 257
+            },
+            {
+              "kind": "text",
+              "text": "[img-4.jpeg](img-4.jpeg)\nNOT TO SCALE"
+            }
+          ],
+          "parts": [
+            {
+              "label": "i",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Show that the equation of AC is 2x - 3y - 2 = 0"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "ii",
+              "marks": 1,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Find the angle between AC and the x-axis"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "iii",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Point D lies on AC and BD ⊥ AC. Show that the equation of BD is 3x + 2y - 16 = 0"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "iv",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Show that BD is the perpendicular bisector of AC"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "v",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Prove that ΔABD ≡ ΔCBD"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "vi",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Find the area of ΔABC"
+                }
+              ],
+              "parts": null
+            }
+          ]
+        }
+      ],
+      "answer": null,
+      "id": "ef94375c-3b63-41c1-a08f-72765230c3b9",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 15,
+      "type": "long_answer",
+      "marks": 15,
+      "stimulus": null,
+      "content": null,
+      "options": null,
+      "parts": [
+        {
+          "label": "a",
+          "marks": 4,
+          "content": [
+            {
+              "kind": "text",
+              "text": "John and Peter play against each other in a tennis match. The champion will be the first person to win two games. John's probability of winning each game is 0.6 and Peter's probability of winning each game is 0.4."
+            }
+          ],
+          "parts": [
+            {
+              "label": "i",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Draw the probability tree diagram and list the sample space for this match"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "ii",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "What is the probability that John wins the match?"
+                }
+              ],
+              "parts": null
+            }
+          ]
+        },
+        {
+          "label": "b",
+          "marks": 5,
+          "content": [
+            {
+              "kind": "text",
+              "text": "Joe's employer makes contributions to his superannuation scheme on 1st January each year. Any amount invested in this scheme earns interest at the rate of 7.5% per annum, compounded annually."
+            }
+          ],
+          "parts": [
+            {
+              "label": "i",
+              "marks": 1,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Let $M$ be the annual contribution. Show that the first contribution to the scheme is worth $M(1 + \\frac{7.5}{100})^n$ at the end of the $n^{\\text{th}}$ year"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "ii",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Hence show that the value of the investment, $A_n$, at the end of the $n^{\\text{th}}$ year is\n$$A_n = \\frac{M \\times 1.075 \\times (1.075^n - 1)}{0.075}$$"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "iii",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "The employer makes an annual contribution of $20526. Joe decides to change jobs when his investment is worth more than $750 000. What is the least number of whole years that Joe will need to be in this current job?"
+                }
+              ],
+              "parts": null
+            }
+          ]
+        },
+        {
+          "label": "c",
+          "marks": 6,
+          "content": [
+            {
+              "kind": "text",
+              "text": "A particle is moving in a straight line. Its velocity, $\\dot{x}$, at time $t$ seconds is given by\n$$\\dot{x} = 2\\cos t - 1 \\text{ where } t \\geq 0.$$\nInitially, the particle is at the origin, $O$, where the displacement is $x = 0$ and $x$ is measured in metres."
+            }
+          ],
+          "parts": [
+            {
+              "label": "i",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Find an expression for $x$ in terms of $t$"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "ii",
+              "marks": 1,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Describe the initial motion of the particle"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "iii",
+              "marks": 1,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Determine when the particle first comes to rest"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "iv",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Calculate the total distance travelled in the first $\\pi$ seconds"
+                }
+              ],
+              "parts": null
+            }
+          ]
+        }
+      ],
+      "answer": null,
+      "id": "71b0b3ba-237c-45f3-bf5e-15a953b24e6d",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    },
+    {
+      "number": 16,
+      "type": "long_answer",
+      "marks": 15,
+      "stimulus": null,
+      "content": null,
+      "options": null,
+      "parts": [
+        {
+          "label": "a",
+          "marks": 2,
+          "content": [
+            {
+              "kind": "text",
+              "text": "A truck travelled 140 km from port P to port Q on a bearing of 050° T. It then travelled 260 km from port Q to port R on a bearing of 130°T."
+            },
+            {
+              "kind": "image",
+              "url": "data:image/jpeg;base64,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",
+              "mime_type": "image/jpeg",
+              "width": 153,
+              "height": 147
+            },
+            {
+              "kind": "text",
+              "text": "[img-5.jpeg](img-5.jpeg)"
+            }
+          ],
+          "parts": [
+            {
+              "label": "i",
+              "marks": null,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Explain why angle \\( PQR \\) is \\( 100^{\\circ} \\)."
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "ii",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Find the distance between ports P and R, correct to the nearest km"
+                }
+              ],
+              "parts": null
+            }
+          ]
+        },
+        {
+          "label": "b",
+          "marks": 3,
+          "content": [
+            {
+              "kind": "text",
+              "text": "A quantity of a radioactive material decays according to the equation\n$$\\frac{dM}{dt} = -kM,$$\nwhere M is the mass of the material in kg, t is the time in years and k is a constant."
+            }
+          ],
+          "parts": [
+            {
+              "label": "i",
+              "marks": 1,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Show that \\( M = Ae^{-kt} \\) is a solution to the equation, where \\( A \\) is a constant"
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "ii",
+              "marks": 2,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "The half-life period of the material for decay is 300 years. If the initial amount of material is \\(20kg\\), find the amount, correct to two decimal places, remaining after 700 years\nQuestion 16 continues on the following page\nQuestion 16 (continued)"
+                }
+              ],
+              "parts": null
+            }
+          ]
+        },
+        {
+          "label": "c",
+          "marks": null,
+          "content": [
+            {
+              "kind": "image",
+              "url": "data:image/jpeg;base64,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",
+              "mime_type": "image/jpeg",
+              "width": 282,
+              "height": 191
+            },
+            {
+              "kind": "text",
+              "text": "[img-6.jpeg](img-6.jpeg)\nThe diagram shows the graph of $y = \\frac{1}{\\sqrt{3 - 2x}}$. The region bounded by this graph, $x = 0.5$, $x = 1.0$ and the $x$-axis is rotated about the $x$-axis. Find the volume of the solid of revolution formed in exact form."
+            }
+          ],
+          "parts": null
+        },
+        {
+          "label": "d",
+          "marks": 0,
+          "content": [
+            {
+              "kind": "text",
+              "text": "A rectangular metal sheet is 30 cm high and 15 cm wide. The lower right-hand corner of the sheet is folded over along PQ so as to reach the leftmost edge of the sheet. Let x be the horizontal distance and y be the vertical distance folded as shown in the diagram."
+            },
+            {
+              "kind": "image",
+              "url": "data:image/jpeg;base64,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",
+              "mime_type": "image/jpeg",
+              "width": 193,
+              "height": 180
+            },
+            {
+              "kind": "text",
+              "text": "[img-7.jpeg](img-7.jpeg)\nNOT TO SCALE"
+            }
+          ],
+          "parts": [
+            {
+              "label": "i",
+              "marks": null,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Show that \\( y = \\frac{hx}{2x - 15} \\) where \\( h = \\sqrt{x^2 - (15 - x)^2} \\)."
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "ii",
+              "marks": null,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Show that \\( L \\), the length of the FOLD, is given by \\( L^2 = \\frac{2x^3}{2x - 15} \\)."
+                }
+              ],
+              "parts": null
+            },
+            {
+              "label": "iii",
+              "marks": null,
+              "content": [
+                {
+                  "kind": "text",
+                  "text": "Hence, find the minimum length of \\(L\\).\n# End of Examination\n# Baulkham Hills High School\nTrial HSC Examination 2019\nMarking Guideline - Mathematics\nAward 1 mark to each correct answer.\nAnswers: 1. D 2. D 3. C 4. C 5. D 6. B 7. D 8. A 9. B 10. D\nIn all questions, award FULL marks for **correct answers** with **necessary working**.\nUse this suggested solutions in conjunction with the marking criteria."
+                },
+                {
+                  "kind": "table",
+                  "html": "<table><thead><tr><th>Question</th><th>Suggested solutions</th><th>Marking criteria</th></tr></thead><tr><td>11(a)</td><td>$$-8 + 16x$$</td><td>1- correct answer</td></tr><tr><td>11(b)</td><td>$$81 - 3x^3 = 3(3^3 - x^3)$$<br/>$$= 3(3 - x)(9 + 3x + x^2)$$</td><td>2- correct solution<br/>1- HCF &amp; identified the difference of cubes</td></tr><tr><td>11(c)</td><td>$$\\frac{4}{2 - \\sqrt{5}} = \\frac{4}{2 - \\sqrt{5}} \\times \\frac{2 + \\sqrt{5}}{2 + \\sqrt{5}}$$<br/>$$= \\frac{8 + 4\\sqrt{5}}{4 - 5}$$<br/>$$= -8 - 4\\sqrt{5}$$</td><td>2- correct solution<br/>1- multiplied by the conjugate surd</td></tr><tr><td>11(d)</td><td><b>Case:</b> $$3 - 2x \\geq 0$$<br/>$$3 - 2x = 4$$<br/>$$x = -\\frac{1}{2}$$<br/>Test: $$LHS = |3 + 1| = 4; RHS = 4$$<br/>$$LHS = RHS$$.<br/><b>Case:</b> $$3 - 2x &lt; 0$$<br/>$$-3 + 2x = 4$$<br/>$$x = \\frac{7}{2}$$<br/>Test: $$LHS = \\left| 3 - 2 \\times \\frac{7}{2} \\right| = 4; RHS = 4$$<br/>$$LHS = RHS$$.<br/>$$x = -\\frac{1}{2}$$ <b>and</b> $$x = \\frac{7}{2}$$</td><td>2- both values for $$x$$<br/>1- one value for $$x$$</td></tr><tr><td>11(e)</td><td>$$\\frac{d(x - e^x)^5}{dx} = 5(x - e^x)^4 \\times (1 - e^x)$$</td><td>2- correct solution<br/>1- correct use of <b>either</b> the power rule <b>or</b> the chain rule.</td></tr></table>"
+                },
+                {
+                  "kind": "table",
+                  "html": "<table><thead><tr><th>Question</th><th>Suggested solutions</th><th>Marking criteria</th></tr></thead><tr><td>11(f)</td><td>\n$$\\int_0^{\\frac{\\pi}{3}} \\sin 2x\\,dx = \\left[ -\\frac{1}{2} \\times \\cos 2x \\right]_0^{\\frac{\\pi}{3}} = \\frac{3}{4}$$\n</td><td>\n2- correct solution<br/>\n1- correct integration.\n</td></tr><tr><td>11(g)</td><td>\n$$\\frac{d[\\ln\\left(\\frac{2x}{x-2}\\right)]}{dx} = \\frac{d[\\ln(2x)]}{dx} - \\frac{d[\\ln(x-2)]}{dx} = \\frac{1}{x} - \\frac{1}{x-2} = \\frac{-2}{x^2 - 2x}$$\n</td><td>\n2- correct solution [not necessarily as a single fraction]<br/>\n1- correct use of a rule for differentiation.\n</td></tr><tr><td>11(h)</td><td>\n$$y = \\int (2e^{2x-1} - 1)\\,dx = 2 \\times \\frac{1}{2} \\times e^{2x-1} - x + C$$\n$$\\left(\\frac{1}{2}, 0\\right)\\text{lies on the curve.} \\quad \\therefore C = -\\frac{1}{2}$$\n$$y = e^{2x-1} - x - \\frac{1}{2}$$\n</td><td>\n2- correct solution<br/>\n1- integral <b>without</b> the integration constant.\n</td></tr><tr><td>12(a)</td><td>\n$$2\\sin\\theta = \\sqrt{3}\\text{ for } 0 \\leq \\theta \\leq 2\\pi.$$<br/>\n$$\\sin\\theta = \\frac{\\sqrt{3}}{2}$$\n$$\\theta = \\frac{\\pi}{3}, \\quad \\frac{2\\pi}{3}$$\n</td><td>\n2- correct solution<br/>\n1- reference angle = $$\\frac{\\pi}{3}$$.\n</td></tr><tr><td>12(b)</td><td>\n$$\\int (1 + \\sec^2 x)\\,dx = \\int dx + \\int \\sec^2 x\\,dx = x + \\tan x + C$$\n</td><td>\n2- correct solution<br/>\n1- expressed as sum of $$\\int dx$$ and $$\\int \\sec^2 x\\,dx$$.\n</td></tr><tr><td>12(c)</td><td>\n$$4 - 1 + \\frac{1}{4} - \\frac{1}{16} + \\cdots$$ is a GP with $$a = 1$$ and $$r = -\\frac{1}{4}$$.<br/>\nAs $$|r| &lt; 1$$, $$S_\\infty = \\frac{4}{1 - (-\\frac{1}{4})} = \\frac{16}{5} = 3\\frac{1}{5}$$\n</td><td>\n2- correct solution<br/>\n1- $$a = 1$$ and $$r = -\\frac{1}{4}$$.\n</td></tr></table>"
+                },
+                {
+                  "kind": "table",
+                  "html": "<table><tr><td>12(d)</td><td>\n$$f'(x) = \\frac{(3x-4)\\frac{d(x^2-3)}{dx} - (x^2-3)\\frac{d(3x-4)}{dx}}{(3x-4)^2}$$\n$$= \\frac{(3x-4) \\times 2x - (x^2-3) \\times 3}{(3x-4)^2}$$\n$$= \\frac{3x^2 - 8x + 9}{(3x-4)^2}$$\n</td><td>\n2- correct solution<br/>\n1- correct use of the quotient rule.\n</td></tr></table>"
+                },
+                {
+                  "kind": "table",
+                  "html": "<table><thead><tr><th>Question</th><th>Suggested solutions</th><th>Marking criteria</th></tr></thead><tr><td>12(e)</td><td>For real distinct roots $\\backslash Delta\\; 0$where $\\backslash Delta\\; =\\; (-8)^2\\; -\\; 4\\; \\backslash times\\; 1\\; \\backslash times\\; k$4k &lt; 64k &lt; 16</td><td>2- correct solution1- $(-8)^2\\; -\\; 4\\; \\backslash times\\; 1\\; \\backslash times\\; k\\; &gt;\\; 0$ or equivalent expression</td></tr><tr><td>12(f)(i)(ii)(iii)</td><td>$x^2\\; =\\; 4y$ and $P(1,\\backslash frac\\{1\\}\\{4\\})$4a = 4 , a = 1 hence the <b>focus is (0, 1)</b>Gradient, m, at $P\\; =\\; \\backslash frac\\{2x\\}\\{4\\}$ where $x\\; =\\; 1$. $\\backslash circ\\; m\\; =\\; \\backslash frac\\{1\\}\\{2\\}$Equation of the tangent to the parabola at P:$y\\; -\\backslash frac\\{1\\}\\{4\\}\\; =\\; \\backslash frac\\{1\\}\\{2\\}\\; (x\\; -\\; 1)$2x - 4y - 1 = 0Equation of the directrix: $y\\; =\\; -1$.substitute $y\\; =\\; -1$ in $2x\\; -\\; 4y\\; -\\; 1\\; =\\; 0$ $\\backslash circ\\; x\\; =\\; \\backslash frac\\{3\\}\\{2\\}$Required coordinates: $(\\backslash frac\\{3\\}\\{2\\},\\; -\\; 1)$</td><td>1- correct answer2- correct solution1- gradient of the tangent at P2- correct solution1- equation of the directrix.</td></tr><tr><td>13(a)</td><td>Let the roots be $\\backslash alpha$ and $3\\backslash alpha$.$\\backslash alpha\\; +\\; 3\\backslash alpha\\; =\\; -m$ and $\\backslash alpha\\; \\backslash times\\; 3\\backslash alpha\\; =\\; n$4$\\backslash alpha\\; =\\; -m$ and $3\\backslash alpha^2\\; =\\; n$3 $\\backslash times\\; (\\backslash frac\\{-m\\}\\{4\\})^2\\; =\\; n$ $\\backslash rightarrow\\; 3m^2\\; =\\; 16n$</td><td>2- correct proof1- sum and product of roots</td></tr><tr><td>13(b)(i)(ii)</td><td><b>Domain</b> = {<b>x</b>: $-\\; 2\\; \\backslash leq\\; x\\; \\backslash leq\\; 2$}<b>Range</b> = {<b>y</b>: $0\\; \\backslash leq\\; y\\; \\backslash leq\\; 2$}</b></td><td>1- correct answer1- correct answer3- correct solution [showing all included and excluded points for the region]2- correct shapes and intercepts (on both axes) for both curves1- correct graph of ONE of the given functions.</td></tr></table>"
+                },
+                {
+                  "kind": "table",
+                  "html": "<table><tr><td>13(c)(i)</td><td>At stationary points \\( \\frac{dy}{dx} = 0 \\) where \\( y = (2 - x)(1 + x^2) \\)\\( \\frac{dy}{dx} = -3x^2 + 4x - 1 \\)\\( = (x - 1)(1 - 3x) \\)\\( (x - 1)(1 - 3x) = 0 \\rightarrow x = 1 \\text{ or } x = \\frac{1}{3} \\)Stationary points are \\( A(1,2) \\) and \\( B\\left(\\frac{1}{3},\\frac{50}{27}\\right) \\).![img-8.jpeg](img-8.jpeg)\\( \\Delta \\exists \\text{ a maximum at } A \\)![img-9.jpeg](img-9.jpeg)\\( \\Delta \\exists \\text{ a minimum at } B \\)</td><td>3 - correct solution2- both \\( x \\) values when \\( \\frac{dy}{dx} = 0 \\).1- found \\( \\frac{dy}{dx} \\).</td></tr><tr><td>13(c)(ii)(iii)</td><td>\\( \\frac{d^2y}{dx^2} = -6x + 4 \\)\\( \\frac{d^2y}{dx^2} = 0 \\rightarrow x = \\frac{2}{3} \\)At point \\( C\\left(\\frac{2}{3},\\frac{52}{27}\\right) \\), \\( \\frac{d^2y}{dx^2} = 0 \\) and \\( \\exists \\text{ a change in concavity.} \\)![img-10.jpeg](img-10.jpeg)Point C is a point of inflexion.![img-11.jpeg](img-11.jpeg)</td><td>1- correct answer4- correct solution[includes the restricted domain and correct shape]3- stationary points, point of Inflexion AND \\( y \\) -intercept2- stationary points and point of inflexion1- \\( y \\) -intercept</td></tr><tr><td>14(a)(i)</td><td>Area of the region ACDB\\( = \\text{Sector OAB} - \\text{Sector OCD} \\)\\( = \\frac{1}{2} \\times R^2 \\times \\frac{\\pi}{4} - \\frac{1}{2} \\times r^2 \\times \\frac{\\pi}{4} \\)\\( S = \\frac{\\pi}{8}(R^2 - r^2) \\)</td><td>2- correct proof1- correct algebraic expression for area of a sector</td></tr></table>"
+                },
+                {
+                  "kind": "table",
+                  "html": "<table><tr><td>14(a)(ii)</td><td>Perimeter of the region ACDB<br/>= AC + BD + arc CD + arc AB<br/>= (R - r) + (R - r) + $$\\frac{\\pi r}{4}$$ + $$\\frac{\\pi R}{4}$$<br/>= 2(R - r) + $$\\frac{\\pi}{4}$$(R + r)</td><td>2- correct answer<br/>1- correct algebraic expressions for the arc lengths</td></tr><tr><td>14b(i)</td><td>$$m_{AC} = \\frac{4 - 0}{7 - 1} = \\frac{2}{3}$$<br/>Equation of AC: $$y - 0 = \\frac{2}{3}(x - 1)$$<br/>$$2x - 3y - 2 = 0$$</td><td>2- correct proof<br/>1- correct gradient</td></tr><tr><td>(ii)</td><td>Angle between AC and the x-axis = $$\\tan^{-1}\\left(\\frac{2}{3}\\right)$$<br/>= $$33^\\circ 41'$$ (or $$\\approx 34^\\circ$$)</td><td>1- correct answer</td></tr><tr><td>(iii)</td><td>$$A(1, 0), \\quad B(0, 8)$$ and $$C(7, 4)$$.<br/>$$BD \\perp AC$$<br/>$$m_{BD} \\times \\frac{2}{3} = -1 \\quad \\therefore m_{BD} = -\\frac{3}{2}$$<br/>Equation of BD: $$y - 8 = -\\frac{3}{2}(x - 0)$$<br/>$$3x + 2y - 16 = 0$$</td><td>2- correct proof<br/>1- $$m_{BD} = -\\frac{3}{2}$$</td></tr><tr><td>(iv)</td><td>$$M(4, 2)$$ where M is the midpoint of AC.<br/>Equation of BD: $$3x + 2y - 16 = 0$$<br/>Equation of AC: $$2x - 3y - 2 = 0$$<br/>Solving simultaneously, we have D(4,2). Hence M and D are one and the same point.<br/>$$\\therefore BD$$ is the perpendicular bisector of AC.</td><td>2- correct proof<br/>1- coordinates of D.</td></tr><tr><td>14(b) (v)</td><td>In $$\\triangle ABD$$ and $$\\triangle CBD$$,<br/>$$AD = DC$$ [D is the midpoint of AC]<br/>$$\\angle ADB = 90^\\circ = \\angle CDB$$ [BD $$\\perp$$ AC, proven]<br/>BD is common<br/>$$\\triangle ABD \\equiv \\triangle CBD$$ [SAS]</td><td>2- correct proof<br/>1- statements with incorrect $$\\equiv$$ condition.</td></tr><tr><td>(vi)</td><td>$$|\\triangle ABC| = \\frac{1}{2} \\times AC \\times BD$$<br/>$$BD = \\sqrt{(4 - 0)^2 + (2 - 8)^2} = \\sqrt{52}$$ units<br/>$$AC = \\sqrt{(7 - 1)^2 + (4 - 0)^2} = \\sqrt{52}$$ units<br/>$$|\\triangle ABC| = \\frac{1}{2} \\times \\sqrt{52} \\times \\sqrt{52}$$<br/>= $$26$$ units<sup>2</sup></td><td>2- correct answer<br/>1- an expression to evaluate $$|\\triangle ABC|$$ and the size of AC or BD.</td></tr></table>"
+                },
+                {
+                  "kind": "table",
+                  "html": "<table><thead><tr><th>Question</th><th>Suggested solutions</th><th>Marking criteria</th></tr></thead><tr><td>15(a)(i)</td><td>\n1<sup>st</sup> Game 2<sup>nd</sup> Game 3<sup>rd</sup> Game SAMPLE SPACE\nJJ<br/>JPJ<br/>JPP<br/>PJJ<br/>PJP<br/>PP\n(ii) P(John is the champion)<br/>= P(win in 2 games) + P(win in 3 games)<br/>= 0.6 × 0.6 + 0.6 × 0.4 × 0.6 + 0.6 × 0.4 × 0.6<br/>= 0.648\n</td><td>\n2- correct answer<br/>1- correct diagram not showing the probability.\n2- correct answer<br/>1- identified the ways of winning the match.\n</td></tr><tr><td>15(b)(i)</td><td>\nthe value of M after the 1<sup>st</sup> year = M + M × $$\\frac{7.5}{100}$$\n= M ($$1 + \\frac{7.5}{100}$$)\nthe value of M after the 2<sup>nd</sup> year\n= M ($$1 + \\frac{7.5}{100}$$) ($$1 + \\frac{7.5}{100}$$)\n= M ($$1 + \\frac{7.5}{100}$$)<sup>2</sup>\nHence, the value of M after the n<sup>th</sup> year\n= M ($$1 + \\frac{7.5}{100}$$)<sup>n</sup></td><td>\n1- correct proof.\n2- correct solution<br/>1- identified that the final value of each M is a term of a GP.\n</td></tr><tr><td>(ii)</td><td>\nThe value of the last contribution = M ($$1 + \\frac{7.5}{100}$$)<sup>1</sup><br/>The value of the 2<sup>nd</sup> last contribution = M ($$1 + \\frac{7.5}{100}$$)<sup>2</sup><br/>The value of the 3<sup>rd</sup> last contribution = M ($$1 + \\frac{7.5}{100}$$)<sup>3</sup>\nNote that the above values are the terms of a GP whose first term $$a = M \\left( 1 + \\frac{7.5}{100} \\right)^1$$ with a common ratio $$r = 1.075$$.\n$$\\therefore A_n = \\frac{a(r^n - 1)}{(r - 1)}$$\n$$\\therefore A_n = \\frac{M \\times 1.075(1.075^n - 1)}{0.075}$$</td><td></td></tr></table>"
+                },
+                {
+                  "kind": "table",
+                  "html": "<table><tr><td>15b(iii)</td><td>Let $n$ be the number of years in the current job to generate $750 000. Also given $M = \\$20526$.<br/>\n$$750000 = \\frac{20526 \\times 1.075(1.075^n - 1)}{0.075}$$\n______(A)<br/>\n$$1.075^n = 3.5492$$<br/>\n$$\\therefore n = \\frac{\\ln 3.5492}{\\ln 1.075} = 17,515 \\dots$$<br/>\nJoe needs to be in the current job for at least 18 years.</td><td>2- correct answer<br/>1- equation (A)</td></tr><tr><td>15(c)(i)</td><td>$$\\dot{x} = 2cost - 1$$ where $t \\geq 0$.<br/>\n$$x = \\int (2cost - 1)dt = 2sint - t + C$$<br/>\nInitially, $t = 0$ and $x = 0$. $C = 0$.<br/>\n$$x = 2sint - t$$</td><td>2- correct answer<br/>1- integral expression for $x$.</td></tr><tr><td>15(c)(ii)</td><td>Initially, $t = 0$ and $x = 0$. $\\dot{x} = 1$ m/s.<br/>\nThe particle is at O and moves to the right with the speed $1$ m/s.</td><td>1- correct description</td></tr><tr><td>(iii)</td><td>The particle comes to rest when $\\dot{x} = 0$.<br/>\n$$0 = 2cost - 1 \\rightarrow cost = \\frac{1}{2}$$<br/>\n$$t = \\frac{\\pi}{3}, \\quad \\frac{5\\pi}{3}, \\dots$$<br/>\nAfter $\\frac{\\pi}{3}$ seconds the particle first come to rest.</td><td>1- correct answer</td></tr><tr><td>(iv)</td><td>Total distance travelled<br/>\n$$= \\int_0^{\\frac{\\pi}{3}} (2cost - 1)dt + |\\int_0^{\\frac{\\pi}{3}} (2cost - 1)dt|$$<br/>\n$$= 2\\sqrt{3} + \\frac{\\pi}{3} \\text{metres}$$</td><td>2- correct solution<br/>1- correct expression to calculate the TOTAL distance travelled.</td></tr><tr><td>16(a)(i)</td><td>Correct explanation for angle $PQR = 100^\\circ$</td><td>1 – correct answer</td></tr><tr><td>(ii)</td><td>$$PR^2 = 140^2 + 260^2 - 2 \\times 140 \\times 260 \\cos 100^\\circ \\approx 316 \\text{ km}$$</td><td>2 – correct solution<br/>1 – correct use of the cosine rule</td></tr><tr><td>16(b)(i)</td><td>$$M = Ae^{-kt}$$\n______(1)<br/>\n$$\\frac{dM}{dt} = A \\times (-k)e^{-kt}$$<br/>\n$$= -k(Ae^{-kt})$$<br/>\n$$= -kM$$<br/>\n$$\\therefore M = Ae^{-kt}$$ is a solution to the differential equation (1)</td><td>1- correct proof</td></tr></table>"
+                },
+                {
+                  "kind": "table",
+                  "html": "<table><tr><td>16(b)(ii)</td><td>\n$$t = 0, M = 20 \\rightarrow 20 = A$$\n$$A \\rightarrow \\frac{A}{2}$$ in 300 years\n$$\\frac{A}{2} = A e^{-300k} \\rightarrow k = \\frac{1}{300} \\times \\ln 2$$\nWhen $$t = 700, M = 20 e^{-\\frac{700 \\ln 2}{300}}$$\n$$= 20 \\times 2^{-\\frac{7}{3}}$$\n$$= 3.96kg(2dp)$$\n</td><td>2- correct answer<br/>1- formed the equation to calculate $$k$$ using half-life period.</td></tr><tr><td>16(c)</td><td>\n$$V = \\pi \\int_a^b y^2 dx$$\nwhere $$a = 0.5, b = 1.0$$ and $$y = \\frac{1}{\\sqrt{3 - 2x}}$$\n$$V = \\pi \\int_{0.5}^1 \\frac{1}{3 - 2x} dx$$\n$$V = \\left[ -\\frac{\\pi}{2} \\ln(3 - 2x) \\right]_{0.5}^1$$\n$$V = \\frac{\\pi}{2} \\ln 2$$ cubic units\n</td><td>3- correct solution<br/>2- correct expression for the definite integral showing limits<br/>1- correct use of the formula for the volume .</td></tr><tr><td>16(d)(i)</td><td>\n15 cm\n\nArea of the rectangle = Area of A + B + C + D\n$$B = C = \\frac{1}{2}xy$$\n$$D = \\frac{1}{2}(15 - x)h$$ where $$h = \\sqrt{x^2 - (15 - x)^2}$$\n$$A = \\frac{1}{2} \\times 15[(30 - h) + (30 - y)]$$\n$$30 \\times 15 = xy + \\frac{1}{2}(15 - x)h + \\frac{1}{2} \\times 15[(30 - h) + (30 - y)]$$\n$$0 = 2xy - hx - 15y$$\n$$y(2x - 15) = hx$$\n$$\\therefore y = \\frac{hx}{2x - 15}$$\n</td><td>2- correct proof<br/>1- formed an equation in terms of $$x, y$$ and $$h$$.</td></tr></table>"
+                },
+                {
+                  "kind": "table",
+                  "html": "<table><tr><td>16(d)(ii)</td><td>\n$$L^2 = x^2 + y^2$$ --- (A)<br/>\n$$L^2 = x^2 + \\left(\\frac{hx}{2x - 15}\\right)^2$$<br/><br/>\nBy substituting for h<br/><br/>\n$$= \\frac{x^2[(2x - 15)^2 + (2x - 15)15]}{(2x - 15)^2}$$<br/><br/>\n$$L^2 = \\frac{2x^3}{2x - 15}$$\n</td><td>2- correct proof<br/>1- equation (A) to find L</td></tr><tr><td>16(d)(iii)</td><td>\n$$\\frac{d(L^2)}{dx} = \\frac{(2x - 15) \\times 6x^2 - 2x^3 \\times 2}{(2x - 15)^2}$$<br/><br/>\n$$\\frac{d(L^2)}{dx} = 0 \\rightarrow (2x - 15) \\times 6x^2 - 2x^3 \\times 2 = 0$$<br/><br/>\n$$2x^2(4x - 45) = 0$$<br/><br/>\nAs $$x \\neq 0$$, $$x = \\frac{45}{4} = 11.25$$<br/><br/>\n\n<table><tr><td>x</td><td>11.20</td><td>11.25</td><td>11.30</td></tr><tr><td>$$\\frac{d(L^2)}{dx}$$</td><td>-50.176</td><td>0</td><td>+51.076</td></tr></table>"
+                },
+                {
+                  "kind": "table",
+                  "html": "<table><tr><td>Hence for minimum L, x = 11.25<br/><br/>\n$$L = \\sqrt{\\frac{2 \\times 11.25^3}{2 \\times 11.25 - 15}} = 19.485..$$<br/><br/>\nminimum length of the FOLD is 19.5 cm (1dp)</td><td>2- correct answer<br/>1- valid value for x</td></tr></table>"
+                },
+                {
+                  "kind": "text",
+                  "text": "**End of Marking Guideline**"
+                }
+              ],
+              "parts": null
+            }
+          ]
+        }
+      ],
+      "answer": null,
+      "id": "08d7755b-219b-4eec-a9ba-a2ac9200db09",
+      "paper_id": "e5f66d4b-9893-45f5-a3ac-6af5c0510163",
+      "author_id": "",
+      "created_at": "2026-06-30T13:04:42.027674Z",
+      "updated_at": "2026-06-30T13:04:42.027674Z"
+    }
+  ]
+}

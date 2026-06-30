@@ -1090,6 +1090,147 @@ def run_gcp_deploy():
         )
 
 
+def check_do_deploy_tools():
+    git = find_command("git")
+    doctl = find_command("doctl")
+    bun = find_command("bun")
+    missing = [
+        name
+        for name, cmd in [("git", git), ("doctl", doctl), ("bun", bun)]
+        if not cmd
+    ]
+    if missing:
+        fatal(
+            "Missing deploy tools: " + ", ".join(missing),
+            "Install the missing command(s); doctl from "
+            "https://docs.digitalocean.com/reference/doctl/how-to/install/, "
+            "then run `uv run launch.py --deploy do` again.",
+        )
+    return {"git": git, "doctl": doctl, "js": bun}
+
+
+# ponytail: hand-emit the flat App Platform spec instead of adding a yaml dep
+def do_app_spec(name, region, repo, branch, run_command, env_vars):
+    def q(value):
+        return "'" + str(value).replace("'", "''") + "'"
+    lines = [
+        f"name: {name}",
+        f"region: {region}",
+        "services:",
+        "- name: web",
+        "  environment_slug: python",
+        "  github:",
+        f"    branch: {branch}",
+        "    deploy_on_push: true",
+        f"    repo: {repo}",
+        f"  run_command: {run_command}",
+        "  health_check:",
+        "    http_path: /ping",
+        "  env_vars:",
+    ]
+    for key, value in env_vars.items():
+        lines.append(f"  - key: {key}")
+        lines.append(f"    value: {q(value)}")
+    return "\n".join(lines) + "\n"
+
+
+def github_owner_repo(git):
+    raw = run_capture(
+        [git, "config", "--get", "remote.origin.url"],
+        ROOT,
+        "Could not read the git remote origin URL",
+    ).strip()
+    for sep in ("github.com/", "github.com:"):
+        if sep in raw:
+            tail = raw.split(sep, 1)[1]
+            if tail.endswith(".git"):
+                tail = tail[:-4]
+            parts = tail.split("/")
+            if len(parts) == 2 and all(parts):
+                return "/".join(parts)
+    return None
+
+
+def run_do_deploy():
+    load_project_env()
+    tools = check_do_deploy_tools()
+    git = tools["git"]
+    doctl = tools["doctl"]
+
+    auth_check = subprocess.run(
+        [doctl, "account", "get"], capture_output=True, text=True
+    )
+    if auth_check.returncode != 0:
+        fatal(
+            "doctl is not authenticated",
+            "Run `doctl auth init` with an API token, then deploy again.",
+        )
+
+    commit = run_capture(
+        [git, "rev-parse", "--short=12", "HEAD"],
+        ROOT,
+        "Could not resolve the latest git commit",
+    )
+    branch = (
+        run_capture(
+            [git, "branch", "--show-current"],
+            ROOT,
+            "Could not resolve the current git branch",
+        )
+        or "main"
+    )
+    status = run_capture(
+        [git, "status", "--short"], ROOT, "Could not inspect git status"
+    )
+    if status:
+        warn(
+            "Working tree has uncommitted changes; App Platform builds from the pushed HEAD."
+        )
+
+    repo = os.getenv("DO_APP_REPO") or github_owner_repo(git)
+    if not repo:
+        fatal(
+            "GitHub repository could not be resolved",
+            "Set DO_APP_REPO=owner/repo in .env, or add a GitHub remote to this repo.",
+        )
+
+    app_name = os.getenv("DO_APP_NAME", "tppr")
+    region = os.getenv("DO_REGION", "syd")
+    run_command = os.getenv("DO_RUN_COMMAND", "python src/main.py")
+    env_vars = cloud_run_database_env()
+    env_vars["PRODUCTION"] = "true"
+
+    if not os.path.isfile(os.path.join(BACKEND, "assets", "site", "index.html")):
+        warn(
+            "backend/assets/site has no built frontend; App Platform won't build it. "
+            "Build it locally and commit, or switch the spec to a Dockerfile component."
+        )
+
+    table = Table(title="DigitalOcean App Platform deploy", box=box.SIMPLE_HEAVY)
+    table.add_column("Setting", style="bold")
+    table.add_column("Value", overflow="fold")
+    table.add_row("App", app_name)
+    table.add_row("Region", region)
+    table.add_row("Repo", repo)
+    table.add_row("Branch", branch)
+    table.add_row("Run", run_command)
+    table.add_row("Database", os.getenv("DB_HOST", "(DATABASE_URL)"))
+    table.add_row("Commit", commit)
+    console.print(table)
+
+    with tempfile.TemporaryDirectory(prefix=f"tppr-do-deploy-{commit}-") as spec_dir:
+        spec_path = os.path.join(spec_dir, "app.yaml")
+        with open(spec_path, "w", encoding="utf-8") as fh:
+            fh.write(
+                do_app_spec(app_name, region, repo, branch, run_command, env_vars)
+            )
+        run_streamed(
+            [doctl, "apps", "create", "--upsert", "--spec", spec_path, "--wait"],
+            ROOT,
+            f"Deploying {app_name} to DigitalOcean App Platform",
+        )
+
+
 def ensure_python_dependencies(tools, skip_install=False, tui=None, live=None):
     step_key = "python"
     if skip_install:
@@ -1639,13 +1780,17 @@ def main():
     if "--deploy" in sys.argv:
         deploy_index = sys.argv.index("--deploy")
         provider = sys.argv[deploy_index + 1] if deploy_index + 1 < len(sys.argv) else ""
-        if provider != "gcp":
+        if provider in ("do", "do-app", "do-app-platform", "digitalocean"):
+            deploy_fn = run_do_deploy
+        elif provider == "gcp":
+            deploy_fn = run_gcp_deploy
+        else:
             fatal(
                 "Unsupported deploy target",
-                "Use `uv run launch.py --deploy gcp`.",
+                "Use `uv run launch.py --deploy gcp` or `uv run launch.py --deploy do`.",
             )
         try:
-            run_gcp_deploy()
+            deploy_fn()
         except KeyboardInterrupt:
             warn("Deployment interrupted.")
         except subprocess.CalledProcessError as exc:

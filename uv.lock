@@ -6,6 +6,7 @@ requires-python = ">=3.14"
 members = [
     "tppr",
     "tppr-backend",
+    "tppr-paper-extractor",
 ]
 
 [[package]]
@@ -780,6 +781,11 @@ requires-dist = [
     { name = "sqlmodel", specifier = ">=0.0.38" },
     { name = "werkzeug", specifier = ">=3.1.8" },
 ]
+
+[[package]]
+name = "tppr-paper-extractor"
+version = "0.1.0"
+source = { editable = "tppr-paper-extractor" }
 
 [[package]]
 name = "typing-extensions"
