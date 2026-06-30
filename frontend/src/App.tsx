@@ -18,6 +18,9 @@ import { useEffect } from "react";
 import ResetPassword from "./pages/ResetPassword";
 import ForgotPassword from "./pages/ForgotPassword";
 import Settings from "./pages/Settings";
+import Friends from "./pages/Friends";
+import Leaderboard from "./pages/Leaderboard";
+import Dashboard from "./pages/Dashboard";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -45,6 +48,9 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/friends" element={<Friends />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
 
               <Route path="/admin/takedowns" element={<AdminTakedowns />} />
 

@@ -21,6 +21,7 @@ class UserDB(SQLModel, table=True):
     password_hash: str = Field(nullable=False)
     totp_secret: str | None = None
     totp_enabled: int = Field(default=0)
+    avatar_url: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     last_login: datetime | None = None
 
@@ -112,6 +113,26 @@ class AuthenticationDB:
             if user:
                 user.username = new_username
                 session.commit()
+
+    def update_avatar_url(self, user_id, avatar_url: str | None) -> None:
+        with Session(engine) as session:
+            user = session.get(UserDB, user_id)
+            if user:
+                user.avatar_url = avatar_url
+                session.commit()
+
+    def get_user_by_username(self, username: str) -> Optional[dict]:
+        with Session(engine) as session:
+            user = session.exec(
+                select(UserDB).where(UserDB.username == username)
+            ).first()
+            if not user:
+                return None
+            return {
+                "user_id": user.user_id,
+                "username": user.username,
+                "email": user.email,
+            }
 
     def update_password(self, user_id, password_hash: str) -> None:
         with Session(engine) as session:

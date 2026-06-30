@@ -60,6 +60,17 @@ DATABASE_ECHO = False if PRODUCTION else env_flag("DATABASE_ECHO", False)
 
 engine = create_engine(DATABASE_URL, echo=DATABASE_ECHO)
 
+# Indexes that materially speed up the hot read paths (paper fetch, leaderboard,
+# stats). Declared on the models too, but `create_all` won't add indexes to
+# existing tables, so these idempotent statements ensure the remote DB gets them.
+_INDEX_DDL = [
+    "CREATE INDEX IF NOT EXISTS ix_papers_author_id ON papers (author_id)",
+    "CREATE INDEX IF NOT EXISTS ix_papers_remixed ON papers (remixed)",
+    "CREATE INDEX IF NOT EXISTS ix_questions_author_id ON questions (author_id)",
+    "CREATE INDEX IF NOT EXISTS ix_question_syllabus_points_question_id "
+    "ON question_syllabus_points (question_id)",
+]
+
 
 def prepare(log: Logger) -> None:
     log.info(
@@ -67,6 +78,11 @@ def prepare(log: Logger) -> None:
         f"{engine.url.render_as_string(hide_password=True)}"
     )
     SQLModel.metadata.create_all(engine)
+    with engine.begin() as conn:
+        from sqlalchemy import text
+
+        for statement in _INDEX_DDL:
+            conn.execute(text(statement))
     log.info("All tables created / verified")
 
 

@@ -13,6 +13,7 @@ import { MultipleChoiceEditor } from "./editors/multiple-choice";
 import { StimulusSection } from "./editors/stimulus";
 import { LongAnswerEditor } from "./editors/long-answer";
 import { ShortAnswerEditor } from "./editors/short-answer";
+import { sumQuestionMarks } from "@/lib/parts";
 
 export function QuestionEditor({
     question,
@@ -44,10 +45,7 @@ export function QuestionEditor({
                                 marks: type === "multiple_choice"
                                     ? 1
                                     : type === "long_answer"
-                                    ? (question.parts ?? []).reduce(
-                                        (sum, p) => sum + (p.marks ?? 0),
-                                        0,
-                                    )
+                                    ? sumQuestionMarks({ ...question, type })
                                     : question.marks,
                             });
                         }}

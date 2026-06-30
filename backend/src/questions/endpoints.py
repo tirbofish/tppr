@@ -2,12 +2,13 @@ import os
 import re
 from uuid import uuid4
 
-from flask import Blueprint, jsonify, request, send_file
+from flask import Blueprint, jsonify, redirect, request, send_file
 from sqlmodel import col, select
 from datetime import datetime, UTC
 
-from settings import ASSETS_DIR
+from settings import ASSETS_DIR, SUPABASE_QUESTION_ASSET_BUCKET
 from auth.supabase import get_current_user_id, supabase_auth_required
+from storage import storage_configured, public_url as storage_public_url, upload_object
 from questions.db import get_session
 from questions.types import (
     AssetDB,
@@ -163,11 +164,29 @@ def upload_asset(paper_id):
         file_data = asset_file.read()
         now = datetime.now(UTC)
 
+        # When Supabase Storage is configured, push the bytes to the public
+        # question-assets bucket and keep only an empty placeholder in Postgres
+        # (the `data` column is NOT NULL). If the upload fails, fall back to
+        # storing the bytes in the DB so the asset still resolves.
+        stored_data = b""
+        if storage_configured():
+            try:
+                upload_object(
+                    SUPABASE_QUESTION_ASSET_BUCKET,
+                    f"{paper_id}/{asset_id}",
+                    asset_file.mimetype or "application/octet-stream",
+                    file_data,
+                )
+            except Exception:
+                stored_data = file_data
+        else:
+            stored_data = file_data
+
         if existing:
             existing.uploader_id = user_id
             existing.mime_type = asset_file.mimetype
             existing.filename = asset_file.filename
-            existing.data = file_data
+            existing.data = stored_data
             existing.updated_at = now
             asset = existing
         else:
@@ -177,7 +196,7 @@ def upload_asset(paper_id):
                 uploader_id=user_id,
                 mime_type=asset_file.mimetype,
                 filename=asset_file.filename,
-                data=file_data,
+                data=stored_data,
                 created_at=now,
                 updated_at=now,
             )
@@ -205,6 +224,18 @@ def get_asset(asset_id):
         paper = session.get(PaperDB, asset.paper_id)
         if not paper or not _can_view_paper(paper, str(user_id) if user_id else None):
             return jsonify({"message": "Asset not found"}), 404
+
+        # New uploads live in the public Supabase Storage bucket and have an
+        # empty `data` placeholder; redirect to the public URL. Legacy rows
+        # (written before Storage was configured) still carry their bytes and
+        # are served from the DB.
+        if storage_configured() and not asset.data:
+            return redirect(
+                storage_public_url(
+                    SUPABASE_QUESTION_ASSET_BUCKET,
+                    f"{asset.paper_id}/{asset.id}",
+                )
+            )
 
         response = send_file(
             BytesIO(asset.data),

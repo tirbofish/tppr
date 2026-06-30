@@ -22,7 +22,8 @@ def whoami():
 
     try:
         user = db.get_user_by_id(
-            user_id, fields=["user_id", "username", "email", "totp_enabled"]
+            user_id,
+            fields=["user_id", "username", "email", "totp_enabled", "avatar_url"],
         )
 
         if not user:
@@ -35,6 +36,7 @@ def whoami():
                     "username": user["username"],
                     "email": user["email"],
                     "totp_enabled": bool(user["totp_enabled"]),
+                    "avatar_url": user.get("avatar_url"),
                 }
             ),
             200,

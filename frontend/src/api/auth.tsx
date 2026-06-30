@@ -1,6 +1,7 @@
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -10,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { toast } from "sonner";
+import { apiFetch } from "./client";
 
 const PENDING_EMAIL_CONFIRMATION_KEY = "tppr:pending-email-confirmation";
 
@@ -18,6 +20,7 @@ interface User {
   username: string;
   email: string;
   admin?: boolean;
+  avatar_url?: string;
 }
 
 interface AuthContextType {
@@ -26,6 +29,8 @@ interface AuthContextType {
   login: (formData: FormData) => Promise<string | null>;
   signup: (formData: FormData) => Promise<string | null>;
   logout: () => void;
+  /** Re-fetch the user's backend profile (e.g. after changing their avatar). */
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -34,6 +39,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => null,
   signup: async () => null,
   logout: () => {},
+  refreshUser: async () => {},
 });
 
 function mapUser(supabaseUser: SupabaseUser): User {
@@ -51,7 +57,6 @@ function markPendingEmailConfirmation(email: string) {
 function consumePendingEmailConfirmation(email: string | undefined) {
   const pendingEmail = localStorage.getItem(PENDING_EMAIL_CONFIRMATION_KEY);
   if (!pendingEmail || pendingEmail !== email) return false;
-
   localStorage.removeItem(PENDING_EMAIL_CONFIRMATION_KEY);
   return true;
 }
@@ -62,17 +67,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const confirmationToastShown = useRef(false);
   const navigate = useNavigate();
 
+  // Pull avatar_url (and any future profile fields) from the backend, since the
+  // backend-stored avatar URL is not part of the Supabase user_metadata.
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await apiFetch("/api/whoami");
+      if (!res.ok) return;
+      const data = await res.json();
+      setUser((prev) =>
+        prev ? { ...prev, avatar_url: data.avatar_url } : prev,
+      );
+    } catch {
+      // Backend may be temporarily unreachable; leave the cached user as-is.
+    }
+  }, []);
+
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ? mapUser(session.user) : null);
       setLoading(false);
+      if (session?.user) refreshUser();
     });
 
     // Listen for auth changes (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ? mapUser(session.user) : null);
+        if (
+          session?.user &&
+          (event === "SIGNED_IN" || event === "INITIAL_SESSION")
+        ) {
+          refreshUser();
+        }
         if (
           event === "SIGNED_IN" &&
           session?.user &&
@@ -86,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [refreshUser]);
 
   async function login(formData: FormData): Promise<string | null> {
     const email = formData.get("email") as string;
@@ -119,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

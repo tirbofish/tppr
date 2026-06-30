@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Paper, Question as QuestionData } from "@/types/tppr-paper";
+import type {
+    Paper,
+    Question as QuestionData,
+    QuestionPart,
+} from "@/types/tppr-paper";
 import { ContentBlocks } from "@/components/question";
+import { compoundLabel, flattenLeaves } from "@/lib/parts";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,15 +14,42 @@ import { useWindowSize } from "react-use";
 
 type FocusSlide =
     | { kind: "cover"; paper: Paper }
-    | { kind: "question"; question: QuestionData; partIndex?: number }
+    | {
+        kind: "question";
+        question: QuestionData;
+        /** Path of sibling indices from the top-level part down to the leaf. */
+        partPath?: number[];
+    }
     | { kind: "complete"; paper: Paper };
+
+/** Read the part at `path` (list of sibling indices) from a question's part tree. */
+function partAt(q: QuestionData, path: number[]): QuestionPart | undefined {
+    let cursor: QuestionPart[] | undefined = q.parts;
+    let part: QuestionPart | undefined;
+    for (const i of path) {
+        if (!cursor) return undefined;
+        part = cursor[i];
+        if (!part) return undefined;
+        cursor = part.parts;
+    }
+    return part;
+}
 
 function buildSlides(paper: Paper): FocusSlide[] {
     const slides: FocusSlide[] = [{ kind: "cover", paper }];
     for (const q of paper.questions) {
         if (q.type === "long_answer" && q.parts?.length) {
-            for (let i = 0; i < q.parts.length; i++) {
-                slides.push({ kind: "question", question: q, partIndex: i });
+            const leaves = flattenLeaves(q);
+            if (leaves.length) {
+                for (const leaf of leaves) {
+                    slides.push({
+                        kind: "question",
+                        question: q,
+                        partPath: leaf.path,
+                    });
+                }
+            } else {
+                slides.push({ kind: "question", question: q });
             }
         } else {
             slides.push({ kind: "question", question: q });
@@ -113,52 +145,64 @@ function CompletionSlide(
 }
 
 function QuestionSlide(
-    { question, partIndex, showAnswer }: {
+    { question, partPath, showAnswer }: {
         question: QuestionData;
-        partIndex?: number;
+        partPath?: number[];
         showAnswer: boolean;
     },
 ) {
-    const part = partIndex != null ? question.parts?.[partIndex] : undefined;
-    const answer = part?.answer ?? question.answer;
-    const rubric = part?.rubric ?? question.rubric;
-    const guidelines = part?.guidelines ?? question.guidelines;
+    const leaf = partPath ? partAt(question, partPath) : undefined;
+    const answer = leaf?.answer ?? question.answer;
+    const rubric = leaf?.rubric ?? question.rubric;
+    const guidelines = leaf?.guidelines ?? question.guidelines;
+    const label = partPath
+        ? compoundLabel(question, partPath, question.parts ?? [])
+        : undefined;
+
+    // Stimulus from every ancestor part down to the leaf, in document order.
+    const ancestorStimuli: { blocks: QuestionPart["stimulus"]; depth: number }[] =
+        [];
+    if (partPath) {
+        let cursor: QuestionPart[] | undefined = question.parts;
+        for (let d = 0; d < partPath.length; d++) {
+            const part = cursor?.[partPath[d]];
+            if (!part) break;
+            if (part.stimulus) ancestorStimuli.push({ blocks: part.stimulus, depth: d });
+            cursor = part.parts;
+        }
+    }
 
     return (
         <div className="flex w-full max-w-3xl flex-col gap-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <span className="text-lg font-semibold">
-                    Question {question.number}
-                    {part && (
-                        <span className="text-muted-foreground">
-                            {" "}({part.label})
-                        </span>
-                    )}
+                    Question {label ?? question.number}
                 </span>
                 <Badge variant="secondary">
-                    {part?.marks ?? question.marks}{" "}
-                    mark{(part?.marks ?? question.marks) !== 1 ? "s" : ""}
+                    {leaf?.marks ?? question.marks}{" "}
+                    mark{(leaf?.marks ?? question.marks) !== 1 ? "s" : ""}
                 </Badge>
             </div>
 
-            {/* Stimulus */}
+            {/* Root stimulus */}
             <ContentBlocks
                 blocks={question.stimulus}
                 className="text-muted-foreground"
             />
 
-            {/* Part-level stimulus for LAQ */}
-            {part?.stimulus && (
+            {/* Ancestor + leaf part stimuli, indented by depth */}
+            {ancestorStimuli.map((s, i) => (
                 <ContentBlocks
-                    blocks={part.stimulus}
+                    key={i}
+                    blocks={s.blocks}
                     className="text-muted-foreground"
                 />
-            )}
+            ))}
 
             {/* Question content */}
-            {part
-                ? <ContentBlocks blocks={part.content} />
+            {leaf
+                ? <ContentBlocks blocks={leaf.content} />
                 : <ContentBlocks blocks={question.content} />}
 
             {/* MCQ options */}
@@ -353,12 +397,20 @@ export function FocusMode(
         ? questionCount
         : questionIndexFromSlide(slides, index);
 
-    // For LAQ part dots
-    const showPartDots = slide.kind === "question" &&
-        slide.partIndex != null &&
-        slide.question.parts;
-    const totalParts = showPartDots ? slide.question.parts!.length : 0;
-    const currentPart = showPartDots ? slide.partIndex! : 0;
+    // For LAQ part dots: reflect the leaf's immediate sibling group.
+    const partPath = slide.kind === "question" ? slide.partPath : undefined;
+    const showPartDots = slide.kind === "question" && partPath != null;
+    let totalParts = 0;
+    let currentPart = 0;
+    if (showPartDots && partPath && partPath.length > 0) {
+        const parentPath = partPath.slice(0, -1);
+        const parent = parentPath.length
+            ? partAt(slide.question, parentPath)
+            : undefined;
+        const siblings = parent?.parts ?? slide.question.parts ?? [];
+        totalParts = siblings.length;
+        currentPart = partPath[partPath.length - 1] ?? 0;
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-background">
@@ -433,7 +485,7 @@ export function FocusMode(
                     {slide.kind === "question" && (
                         <QuestionSlide
                             question={slide.question}
-                            partIndex={slide.partIndex}
+                            partPath={slide.partPath}
                             showAnswer={showAnswer}
                         />
                     )}

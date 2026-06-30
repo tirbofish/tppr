@@ -3,10 +3,13 @@ import { Button } from "@/components/ui/button";
 import {
   FileText,
   Filter,
+  LayoutDashboard,
   NotepadTextDashed,
   Plus,
   SearchIcon,
   ShieldCheck,
+  Trophy,
+  Users,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -253,6 +256,18 @@ export default function NavBar() {
                   </Link>
                 </Button>
 
+                <Button asChild variant="ghost" size="icon" className="size-8">
+                  <Link to="/leaderboard">
+                    <Trophy className="size-4" />
+                  </Link>
+                </Button>
+
+                <Button asChild variant="ghost" size="icon" className="size-8">
+                  <Link to="/friends">
+                    <Users className="size-4" />
+                  </Link>
+                </Button>
+
                 <Dialog open={newPaperOpen} onOpenChange={setNewPaperOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm">
@@ -276,7 +291,10 @@ export default function NavBar() {
                               ? <ShieldCheck className="size-5 text-primary" />
                               : (
                                 <Avatar className="size-8">
-                                  <AvatarImage src="dont_worry_about_it_just_need_to_ensure_the_avatar_fetching_fails" />
+                                  <AvatarImage
+                                    src={user.avatar_url}
+                                    alt={user.username}
+                                  />
                                   <AvatarFallback>
                                     {user.username?.slice(0, 2).toUpperCase() ??
                                       "U"}
@@ -318,6 +336,12 @@ export default function NavBar() {
                           <DropdownMenuSeparator />
                         </>
                       )}
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard">
+                          <LayoutDashboard />
+                          Dashboard
+                        </Link>
+                      </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to="/settings">Settings</Link>
                       </DropdownMenuItem>

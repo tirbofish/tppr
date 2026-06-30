@@ -92,21 +92,33 @@ export interface QuestionRubric {
     notes?: ContentBlock[];
 }
 
-/** A sub-part of a question (e.g. part a, b, c). */
+/**
+ * A sub-part of a question. Parts may nest arbitrarily deep, producing compound
+ * numbering like "1.a.i": the top-level question is `1`, its parts are `a, b`,
+ * their parts are `i, ii`, and so on. `label` holds only the leaf segment
+ * (e.g. "a", "i", "1"); compound labels are derived from the path of labels.
+ *
+ * A part is either a **leaf** (has `content` + `marks` + an optional answer) or
+ * a **container** (has `parts`; carries its own `stimulus` and optional intro
+ * `content` but no standalone answer — its marks equal the sum of its children).
+ */
 export interface QuestionPart {
-    /** Part label (e.g. "a", "b", "ii"). */
+    /** Leaf label segment (e.g. "a", "i", "1", "A"). */
     label: string;
     stimulus?: ContentBlock[];
-    content: ContentBlock[];
+    /** Question text for a leaf, or optional intro text for a container. */
+    content?: ContentBlock[];
     marks?: number;
     /** True if this part stands alone from the previous part's context. */
     is_independent?: boolean;
-    /** Answer material for this sub-part. */
+    /** Answer material for this sub-part (only meaningful on leaves). */
     answer?: string | QuestionAnswer;
     /** Mark allocation and criteria for this sub-part. */
     rubric?: QuestionRubric;
     /** General marking guidelines, feedback, common errors or comments. */
     guidelines?: ContentBlock[];
+    /** Nested sub-parts (makes this a container part). */
+    parts?: QuestionPart[];
 }
 
 // ---------- Question (tppr-question.json) ----------

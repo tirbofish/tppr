@@ -4,6 +4,8 @@ import {
     Fragment,
     memo,
     type ReactNode,
+    type Dispatch,
+    type SetStateAction,
     useEffect,
     useMemo,
     useState,
@@ -12,10 +14,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { paperStore } from "@/lib/paper";
+import { compoundLabel, isLeaf } from "@/lib/parts";
 import type {
     ContentBlock,
     Question as QuestionData,
     QuestionAnswer,
+    QuestionPart,
     QuestionRubric,
 } from "@/types/tppr-paper";
 import {
@@ -539,6 +543,119 @@ function RubricBlock({ rubric }: { rubric?: QuestionRubric }) {
     );
 }
 
+/** Whether a part (or any nested descendant) carries answer material. */
+function partTreeHasAnswer(part: QuestionPart): boolean {
+    if (
+        hasAnswerValue(part.answer) ||
+        hasRubric(part.rubric) ||
+        hasContentBlocks(part.guidelines)
+    ) {
+        return true;
+    }
+    return (part.parts ?? []).some(partTreeHasAnswer);
+}
+
+/** Recursively renders a (possibly nested) LAQ sub-part. */
+function PartView({
+    question,
+    parts,
+    part,
+    path,
+    openPartAnswers,
+    setOpenPartAnswers,
+}: {
+    question: QuestionData;
+    parts: QuestionPart[];
+    part: QuestionPart;
+    path: number[];
+    openPartAnswers: Set<string>;
+    setOpenPartAnswers: Dispatch<SetStateAction<Set<string>>>;
+}) {
+    const label = compoundLabel(question, path, parts);
+    const leaf = isLeaf(part);
+    const siblingIndex = path[path.length - 1] ?? 0;
+    const depth = path.length;
+    const partHasAnswer = hasAnswerValue(part.answer) ||
+        hasRubric(part.rubric) ||
+        hasContentBlocks(part.guidelines);
+    const partAnswerOpen = openPartAnswers.has(label);
+
+    return (
+        <div style={{ marginLeft: (depth - 1) * 16 }}>
+            {siblingIndex > 0 && part.is_independent && (
+                <Separator className="mb-4" />
+            )}
+            <div className="flex gap-3">
+                <span className="font-semibold">({label})</span>
+                <div className="flex-1 space-y-2">
+                    <ContentBlocks
+                        blocks={part.stimulus}
+                        className="text-muted-foreground"
+                    />
+                    <ContentBlocks blocks={part.content} />
+                </div>
+                <span className="flex items-center gap-1">
+                    {leaf && part.marks != null && (
+                        <span className="text-sm text-muted-foreground">
+                            {part.marks}{" "}
+                            mark{part.marks === 1 ? "" : "s"}
+                        </span>
+                    )}
+                    {leaf && partHasAnswer && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            onClick={() =>
+                                setOpenPartAnswers((current) => {
+                                    const next = new Set(current);
+                                    if (next.has(label)) {
+                                        next.delete(label);
+                                    } else {
+                                        next.add(label);
+                                    }
+                                    return next;
+                                })}
+                            aria-label={partAnswerOpen
+                                ? `Hide part ${label} answer`
+                                : `Show part ${label} answer`}
+                        >
+                            {partAnswerOpen
+                                ? <EyeOff className="size-4" />
+                                : <Eye className="size-4" />}
+                        </Button>
+                    )}
+                </span>
+            </div>
+            {leaf && partAnswerOpen && partHasAnswer && (
+                <>
+                    <Separator className="my-3 ml-7" />
+                    <div className="ml-7 space-y-2 rounded-md border border-dashed border-green-500/40 bg-green-50/50 p-3 dark:bg-green-950/20">
+                        <AnswerValue answer={part.answer} />
+                        <RubricBlock rubric={part.rubric} />
+                        <ContentBlocks blocks={part.guidelines} />
+                    </div>
+                </>
+            )}
+            {!leaf && part.parts && (
+                <div className="space-y-4 mt-4">
+                    {part.parts.map((child, ci) => (
+                        <PartView
+                            key={ci}
+                            question={question}
+                            parts={parts}
+                            part={child}
+                            path={[...path, ci]}
+                            openPartAnswers={openPartAnswers}
+                            setOpenPartAnswers={setOpenPartAnswers}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export const Question = memo(function Question(
     { question, onDelete, onEdit, onDuplicate, onChange, onRemix }: {
         question: QuestionData;
@@ -559,11 +676,7 @@ export const Question = memo(function Question(
         hasRubric(question.rubric) ||
         hasContentBlocks(question.guidelines);
     const hasAnswer = hasQuestionAnswer ||
-        !!question.parts?.some((part) =>
-            hasAnswerValue(part.answer) ||
-            hasRubric(part.rubric) ||
-            hasContentBlocks(part.guidelines)
-        );
+        !!question.parts?.some(partTreeHasAnswer);
     const showGroupedPartAnswers = false;
 
     if (question.source_removed) {
@@ -779,112 +892,15 @@ export const Question = memo(function Question(
                 {question.type === "long_answer" && question.parts && (
                     <div className="space-y-4">
                         {question.parts.map((part, i) => (
-                            <div key={part.label}>
-                                {(() => {
-                                    const partHasAnswer =
-                                        hasAnswerValue(part.answer) ||
-                                        hasRubric(part.rubric) ||
-                                        hasContentBlocks(part.guidelines);
-                                    const partAnswerOpen = openPartAnswers.has(
-                                        part.label,
-                                    );
-
-                                    return (
-                                        <>
-                                            {i > 0 && part.is_independent && (
-                                                <Separator className="mb-4" />
-                                            )}
-                                            <div className="flex gap-3">
-                                                <span className="font-semibold">
-                                                    ({part.label})
-                                                </span>
-                                                <div className="flex-1 space-y-2">
-                                                    <ContentBlocks
-                                                        blocks={part.stimulus}
-                                                    />
-                                                    <ContentBlocks
-                                                        blocks={part.content}
-                                                    />
-                                                </div>
-                                                <span className="flex items-center gap-1">
-                                                    {part.marks != null && (
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {part.marks}{" "}
-                                                            mark{part.marks ===
-                                                                    1
-                                                                ? ""
-                                                                : "s"}
-                                                        </span>
-                                                    )}
-                                                    {partHasAnswer && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="size-8"
-                                                            onClick={() =>
-                                                                setOpenPartAnswers(
-                                                                    (
-                                                                        current,
-                                                                    ) => {
-                                                                        const next =
-                                                                            new Set(
-                                                                                current,
-                                                                            );
-                                                                        if (
-                                                                            next.has(
-                                                                                part.label,
-                                                                            )
-                                                                        ) {
-                                                                            next.delete(
-                                                                                part.label,
-                                                                            );
-                                                                        } else {
-                                                                            next.add(
-                                                                                part.label,
-                                                                            );
-                                                                        }
-                                                                        return next;
-                                                                    },
-                                                                )}
-                                                            aria-label={partAnswerOpen
-                                                                ? `Hide part ${part.label} answer`
-                                                                : `Show part ${part.label} answer`}
-                                                        >
-                                                            {partAnswerOpen
-                                                                ? (
-                                                                    <EyeOff className="size-4" />
-                                                                )
-                                                                : (
-                                                                    <Eye className="size-4" />
-                                                                )}
-                                                        </Button>
-                                                    )}
-                                                </span>
-                                            </div>
-                                            {partAnswerOpen && partHasAnswer &&
-                                                (
-                                                    <>
-                                                        <Separator className="my-3 ml-7" />
-                                                        <div className="ml-7 space-y-2 rounded-md border border-dashed border-green-500/40 bg-green-50/50 p-3 dark:bg-green-950/20">
-                                                            <AnswerValue
-                                                                answer={part
-                                                                    .answer}
-                                                            />
-                                                            <RubricBlock
-                                                                rubric={part
-                                                                    .rubric}
-                                                            />
-                                                            <ContentBlocks
-                                                                blocks={part
-                                                                    .guidelines}
-                                                            />
-                                                        </div>
-                                                    </>
-                                                )}
-                                        </>
-                                    );
-                                })()}
-                            </div>
+                            <PartView
+                                key={i}
+                                question={question}
+                                parts={question.parts!}
+                                part={part}
+                                path={[i]}
+                                openPartAnswers={openPartAnswers}
+                                setOpenPartAnswers={setOpenPartAnswers}
+                            />
                         ))}
                     </div>
                 )}

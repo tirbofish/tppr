@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/api/auth";
 import { supabase } from "@/lib/supabase";
 import NavBar from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+    Avatar,
+    AvatarFallback,
+    AvatarImage,
+} from "@/components/ui/avatar";
 import {
     Card,
     CardContent,
@@ -28,12 +33,14 @@ import {
 } from "@/components/ui/dialog";
 
 export default function Settings() {
-    const { user, loading: authLoading, logout } = useAuth();
+    const { user, loading: authLoading, logout, refreshUser } = useAuth();
     const navigate = useNavigate();
 
     const [username, setUsername] = useState(user?.username ?? "");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [avatarSaving, setAvatarSaving] = useState(false);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
 
     const [mfaFactors, setMfaFactors] = useState<
         { id: string; friendlyName?: string }[]
@@ -129,6 +136,62 @@ export default function Settings() {
         }
     }
 
+    async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+
+        if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+            toast.error("Please choose a PNG, JPEG, or WebP image");
+            return;
+        }
+        if (file.size > 1_000_000) {
+            toast.error("Image is too large (max 1 MB)");
+            return;
+        }
+
+        setAvatarSaving(true);
+        try {
+            const form = new FormData();
+            form.append("file", file);
+            const res = await apiFetch("/api/account/avatar", {
+                method: "PUT",
+                body: form,
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => null);
+                toast.error(body?.message ?? "Failed to update avatar");
+                return;
+            }
+            await refreshUser();
+            toast.success("Avatar updated");
+        } catch {
+            toast.error("Failed to update avatar");
+        } finally {
+            setAvatarSaving(false);
+        }
+    }
+
+    async function handleRemoveAvatar() {
+        setAvatarSaving(true);
+        try {
+            const res = await apiFetch("/api/account/avatar", {
+                method: "DELETE",
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => null);
+                toast.error(body?.message ?? "Failed to remove avatar");
+                return;
+            }
+            await refreshUser();
+            toast.success("Avatar removed");
+        } catch {
+            toast.error("Failed to remove avatar");
+        } finally {
+            setAvatarSaving(false);
+        }
+    }
+
     async function handleChangePassword() {
         if (newPassword !== confirmPassword) {
             toast.error("Passwords do not match");
@@ -167,6 +230,60 @@ export default function Settings() {
             <NavBar />
             <main className="mx-auto w-full max-w-2xl px-6 py-10 space-y-6">
                 <h1 className="text-2xl font-bold">Settings</h1>
+
+                {/* Avatar */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Avatar</CardTitle>
+                        <CardDescription>
+                            Shown next to your name across the site. PNG, JPEG,
+                            or WebP up to 1 MB.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center gap-4">
+                            <Avatar className="size-16">
+                                <AvatarImage
+                                    src={user.avatar_url}
+                                    alt={user.username}
+                                />
+                                <AvatarFallback className="text-lg">
+                                    {user.username?.slice(0, 2).toUpperCase() ??
+                                        "U"}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-wrap gap-2">
+                                <input
+                                    ref={avatarInputRef}
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    className="hidden"
+                                    onChange={handleAvatarChange}
+                                />
+                                <Button
+                                    size="sm"
+                                    disabled={avatarSaving}
+                                    onClick={() =>
+                                        avatarInputRef.current?.click()}
+                                >
+                                    {user.avatar_url
+                                        ? "Change avatar"
+                                        : "Upload avatar"}
+                                </Button>
+                                {user.avatar_url && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={avatarSaving}
+                                        onClick={handleRemoveAvatar}
+                                    >
+                                        Remove
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Profile */}
                 <Card>

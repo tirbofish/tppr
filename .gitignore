@@ -45,3 +45,4 @@ output.*
 output/
 paper-assets/
 .gcloud-sdk
+.postgresql

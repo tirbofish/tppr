@@ -762,6 +762,35 @@ def load_project_env():
     load_dotenv(os.path.join(ROOT, ".env"))
 
 
+def existing_database_url_from_env():
+    """Return a DATABASE_URL from .env (DB_* parts or DATABASE_URL), or None.
+
+    Lets `uv run launch.py` target an existing remote Postgres (e.g. Supabase)
+    declared in .env instead of starting the bundled local one. Never fatals:
+    missing config simply means "fall back to local bundled Postgres".
+    """
+    db_user = (os.getenv("DB_USER") or "").strip()
+    db_password = os.getenv("DB_PASSWORD") or ""
+    db_host = (os.getenv("DB_HOST") or "").strip()
+    db_port = (os.getenv("DB_PORT") or "5432").strip()
+    db_name = (os.getenv("DB_NAME") or "").strip()
+
+    if all([db_user, db_password, db_host, db_name]):
+        sslmode = (os.getenv("DB_SSLMODE") or "require").strip()
+        query = f"?sslmode={quote_plus(sslmode)}" if sslmode else ""
+        return (
+            "postgresql+psycopg2://"
+            f"{quote_plus(db_user)}:{quote_plus(db_password)}@"
+            f"{db_host}:{db_port}/{quote_plus(db_name)}{query}"
+        )
+
+    database_url = (os.getenv("DATABASE_URL") or "").strip()
+    if database_url:
+        return database_url
+
+    return None
+
+
 def build_supabase_database_url():
     db_user = (os.getenv("DB_USER") or "").strip()
     db_password = os.getenv("DB_PASSWORD") or ""
@@ -1637,12 +1666,18 @@ def main():
     try:
         tools = check_dependencies()
         prepare_dependencies(tools, skip_install=skip_install)
-        local_postgres = start_local_postgres(tools["postgres_bin"])
-        tools["database_url"] = local_postgres.database_url
-        success(
-            "Local PostgreSQL ready at "
-            f"{LOCAL_POSTGRES_HOST}:{local_postgres.port}/{LOCAL_POSTGRES_DB}"
-        )
+        load_project_env()
+        remote_db_url = existing_database_url_from_env()
+        if remote_db_url:
+            tools["database_url"] = remote_db_url
+            success("Using existing database from .env (remote Postgres)")
+        else:
+            local_postgres = start_local_postgres(tools["postgres_bin"])
+            tools["database_url"] = local_postgres.database_url
+            success(
+                "Local PostgreSQL ready at "
+                f"{LOCAL_POSTGRES_HOST}:{local_postgres.port}/{LOCAL_POSTGRES_DB}"
+            )
 
         if split_mode:
             run_split_mode(tools, watchers)

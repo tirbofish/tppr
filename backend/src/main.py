@@ -20,6 +20,8 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from questions.db import prepare as prepare_paper_db
 from questions.endpoints import q_bp
+from social import social_bp
+from stats import stats_bp
 
 assets_dir = settings.ASSETS_DIR
 frontend_dist_dir = settings.FRONTEND_DIST_DIR
@@ -66,6 +68,7 @@ PUBLIC_API_ENDPOINTS = {
     "tppr-questions.get_asset",
     "tppr-questions.search_papers",
     "tppr-questions.get_paper",
+    "tppr-social.leaderboard",
 }
 
 PUBLIC_API_DOC_ENDPOINTS = {
@@ -84,6 +87,7 @@ PUBLIC_ENDPOINT_RATE_LIMITS = {
     "tppr-questions.get_paper": "120 per minute",
     "tppr-questions.get_asset": "120 per minute",
     "tppr-admin.verify_admin": "5 per minute",
+    "tppr-social.leaderboard": "60 per minute",
 }
 
 
@@ -217,6 +221,8 @@ auth.register_blueprint(app)
 swagger.register_blueprint(app)
 app.register_blueprint(q_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(social_bp)
+app.register_blueprint(stats_bp)
 
 for endpoint, limit in PUBLIC_ENDPOINT_RATE_LIMITS.items():
     view = app.view_functions.get(endpoint)

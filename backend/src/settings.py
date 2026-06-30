@@ -146,6 +146,16 @@ SUPABASE_JWT_ISSUER = (
 )
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 SUPABASE_JWT_AUDIENCE = os.getenv("SUPABASE_JWT_AUDIENCE", "authenticated").strip()
+# Secret key for server-side Supabase Storage operations (avatar and
+# question-asset uploads). This is the project's secret key (sb_secret_...);
+# it bypasses Row Level Security, so it must NEVER be exposed to the browser.
+# When unset, avatars fall back to inline data URLs and question assets stay
+# as bytes in Postgres (the local/no-Storage development path).
+SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
+SUPABASE_AVATAR_BUCKET = os.getenv("SUPABASE_AVATAR_BUCKET", "avatars")
+SUPABASE_QUESTION_ASSET_BUCKET = os.getenv(
+    "SUPABASE_QUESTION_ASSET_BUCKET", "tppr-question-assets"
+)
 if PRODUCTION and not SUPABASE_JWKS_URL and not SUPABASE_JWT_SECRET:
     raise RuntimeError(
         "SUPABASE_URL or SUPABASE_JWKS_URL must be set when PRODUCTION=1"

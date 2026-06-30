@@ -4,7 +4,8 @@ from typing import Annotated, Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
 from pydantic import Field as PydanticField
-from sqlalchemy import Column, LargeBinary, Text, UniqueConstraint
+from pydantic import model_validator
+from sqlalchemy import Column, Index, LargeBinary, Text, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 # NOTE: This module was made with AI
@@ -161,14 +162,20 @@ class QuestionRubric(StrictBaseModel):
 
 class QuestionPart(StrictBaseModel):
     label: str = PydanticField(
-        pattern=r"^[a-z]+$",
-        description="Part label, e.g. 'a', 'b', 'ii'.",
+        pattern=r"^[A-Za-z0-9]+$",
+        description="Part label segment, e.g. 'a', 'i', '1', 'A'. Compound labels "
+        "like '1.a.i' are rendered from the path of labels, not stored here.",
     )
     stimulus: list[ContentBlock] | None = PydanticField(
         default=None,
         description="Stimulus material for this sub-part.",
     )
-    content: list[ContentBlock] = PydanticField(min_length=1)
+    content: list[ContentBlock] | None = PydanticField(
+        default=None,
+        description="Question text for a leaf part, or optional intro text for a "
+        "container part. A part must have either non-empty content or non-empty "
+        "parts (see validator below).",
+    )
     marks: int | None = PydanticField(default=None, ge=0)
     is_independent: bool | None = PydanticField(
         default=None,
@@ -176,13 +183,34 @@ class QuestionPart(StrictBaseModel):
     )
     answer: str | QuestionAnswer | None = PydanticField(
         default=None,
-        description="Answer material for this sub-part.",
+        description="Answer material for this sub-part (only meaningful on leaves).",
     )
     rubric: QuestionRubric | None = None
     guidelines: list[ContentBlock] | None = PydanticField(
         default=None,
         description="General marking guidelines, feedback, common errors or comments.",
     )
+    parts: list["QuestionPart"] | None = PydanticField(
+        default=None,
+        description="Nested sub-parts for arbitrarily deep questions, e.g. 1.a.i. "
+        "A part with sub-parts is a container: it carries stimulus (+ optional intro "
+        "content) and its marks are the sum of its children's marks.",
+    )
+
+    @model_validator(mode="after")
+    def _require_content_or_parts(self) -> "QuestionPart":
+        has_content = bool(self.content)
+        has_parts = bool(self.parts)
+        if not has_content and not has_parts:
+            raise ValueError(
+                "A question part must have either content or nested parts."
+            )
+        return self
+
+
+# Resolve the self-referential `parts` forward reference (the module does not
+# use `from __future__ import annotations`).
+QuestionPart.model_rebuild()
 
 
 # ---------------------------------------------------------------------------
@@ -217,6 +245,7 @@ class QuestionSyllabusPointDB(SQLModel, table=True):
     """Syllabus dot-point references stored relationally for querying."""
 
     __tablename__ = "question_syllabus_points"
+    __table_args__ = (Index("ix_question_syllabus_points_question_id", "question_id"),)
 
     id: int | None = Field(default=None, primary_key=True)
     question_id: str = Field(foreign_key="questions.id")
@@ -249,6 +278,10 @@ class PaperDB(SQLModel, table=True):
     """The `papers` table."""
 
     __tablename__ = "papers"
+    __table_args__ = (
+        Index("ix_papers_author_id", "author_id"),
+        Index("ix_papers_remixed", "remixed"),
+    )
 
     id: str = Field(primary_key=True)
     title: str
@@ -271,10 +304,16 @@ class PaperDB(SQLModel, table=True):
     # Relationships
     questions: list["QuestionDB"] = Relationship(
         back_populates="paper",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "lazy": "selectin",
+        },
     )
     outcomes: list["PaperOutcome"] = Relationship(
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "lazy": "selectin",
+        },
     )
 
     # --- JSON helpers ---
@@ -295,7 +334,10 @@ class QuestionDB(SQLModel, table=True):
     """The `questions` table."""
 
     __tablename__ = "questions"
-    __table_args__ = (UniqueConstraint("paper_id", "number"),)
+    __table_args__ = (
+        UniqueConstraint("paper_id", "number"),
+        Index("ix_questions_author_id", "author_id"),
+    )
 
     id: str = Field(primary_key=True)
     paper_id: str = Field(foreign_key="papers.id")
@@ -322,8 +364,12 @@ class QuestionDB(SQLModel, table=True):
 
     # Relationships
     paper: Optional[PaperDB] = Relationship(back_populates="questions")
-    outcomes: list["QuestionOutcome"] = Relationship()
-    syllabus_points: list["QuestionSyllabusPointDB"] = Relationship()
+    outcomes: list["QuestionOutcome"] = Relationship(
+        sa_relationship_kwargs={"lazy": "selectin"},
+    )
+    syllabus_points: list["QuestionSyllabusPointDB"] = Relationship(
+        sa_relationship_kwargs={"lazy": "selectin"},
+    )
 
     # --- JSON helpers ---
 
