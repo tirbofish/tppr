@@ -22,9 +22,7 @@ export async function getTakenDownPapers(
         if (value !== undefined && value !== "") params.set(key, String(value));
     }
 
-    const res = await fetch(`/api/admin/takedowns?${params}`, {
-        credentials: "include",
-    });
+    const res = await apiFetch(`/api/admin/takedowns?${params}`);
     if (!res.ok) throw new Error(`Failed to fetch takedowns: ${res.status}`);
     return res.json();
 }

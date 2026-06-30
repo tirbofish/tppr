@@ -13,8 +13,10 @@ import {
     FieldGroup,
     FieldLabel,
 } from "@/components/ui/field";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
@@ -31,54 +33,91 @@ import type {
     PaperSource,
     Visibility,
 } from "@/types/tppr-paper";
-import { Settings } from "lucide-react";
+import { CheckCircle2, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { syncService } from "@/lib/cloud";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/api/auth";
+import { updatePaperVerification } from "@/api/papers";
+import { formatListField, parseListField } from "@/lib/paper-fields";
 
 interface PaperSettingsProps {
     paper: PaperMeta;
     onSave: (updated: PaperMeta) => void;
     onOpenChange?: (open: boolean) => void;
+    canEditMetadata?: boolean;
 }
 
 function sameSettingsPaper(a: PaperMeta, b: PaperMeta) {
     return a.id === b.id &&
         a.title === b.title &&
         a.subject === b.subject &&
+        a.syllabus_id === b.syllabus_id &&
         a.course_level === b.course_level &&
         a.year === b.year &&
         a.source === b.source &&
-        a.visibility === b.visibility;
+        a.school === b.school &&
+        a.visibility === b.visibility &&
+        a.duration_minutes === b.duration_minutes &&
+        formatListField(a.topics) === formatListField(b.topics) &&
+        formatListField(a.outcomes) === formatListField(b.outcomes) &&
+        a.verified === b.verified &&
+        a.verified_source_name === b.verified_source_name &&
+        a.verified_source_url === b.verified_source_url &&
+        a.verified_at === b.verified_at;
 }
 
 export const PaperSettings = memo(function PaperSettings(
-    { paper, onSave, onOpenChange }: PaperSettingsProps,
+    {
+        paper,
+        onSave,
+        onOpenChange,
+        canEditMetadata = true,
+    }: PaperSettingsProps,
 ) {
+    const { user } = useAuth();
     const [open, setOpen] = useState(false);
     const [title, setTitle] = useState(paper.title);
     const [subject, setSubject] = useState(paper.subject);
+    const [syllabusId, setSyllabusId] = useState(paper.syllabus_id ?? "");
     const [courseLevel, setCourseLevel] = useState(paper.course_level ?? "");
     const [year, setYear] = useState(paper.year?.toString() ?? "");
     const [source, setSource] = useState(paper.source ?? "");
+    const [school, setSchool] = useState(paper.school ?? "");
     const [visibility, setVisibility] = useState<Visibility>(paper.visibility);
     const [showPublishWarning, setShowPublishWarning] = useState(false);
     const [showUnpublishWarning, setShowUnpublishWarning] = useState(false);
     const [duration, setDuration] = useState(
         paper.duration_minutes?.toString() ?? "",
     );
+    const [topics, setTopics] = useState(formatListField(paper.topics));
+    const [outcomes, setOutcomes] = useState(formatListField(paper.outcomes));
+    const [verificationSourceName, setVerificationSourceName] = useState(
+        paper.verified_source_name ?? "",
+    );
+    const [verificationSourceUrl, setVerificationSourceUrl] = useState(
+        paper.verified_source_url ?? "",
+    );
+    const [verificationSaving, setVerificationSaving] = useState(false);
 
     const showCourseLevel = subject === "Mathematics" || subject === "English";
+    const canVerify = Boolean(user?.admin);
 
     function handleOpen(isOpen: boolean) {
         if (isOpen) {
             setTitle(paper.title);
             setSubject(paper.subject);
+            setSyllabusId(paper.syllabus_id ?? "");
             setCourseLevel(paper.course_level ?? "");
             setYear(paper.year?.toString() ?? "");
             setSource(paper.source ?? "");
+            setSchool(paper.school ?? "");
             setVisibility(paper.visibility);
             setDuration(paper.duration_minutes?.toString() ?? "");
+            setTopics(formatListField(paper.topics));
+            setOutcomes(formatListField(paper.outcomes));
+            setVerificationSourceName(paper.verified_source_name ?? "");
+            setVerificationSourceUrl(paper.verified_source_url ?? "");
         }
         setShowPublishWarning(false);
         setShowUnpublishWarning(false);
@@ -88,6 +127,7 @@ export const PaperSettings = memo(function PaperSettings(
 
     function handleSubmit(e: React.SubmitEvent) {
         e.preventDefault();
+        if (!canEditMetadata) return;
         if (paper.visibility === "private" && visibility === "public") {
             setShowPublishWarning(true);
             return;
@@ -110,13 +150,17 @@ export const PaperSettings = memo(function PaperSettings(
             ...paper,
             title,
             subject,
+            syllabus_id: syllabusId || undefined,
             course_level: showCourseLevel
                 ? (courseLevel as CourseLevel) || undefined
                 : undefined,
             year: year ? Number(year) : undefined,
             source: (source as PaperSource) || undefined,
+            school: school || undefined,
             visibility,
             duration_minutes: duration ? Number(duration) : undefined,
+            topics: parseListField(topics),
+            outcomes: parseListField(outcomes),
             updated_at: new Date().toISOString(),
         };
 
@@ -139,6 +183,29 @@ export const PaperSettings = memo(function PaperSettings(
         setOpen(false);
     }
 
+    async function handleVerification(verified: boolean) {
+        setVerificationSaving(true);
+        try {
+            const updated = await updatePaperVerification(paper.id, {
+                verified,
+                source_name: verificationSourceName.trim(),
+                source_url: verificationSourceUrl.trim() || undefined,
+            });
+            onSave(updated);
+            setVerificationSourceName(updated.verified_source_name ?? "");
+            setVerificationSourceUrl(updated.verified_source_url ?? "");
+            toast.success(verified ? "Paper verified" : "Verification removed");
+        } catch (error) {
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Failed to update verification",
+            );
+        } finally {
+            setVerificationSaving(false);
+        }
+    }
+
     return (
         <>
             <Dialog open={open} onOpenChange={handleOpen}>
@@ -151,13 +218,91 @@ export const PaperSettings = memo(function PaperSettings(
                         <Settings />
                     </Button>
                 </DialogTrigger>
-                <DialogContent>
-                    <form onSubmit={handleSubmit}>
+                <DialogContent className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-2xl">
+                    <form onSubmit={handleSubmit} className="min-w-0">
                         <DialogHeader>
                             <DialogTitle>Paper Settings</DialogTitle>
                         </DialogHeader>
 
                         <FieldGroup>
+                            {canVerify && (
+                                <Field>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex min-w-0 items-center gap-2">
+                                            <CheckCircle2 data-icon="inline-start" />
+                                            <FieldLabel>
+                                                Verification
+                                            </FieldLabel>
+                                            {paper.verified && (
+                                                <Badge variant="secondary">
+                                                    Verified
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        {paper.verified && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={verificationSaving}
+                                                onClick={() =>
+                                                    handleVerification(false)}
+                                            >
+                                                Remove
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <Field>
+                                            <FieldLabel htmlFor="verification-source-name">
+                                                Source name
+                                            </FieldLabel>
+                                            <Input
+                                                id="verification-source-name"
+                                                value={verificationSourceName}
+                                                onChange={(e) =>
+                                                    setVerificationSourceName(
+                                                        e.target.value,
+                                                    )}
+                                                placeholder="e.g. NESA"
+                                                disabled={verificationSaving}
+                                            />
+                                        </Field>
+                                        <Field>
+                                            <FieldLabel htmlFor="verification-source-url">
+                                                Source URL
+                                            </FieldLabel>
+                                            <Input
+                                                id="verification-source-url"
+                                                value={verificationSourceUrl}
+                                                onChange={(e) =>
+                                                    setVerificationSourceUrl(
+                                                        e.target.value,
+                                                    )}
+                                                placeholder="https://..."
+                                                disabled={verificationSaving}
+                                            />
+                                        </Field>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        disabled={verificationSaving ||
+                                            !verificationSourceName.trim()}
+                                        onClick={() => handleVerification(true)}
+                                    >
+                                        <CheckCircle2 data-icon="inline-start" />
+                                        {paper.verified
+                                            ? "Update verification"
+                                            : "Verify paper"}
+                                    </Button>
+                                    <FieldDescription>
+                                        Verified papers display a checkmark in
+                                        search, cards, and the editor.
+                                    </FieldDescription>
+                                </Field>
+                            )}
+
                             <Field>
                                 <FieldLabel htmlFor="settings-title">
                                     Title
@@ -166,15 +311,16 @@ export const PaperSettings = memo(function PaperSettings(
                                     id="settings-title"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
+                                    disabled={!canEditMetadata}
                                     required
                                 />
                             </Field>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-4 sm:grid-cols-2">
                                 <Field
                                     className={showCourseLevel
                                         ? ""
-                                        : "col-span-2"}
+                                        : "sm:col-span-2"}
                                 >
                                     <FieldLabel htmlFor="settings-subject">
                                         Subject
@@ -182,6 +328,7 @@ export const PaperSettings = memo(function PaperSettings(
                                     <Select
                                         value={subject}
                                         onValueChange={setSubject}
+                                        disabled={!canEditMetadata}
                                     >
                                         <SelectTrigger
                                             id="settings-subject"
@@ -203,6 +350,7 @@ export const PaperSettings = memo(function PaperSettings(
                                         <Select
                                             value={courseLevel}
                                             onValueChange={setCourseLevel}
+                                            disabled={!canEditMetadata}
                                         >
                                             <SelectTrigger
                                                 id="settings-level"
@@ -229,7 +377,20 @@ export const PaperSettings = memo(function PaperSettings(
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid gap-4 sm:grid-cols-3">
+                                <Field>
+                                    <FieldLabel htmlFor="settings-syllabus">
+                                        Syllabus ID
+                                    </FieldLabel>
+                                    <Input
+                                        id="settings-syllabus"
+                                        value={syllabusId}
+                                        onChange={(e) =>
+                                            setSyllabusId(e.target.value)}
+                                        placeholder="hsc-physics-2025"
+                                        disabled={!canEditMetadata}
+                                    />
+                                </Field>
                                 <Field>
                                     <FieldLabel htmlFor="settings-year">
                                         Year
@@ -242,8 +403,12 @@ export const PaperSettings = memo(function PaperSettings(
                                         onChange={(e) =>
                                             setYear(e.target.value)}
                                         placeholder="2026"
+                                        disabled={!canEditMetadata}
                                     />
                                 </Field>
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-3">
                                 <Field>
                                     <FieldLabel htmlFor="settings-duration">
                                         Duration (min)
@@ -257,6 +422,20 @@ export const PaperSettings = memo(function PaperSettings(
                                         onChange={(e) =>
                                             setDuration(e.target.value)}
                                         placeholder="180"
+                                        disabled={!canEditMetadata}
+                                    />
+                                </Field>
+                                <Field>
+                                    <FieldLabel htmlFor="settings-school">
+                                        School
+                                    </FieldLabel>
+                                    <Input
+                                        id="settings-school"
+                                        value={school}
+                                        onChange={(e) =>
+                                            setSchool(e.target.value)}
+                                        placeholder="School name"
+                                        disabled={!canEditMetadata}
                                     />
                                 </Field>
                                 <Field>
@@ -266,6 +445,7 @@ export const PaperSettings = memo(function PaperSettings(
                                     <Select
                                         value={source}
                                         onValueChange={setSource}
+                                        disabled={!canEditMetadata}
                                     >
                                         <SelectTrigger
                                             id="settings-source"
@@ -294,13 +474,52 @@ export const PaperSettings = memo(function PaperSettings(
                                 </Field>
                             </div>
 
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <Field>
+                                    <FieldLabel htmlFor="settings-topics">
+                                        Topic tags
+                                    </FieldLabel>
+                                    <Textarea
+                                        id="settings-topics"
+                                        value={topics}
+                                        onChange={(e) =>
+                                            setTopics(e.target.value)}
+                                        placeholder="kinematics, projectile motion"
+                                        rows={3}
+                                        disabled={!canEditMetadata}
+                                    />
+                                    <FieldDescription>
+                                        Separate tags with commas or new lines.
+                                    </FieldDescription>
+                                </Field>
+                                <Field>
+                                    <FieldLabel htmlFor="settings-outcomes">
+                                        Outcome codes
+                                    </FieldLabel>
+                                    <Textarea
+                                        id="settings-outcomes"
+                                        value={outcomes}
+                                        onChange={(e) =>
+                                            setOutcomes(e.target.value)}
+                                        placeholder="PH12-12, PH12-13"
+                                        rows={3}
+                                        disabled={!canEditMetadata}
+                                    />
+                                    <FieldDescription>
+                                        Separate outcome codes with commas or
+                                        new lines.
+                                    </FieldDescription>
+                                </Field>
+                            </div>
+
                             <Field>
                                 <FieldLabel>Visibility</FieldLabel>
                                 <RadioGroup
                                     value={visibility}
                                     onValueChange={(v) =>
                                         setVisibility(v as Visibility)}
-                                    className="flex gap-6"
+                                    className="flex flex-wrap gap-4"
+                                    disabled={!canEditMetadata}
                                 >
                                     <div className="flex items-center gap-2">
                                         <RadioGroupItem
@@ -331,10 +550,12 @@ export const PaperSettings = memo(function PaperSettings(
                         <DialogFooter className="mt-4">
                             <DialogClose asChild>
                                 <Button type="button" variant="outline">
-                                    Cancel
+                                    {canEditMetadata ? "Cancel" : "Close"}
                                 </Button>
                             </DialogClose>
-                            <Button type="submit">Save</Button>
+                            {canEditMetadata && (
+                                <Button type="submit">Save</Button>
+                            )}
                         </DialogFooter>
                     </form>
                 </DialogContent>
@@ -355,7 +576,7 @@ export const PaperSettings = memo(function PaperSettings(
                         Good to see you want your creation to be seen by the
                         world, but be aware of the implications of publishing:
                     </p>
-                    <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                    <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
                         <li>
                             By publishing, anyone who uses Thribhus Past Paper
                             Repository will be able to see your paper.
@@ -405,7 +626,7 @@ export const PaperSettings = memo(function PaperSettings(
                         Unfortunate to see your creation get removed, but to
                         each their own. Understand the implications:
                     </p>
-                    <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                    <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
                         <li>
                             Your paper will no longer appear in search results
                             or the shared question pool.

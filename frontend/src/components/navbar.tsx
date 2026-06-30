@@ -44,11 +44,12 @@ import { loginPath, signupPath } from "@/lib/routes";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
+import { toast } from "sonner";
 
 export default function NavBar() {
   const online = useOnline();
 
-  const { user, logout } = useAuth();
+  const { user, logout, switchToAdminMode } = useAuth();
   const [newPaperOpen, setNewPaperOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -107,6 +108,15 @@ export default function NavBar() {
     setFocused(false);
     setShowFilters(false);
     inputRef.current?.blur();
+  }
+
+  async function handleSwitchToAdminMode() {
+    const error = await switchToAdminMode();
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success("Admin mode activated");
   }
 
   <Tooltip>
@@ -332,6 +342,15 @@ export default function NavBar() {
                               <ShieldCheck />
                               Takedowns
                             </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+                      {!user.admin && user.admin_available && (
+                        <>
+                          <DropdownMenuItem onClick={handleSwitchToAdminMode}>
+                            <ShieldCheck />
+                            Switch to admin mode
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                         </>

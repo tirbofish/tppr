@@ -300,6 +300,11 @@ class PaperDB(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     remixed: str | None = Field(default=None)
+    verified: bool = Field(default=False)
+    verified_source_name: str | None = None
+    verified_source_url: str | None = None
+    verified_at: datetime | None = None
+    verified_by: str | None = None
 
     # Relationships
     questions: list["QuestionDB"] = Relationship(
@@ -469,6 +474,7 @@ class PaperMetaRead(BaseModel):
     title: str
     author_id: str
     subject: str
+    syllabus_id: str | None = None
     year: int | None = None
     source: PaperSource | None = None
     school: str | None = None
@@ -482,6 +488,11 @@ class PaperMetaRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     remixed: str | None = Field(default=None)
+    verified: bool = False
+    verified_source_name: str | None = None
+    verified_source_url: str | None = None
+    verified_at: datetime | None = None
+    verified_by: str | None = None
 
 
 class PaperRead(PaperMetaRead):
@@ -633,6 +644,7 @@ def paper_db_to_meta_read(p: PaperDB) -> PaperMetaRead:
         title=p.title,
         author_id=p.author_id,
         subject=p.subject,
+        syllabus_id=p.syllabus_id,
         year=p.year,
         source=p.source,  # type: ignore[arg-type]
         school=p.school,
@@ -646,6 +658,11 @@ def paper_db_to_meta_read(p: PaperDB) -> PaperMetaRead:
         created_at=p.created_at,
         updated_at=p.updated_at,
         remixed=p.remixed,
+        verified=p.verified,
+        verified_source_name=p.verified_source_name,
+        verified_source_url=p.verified_source_url,
+        verified_at=p.verified_at,
+        verified_by=p.verified_by,
     )
 
 
@@ -681,5 +698,10 @@ def paper_db_to_read(
         created_at=p.created_at,
         updated_at=p.updated_at,
         remixed=p.remixed,
+        verified=p.verified,
+        verified_source_name=p.verified_source_name,
+        verified_source_url=p.verified_source_url,
+        verified_at=p.verified_at,
+        verified_by=p.verified_by,
         questions=read_questions,
     )

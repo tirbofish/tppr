@@ -1,6 +1,7 @@
 import os
 import re
 from uuid import uuid4
+from urllib.parse import urlparse
 
 from flask import Blueprint, jsonify, redirect, request, send_file
 from sqlmodel import col, select
@@ -32,6 +33,29 @@ from flask import Response
 q_bp = Blueprint("tppr-questions", __name__)
 ASSET_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
 
+def _normalised_codes(values) -> list[str]:
+    if not values:
+        return []
+    codes = [
+        str(value).strip()
+        for value in values
+        if str(value).strip()
+    ]
+    return list(dict.fromkeys(codes))
+
+
+def _replace_paper_outcomes(session, paper_id: str, outcomes) -> None:
+    existing = session.exec(
+        select(PaperOutcome).where(PaperOutcome.paper_id == paper_id)
+    ).all()
+    for outcome in existing:
+        session.delete(outcome)
+    if existing:
+        session.flush()
+    for code in _normalised_codes(outcomes):
+        session.add(PaperOutcome(paper_id=paper_id, outcome_code=code))
+
+
 def _removed_response():
     response = jsonify({"message": "Paper has been removed", "visibility": "removed"})
     response.headers["Cache-Control"] = "no-store"
@@ -40,6 +64,11 @@ def _removed_response():
 
 def _valid_asset_id(asset_id: str) -> bool:
     return bool(ASSET_ID_RE.fullmatch(asset_id))
+
+
+def _valid_source_url(url: str) -> bool:
+    parsed = urlparse(url)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
 
 def _can_view_paper(paper: PaperDB, user_id: str | None) -> bool:
@@ -400,6 +429,7 @@ def create_paper():
             paper.set_topics(data["topics"])
 
         session.add(paper)
+        _replace_paper_outcomes(session, paper.id, data.get("outcomes"))
 
         for q_data in data.get("questions", []):
             q = _build_question_db(q_data, paper.id, str(user_id), preserve_id=False)
@@ -452,6 +482,8 @@ def update_paper(paper_id):
             paper.duration_minutes = data["duration_minutes"]
         if "topics" in data:
             paper.set_topics(data["topics"])
+        if "outcomes" in data:
+            _replace_paper_outcomes(session, paper.id, data["outcomes"])
 
         paper.updated_at = datetime.now(UTC)
 
@@ -513,6 +545,44 @@ def delete_paper(paper_id):
         session.delete(paper)
         session.commit()
         return jsonify({"message": "Deleted"}), 200
+
+
+@q_bp.route("/api/admin/papers/<string:paper_id>/verification", methods=["PATCH"])
+@supabase_auth_required()
+def update_paper_verification(paper_id):
+    user_id = str(get_current_user_id())
+    if not is_admin(user_id):
+        return jsonify({"message": "Forbidden"}), 403
+
+    data = request.get_json(silent=True) or {}
+    verified = bool(data.get("verified", False))
+    source_name = (data.get("source_name") or "").strip()
+    source_url = (data.get("source_url") or "").strip()
+
+    if verified and not source_name:
+        return jsonify({"message": "source_name is required when verifying"}), 400
+    if len(source_name) > 160:
+        return jsonify({"message": "source_name is too long"}), 400
+    if source_url and (len(source_url) > 500 or not _valid_source_url(source_url)):
+        return jsonify({"message": "source_url must be a valid http(s) URL"}), 400
+
+    with get_session() as session:
+        paper = session.get(PaperDB, paper_id)
+        if not paper:
+            return jsonify({"message": "Paper not found"}), 404
+
+        now = datetime.now(UTC)
+        paper.verified = verified
+        paper.verified_source_name = source_name if verified else None
+        paper.verified_source_url = source_url if verified and source_url else None
+        paper.verified_at = now if verified else None
+        paper.verified_by = user_id if verified else None
+        paper.updated_at = now
+
+        session.add(paper)
+        session.commit()
+        session.refresh(paper)
+        return jsonify(paper_db_to_meta_read(paper).model_dump(mode="json")), 200
 
 # --- PUBLISHING ---
 

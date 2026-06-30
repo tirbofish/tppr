@@ -1,9 +1,26 @@
 import { apiFetch } from "./client";
+import type { PaperMeta } from "@/types/tppr-paper";
 
 export interface PublicUser {
     user_id: string;
     username: string;
     avatar_url?: string | null;
+}
+
+export interface PresencePaper {
+    id: string;
+    title: string;
+    subject: string;
+    visibility: string;
+}
+
+export interface UserPresence {
+    online: boolean;
+    session_started_at?: string | null;
+    last_seen_at?: string | null;
+    seconds_on_site: number;
+    active_paper?: PresencePaper | null;
+    active_seconds: number;
 }
 
 export interface FriendRequest extends PublicUser {
@@ -13,6 +30,7 @@ export interface FriendRequest extends PublicUser {
 
 export interface Friend extends PublicUser {
     since?: string | null;
+    presence?: UserPresence | null;
 }
 
 export interface LeaderboardEntry extends PublicUser {
@@ -24,6 +42,25 @@ export interface LeaderboardEntry extends PublicUser {
     total_study_seconds: number;
     current_streak: number;
     longest_streak: number;
+}
+
+export interface UserProfile {
+    user: PublicUser & {
+        created_at?: string | null;
+    };
+    stats: {
+        attempts_count: number;
+        papers_attempted: number;
+        papers_completed: number;
+        questions_answered: number;
+        total_study_seconds: number;
+        reveal_count: number;
+        current_streak: number;
+        longest_streak: number;
+        last_active_at?: string | null;
+    };
+    presence?: UserPresence | null;
+    public_papers: PaperMeta[];
 }
 
 async function readError(res: Response, fallback: string): Promise<Error> {
@@ -94,4 +131,26 @@ export async function getLeaderboard(
     const qs = scope ? `?scope=${scope}` : "";
     const res = await apiFetch(`/api/leaderboard${qs}`);
     return jsonOrThrow(res, "Failed to load leaderboard");
+}
+
+export async function heartbeatPresence(paperId?: string | null): Promise<UserPresence> {
+    const body = paperId === undefined ? {} : { paper_id: paperId };
+    const res = await apiFetch("/api/presence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+    return jsonOrThrow(res, "Failed to update presence");
+}
+
+export async function clearActivePaperPresence(): Promise<UserPresence> {
+    const res = await apiFetch("/api/presence/active-paper", {
+        method: "DELETE",
+    });
+    return jsonOrThrow(res, "Failed to clear presence");
+}
+
+export async function getUserProfile(userId: string): Promise<UserProfile> {
+    const res = await apiFetch(`/api/users/${userId}/profile`);
+    return jsonOrThrow(res, "Failed to load profile");
 }

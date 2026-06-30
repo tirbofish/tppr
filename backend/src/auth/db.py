@@ -3,7 +3,7 @@ from logging import Logger
 import re
 from typing import Optional
 
-from sqlalchemy import or_, update
+from sqlalchemy import or_, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import StaleDataError
 from sqlmodel import Field, Session, SQLModel, select
@@ -123,6 +123,15 @@ class AuthenticationDB:
                 user.avatar_url = avatar_url
                 session.commit()
 
+    def list_authored_asset_paths(self, user_id) -> list[str]:
+        with Session(engine) as session:
+            rows = session.exec(
+                select(AssetDB.paper_id, AssetDB.id)
+                .join(PaperDB, AssetDB.paper_id == PaperDB.id)
+                .where(PaperDB.author_id == str(user_id))
+            ).all()
+            return [f"{paper_id}/{asset_id}" for paper_id, asset_id in rows]
+
     def get_user_by_username(self, username: str) -> Optional[dict]:
         with Session(engine) as session:
             user = session.exec(
@@ -148,9 +157,84 @@ class AuthenticationDB:
             user = session.get(UserDB, user_id)
             if not user:
                 return False
+            self._reset_user_data(session, str(user_id))
             session.delete(user)
             session.commit()
             return True
+
+    def reset_user_data(self, user_id) -> bool:
+        with Session(engine) as session:
+            user = session.get(UserDB, user_id)
+            if not user:
+                return False
+            self._reset_user_data(session, str(user_id))
+            session.commit()
+            return True
+
+    def _reset_user_data(self, session: Session, user_id: str) -> None:
+        params = {"user_id": user_id}
+        statements = [
+            """
+            DELETE FROM question_attempts
+            WHERE attempt_id IN (
+                SELECT id FROM paper_attempts WHERE user_id = :user_id
+            )
+            """,
+            "DELETE FROM paper_attempts WHERE user_id = :user_id",
+            """
+            DELETE FROM paper_stars
+            WHERE user_id = :user_id
+               OR paper_id IN (SELECT id FROM papers WHERE author_id = :user_id)
+            """,
+            """
+            DELETE FROM paper_reports
+            WHERE reporter_id = :user_id
+               OR paper_id IN (SELECT id FROM papers WHERE author_id = :user_id)
+            """,
+            "DELETE FROM user_presence WHERE user_id = :user_id",
+            "DELETE FROM user_roles WHERE user_id = :user_id",
+            """
+            DELETE FROM friendships
+            WHERE requester_id = :user_id OR addressee_id = :user_id
+            """,
+            """
+            DELETE FROM paper_takedown_states
+            WHERE paper_id IN (SELECT id FROM papers WHERE author_id = :user_id)
+            """,
+            """
+            DELETE FROM assets
+            WHERE paper_id IN (SELECT id FROM papers WHERE author_id = :user_id)
+            """,
+            """
+            DELETE FROM question_syllabus_points
+            WHERE question_id IN (
+                SELECT id FROM questions
+                WHERE paper_id IN (
+                    SELECT id FROM papers WHERE author_id = :user_id
+                )
+            )
+            """,
+            """
+            DELETE FROM question_outcomes
+            WHERE question_id IN (
+                SELECT id FROM questions
+                WHERE paper_id IN (
+                    SELECT id FROM papers WHERE author_id = :user_id
+                )
+            )
+            """,
+            """
+            DELETE FROM questions
+            WHERE paper_id IN (SELECT id FROM papers WHERE author_id = :user_id)
+            """,
+            """
+            DELETE FROM paper_outcomes
+            WHERE paper_id IN (SELECT id FROM papers WHERE author_id = :user_id)
+            """,
+            "DELETE FROM papers WHERE author_id = :user_id",
+        ]
+        for statement in statements:
+            session.execute(text(statement), params)
 
     def update_last_login(self, user_id) -> None:
         with Session(engine) as session:

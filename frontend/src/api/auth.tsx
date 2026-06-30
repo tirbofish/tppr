@@ -20,6 +20,7 @@ interface User {
   username: string;
   email: string;
   admin?: boolean;
+  admin_available?: boolean;
   avatar_url?: string;
 }
 
@@ -29,6 +30,7 @@ interface AuthContextType {
   login: (formData: FormData) => Promise<string | null>;
   signup: (formData: FormData) => Promise<string | null>;
   logout: () => void;
+  switchToAdminMode: () => Promise<string | null>;
   /** Re-fetch the user's backend profile (e.g. after changing their avatar). */
   refreshUser: () => Promise<void>;
 }
@@ -39,6 +41,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => null,
   signup: async () => null,
   logout: () => {},
+  switchToAdminMode: async () => null,
   refreshUser: async () => {},
 });
 
@@ -75,7 +78,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!res.ok) return;
       const data = await res.json();
       setUser((prev) =>
-        prev ? { ...prev, avatar_url: data.avatar_url } : prev,
+        prev
+          ? {
+            ...prev,
+            username: data.username ?? prev.username,
+            email: data.email ?? prev.email,
+            avatar_url: data.avatar_url,
+            admin: Boolean(data.admin),
+            admin_available: Boolean(data.admin_available),
+          }
+          : prev,
       );
     } catch {
       // Backend may be temporarily unreachable; leave the cached user as-is.
@@ -145,8 +157,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }
 
+  async function switchToAdminMode(): Promise<string | null> {
+    const res = await apiFetch("/api/admin/verify", { method: "POST" });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      return data?.message ?? "Failed to activate admin mode";
+    }
+    await refreshUser();
+    return null;
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, refreshUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        signup,
+        logout,
+        switchToAdminMode,
+        refreshUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
@@ -27,6 +28,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import type { CourseLevel, PaperSource, Visibility } from "@/types/tppr-paper";
 import { createLocalPaper } from "@/lib/paper";
+import { parseListField } from "@/lib/paper-fields";
 import { importPaperFromJsonFile } from "@/lib/paper-import";
 import { useAuth } from "@/api/auth";
 import { useNavigate } from "react-router-dom";
@@ -65,11 +67,18 @@ export function CreatePaperDialog({ onCreated }: { onCreated?: () => void }) {
             const paper = await createLocalPaper({
                 title: String(formData.get("title")),
                 subject,
+                syllabus_id: String(formData.get("syllabus_id") || "") || null,
                 course_level: showCourseLevel
                     ? (courseLevel as CourseLevel) || null
                     : null,
                 year: formData.get("year") ? Number(formData.get("year")) : null,
                 source: (source as PaperSource) || null,
+                school: String(formData.get("school") || "") || null,
+                duration_minutes: formData.get("duration_minutes")
+                    ? Number(formData.get("duration_minutes"))
+                    : null,
+                topics: parseListField(String(formData.get("topics") || "")),
+                outcomes: parseListField(String(formData.get("outcomes") || "")),
                 visibility: visibility as Visibility,
             }, user.user_id);
             toast.success("Paper created");
@@ -264,6 +273,68 @@ export function CreatePaperDialog({ onCreated }: { onCreated?: () => void }) {
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
+                        </Field>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <Field>
+                            <FieldLabel htmlFor="duration_minutes">
+                                Duration (min)
+                            </FieldLabel>
+                            <Input
+                                id="duration_minutes"
+                                name="duration_minutes"
+                                type="number"
+                                min={0}
+                                max={600}
+                                placeholder="180"
+                            />
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="school">School</FieldLabel>
+                            <Input
+                                id="school"
+                                name="school"
+                                placeholder="e.g. Baulkham Hills"
+                            />
+                        </Field>
+                    </div>
+
+                    <Field>
+                        <FieldLabel htmlFor="syllabus_id">Syllabus ID</FieldLabel>
+                        <Input
+                            id="syllabus_id"
+                            name="syllabus_id"
+                            placeholder="e.g. hsc-physics-2025"
+                        />
+                    </Field>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <Field>
+                            <FieldLabel htmlFor="topics">Topic tags</FieldLabel>
+                            <Textarea
+                                id="topics"
+                                name="topics"
+                                placeholder="kinematics, projectile motion"
+                                rows={3}
+                            />
+                            <FieldDescription>
+                                Separate tags with commas or new lines.
+                            </FieldDescription>
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="outcomes">
+                                Outcome codes
+                            </FieldLabel>
+                            <Textarea
+                                id="outcomes"
+                                name="outcomes"
+                                placeholder="PH12-12, PH12-13"
+                                rows={3}
+                            />
+                            <FieldDescription>
+                                Separate outcome codes with commas or new lines.
+                            </FieldDescription>
                         </Field>
                     </div>
 

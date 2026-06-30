@@ -1,23 +1,143 @@
+from datetime import UTC, datetime, timedelta
+
 from flask import Blueprint, jsonify, request
 
+from admin import is_admin
 from auth.db import AuthenticationDB, UserDB
 from auth.supabase import get_current_user_id, supabase_auth_required
 from questions.db import get_session
 from sqlmodel import select
 
 from progress.aggregations import compute_many_students, ZERO_STUDENT_STATS
+from questions.types import PaperDB, paper_db_to_meta_read
 from .db import SocialDB
-from .models import FriendshipDB  # noqa: F401 (ensures table registered)
+from .models import FriendshipDB, UserPresenceDB  # noqa: F401 (ensures table registered)
+from .time import as_utc
 
 social_bp = Blueprint("tppr-social", __name__)
 auth_db = AuthenticationDB()
 social_db = SocialDB()
 
 LEADERBOARD_LIMIT = 100
+PRESENCE_STALE_AFTER = timedelta(minutes=10)
 
 
 def _error(message: str, status: int):
     return jsonify({"message": message}), status
+
+
+def _paper_presence_dict(paper: PaperDB | None):
+    if not paper or paper.visibility != "public":
+        return None
+    return {
+        "id": paper.id,
+        "title": paper.title,
+        "subject": paper.subject,
+        "visibility": paper.visibility,
+    }
+
+
+def _presence_response(presence: UserPresenceDB, paper: PaperDB | None) -> dict:
+    now = datetime.now(UTC)
+    last_seen_at = as_utc(presence.last_seen_at)
+    session_started_at = as_utc(presence.session_started_at)
+    active_paper_started_at = as_utc(presence.active_paper_started_at)
+    online = (
+        now - last_seen_at <= timedelta(seconds=90)
+        if last_seen_at
+        else False
+    )
+    active_paper = _paper_presence_dict(paper)
+    return {
+        "online": online,
+        "session_started_at": session_started_at.isoformat()
+        if session_started_at
+        else None,
+        "last_seen_at": last_seen_at.isoformat()
+        if last_seen_at
+        else None,
+        "seconds_on_site": max(
+            0,
+            int((now - session_started_at).total_seconds()),
+        )
+        if online and session_started_at
+        else 0,
+        "active_paper": active_paper,
+        "active_seconds": max(
+            0,
+            int((now - active_paper_started_at).total_seconds()),
+        )
+        if online and active_paper and active_paper_started_at
+        else 0,
+    }
+
+
+@social_bp.route("/api/presence", methods=["POST"])
+@supabase_auth_required()
+def heartbeat_presence():
+    user_id = str(get_current_user_id())
+    data = request.get_json(silent=True) or {}
+    now = datetime.now(UTC)
+    paper_id_supplied = "paper_id" in data
+    paper_id = data.get("paper_id")
+
+    with get_session() as session:
+        presence = session.get(UserPresenceDB, user_id)
+        if not presence:
+            presence = UserPresenceDB(
+                user_id=user_id,
+                session_started_at=now,
+                last_seen_at=now,
+            )
+        elif (
+            not (last_seen_at := as_utc(presence.last_seen_at))
+            or now - last_seen_at > PRESENCE_STALE_AFTER
+        ):
+            presence.session_started_at = now
+
+        paper = None
+        if paper_id_supplied:
+            if paper_id:
+                paper = session.get(PaperDB, str(paper_id))
+                if not paper or paper.visibility == "removed":
+                    return _error("Paper not found", 404)
+                presence.active_paper_id = paper.id
+                presence.active_paper_started_at = now
+            else:
+                presence.active_paper_id = None
+                presence.active_paper_started_at = None
+        elif presence.active_paper_id:
+            paper = session.get(PaperDB, presence.active_paper_id)
+
+        presence.last_seen_at = now
+        session.add(presence)
+        session.commit()
+        session.refresh(presence)
+        if presence.active_paper_id and not paper:
+            paper = session.get(PaperDB, presence.active_paper_id)
+        return jsonify(_presence_response(presence, paper)), 200
+
+
+@social_bp.route("/api/presence/active-paper", methods=["DELETE"])
+@supabase_auth_required()
+def clear_active_paper_presence():
+    user_id = str(get_current_user_id())
+    now = datetime.now(UTC)
+    with get_session() as session:
+        presence = session.get(UserPresenceDB, user_id)
+        if not presence:
+            presence = UserPresenceDB(
+                user_id=user_id,
+                session_started_at=now,
+                last_seen_at=now,
+            )
+        presence.active_paper_id = None
+        presence.active_paper_started_at = None
+        presence.last_seen_at = now
+        session.add(presence)
+        session.commit()
+        session.refresh(presence)
+        return jsonify(_presence_response(presence, None)), 200
 
 
 @social_bp.route("/api/friends/requests", methods=["POST"])
@@ -136,6 +256,57 @@ def _leaderboard_entries(session, users: list[UserDB]) -> list[dict]:
     for i, entry in enumerate(entries, start=1):
         entry["rank"] = i
     return entries[:LEADERBOARD_LIMIT]
+
+
+@social_bp.route("/api/users/<string:profile_user_id>/profile", methods=["GET"])
+@supabase_auth_required()
+def user_profile(profile_user_id):
+    viewer_id = str(get_current_user_id())
+    with get_session() as session:
+        profile_user = session.get(UserDB, profile_user_id)
+        if not profile_user:
+            return _error("User not found", 404)
+
+        allowed = (
+            viewer_id == profile_user_id
+            or social_db.are_friends(viewer_id, profile_user_id)
+            or is_admin(viewer_id)
+        )
+        if not allowed:
+            return _error("Forbidden", 403)
+
+        stats = compute_many_students(session, [profile_user_id]).get(
+            profile_user_id,
+            dict(ZERO_STUDENT_STATS),
+        )
+        presence = session.get(UserPresenceDB, profile_user_id)
+        paper = (
+            session.get(PaperDB, presence.active_paper_id)
+            if presence and presence.active_paper_id
+            else None
+        )
+        public_papers = session.exec(
+            select(PaperDB)
+            .where(PaperDB.author_id == profile_user_id)
+            .where(PaperDB.visibility == "public")
+        ).all()
+
+        return jsonify({
+            "user": {
+                "user_id": profile_user.user_id,
+                "username": profile_user.username,
+                "avatar_url": profile_user.avatar_url,
+                "created_at": profile_user.created_at.isoformat()
+                if profile_user.created_at
+                else None,
+            },
+            "stats": stats,
+            "presence": _presence_response(presence, paper) if presence else None,
+            "public_papers": [
+                paper_db_to_meta_read(p).model_dump(mode="json")
+                for p in public_papers[:12]
+            ],
+        }), 200
 
 
 @social_bp.route("/api/leaderboard", methods=["GET"])

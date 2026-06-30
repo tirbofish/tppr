@@ -24,6 +24,7 @@ import { Clock, Globe, Search as SearchIcon } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { type SearchFilters, searchPapers } from "@/lib/paper";
 import { StarPaperButton } from "@/components/star-paper-button";
+import { PaperVerifiedBadge } from "@/components/paper-verified-badge";
 
 const SUBJECTS_WITH_LEVELS = new Set([
     "Mathematics",
@@ -264,6 +265,7 @@ export default function Search() {
                                                 </CardTitle>
                                                 <div className="flex shrink-0 items-center gap-1">
                                                     <StarPaperButton paperId={paper.id} />
+                                                    <PaperVerifiedBadge paper={paper} />
                                                     <Globe className="size-4 text-muted-foreground" />
                                                 </div>
                                             </div>
@@ -310,6 +312,42 @@ export default function Search() {
                                                     </Badge>
                                                 )
                                                 : null}
+                                            {paper.topics?.slice(0, 3).map((
+                                                topic,
+                                            ) => (
+                                                <Badge
+                                                    key={`topic-${topic}`}
+                                                    variant="outline"
+                                                >
+                                                    {topic}
+                                                </Badge>
+                                            ))}
+                                            {paper.topics &&
+                                                paper.topics.length > 3 && (
+                                                <Badge variant="outline">
+                                                    +{paper.topics.length - 3}
+                                                    {" "}
+                                                    topics
+                                                </Badge>
+                                            )}
+                                            {paper.outcomes?.slice(0, 2).map((
+                                                outcome,
+                                            ) => (
+                                                <Badge
+                                                    key={`outcome-${outcome}`}
+                                                    variant="secondary"
+                                                >
+                                                    {outcome}
+                                                </Badge>
+                                            ))}
+                                            {paper.outcomes &&
+                                                paper.outcomes.length > 2 && (
+                                                <Badge variant="secondary">
+                                                    +{paper.outcomes.length - 2}
+                                                    {" "}
+                                                    outcomes
+                                                </Badge>
+                                            )}
                                         </CardContent>
                                     </Card>
                                 ))}

@@ -21,6 +21,8 @@ import Settings from "./pages/Settings";
 import Friends from "./pages/Friends";
 import Leaderboard from "./pages/Leaderboard";
 import Dashboard from "./pages/Dashboard";
+import { PresenceHeartbeat } from "./components/presence-heartbeat";
+import UserProfile from "./pages/UserProfile";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -35,6 +37,7 @@ function App() {
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <AuthProvider>
         <TooltipProvider>
+          <PresenceHeartbeat />
           <ScrollToTop />
           <div className="flex min-h-screen flex-col">
             <Routes>
@@ -51,6 +54,7 @@ function App() {
               <Route path="/friends" element={<Friends />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/users/:userId" element={<UserProfile />} />
 
               <Route path="/admin/takedowns" element={<AdminTakedowns />} />
 

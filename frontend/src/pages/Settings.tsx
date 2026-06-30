@@ -40,6 +40,8 @@ export default function Settings() {
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [avatarSaving, setAvatarSaving] = useState(false);
+    const [resetDataOpen, setResetDataOpen] = useState(false);
+    const [resettingData, setResettingData] = useState(false);
     const avatarInputRef = useRef<HTMLInputElement>(null);
 
     const [mfaFactors, setMfaFactors] = useState<
@@ -210,6 +212,26 @@ export default function Settings() {
             toast.success("Password updated");
             setNewPassword("");
             setConfirmPassword("");
+        }
+    }
+
+    async function handleResetData() {
+        setResettingData(true);
+        try {
+            const res = await apiFetch("/api/account/data", {
+                method: "DELETE",
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => null);
+                toast.error(body?.message ?? "Failed to reset account data");
+                return;
+            }
+            toast.success("Account data reset");
+            setResetDataOpen(false);
+        } catch {
+            toast.error("Failed to reset account data");
+        } finally {
+            setResettingData(false);
         }
     }
 
@@ -476,6 +498,61 @@ export default function Settings() {
                             >
                                 Sign out
                             </Button>
+                        </div>
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <p className="text-sm font-medium">
+                                    Reset account data
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    Delete your papers, progress, stars,
+                                    friends, reports, and presence while
+                                    keeping your login.
+                                </p>
+                            </div>
+                            <Dialog
+                                open={resetDataOpen}
+                                onOpenChange={setResetDataOpen}
+                            >
+                                <DialogTrigger asChild>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        disabled={resettingData}
+                                    >
+                                        Reset
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>
+                                            Reset account data?
+                                        </DialogTitle>
+                                        <DialogDescription>
+                                            This deletes your app data but keeps
+                                            your account, email, username,
+                                            password, 2FA, and avatar.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button
+                                                variant="outline"
+                                                disabled={resettingData}
+                                            >
+                                                Cancel
+                                            </Button>
+                                        </DialogClose>
+                                        <Button
+                                            variant="destructive"
+                                            disabled={resettingData}
+                                            onClick={handleResetData}
+                                        >
+                                            Reset data
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                         </div>
                         <div className="flex items-center justify-between">
                             <div>

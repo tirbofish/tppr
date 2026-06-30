@@ -1,9 +1,7 @@
-import os
-import secrets
+from datetime import UTC, datetime
+
 from flask import Blueprint, jsonify, request
-from settings import PRODUCTION
 from auth.supabase import (
-    get_current_user_claims,
     get_current_user_id,
     supabase_auth_required,
 )
@@ -11,16 +9,21 @@ from auth.supabase import (
 from questions.db import get_session
 from questions.types import PaperDB, paper_db_to_meta_read
 from sqlmodel import Field, SQLModel, col, select
-from datetime import datetime, UTC
 
 from auth.db import AuthenticationDB
 
-_admin_emails: set[str] = set()
-_admin_passcodes: dict[str, str] = {}
 _active_admins: set[str] = set()
 
 admin_bp = Blueprint("tppr-admin", __name__)
 db = AuthenticationDB()
+
+
+class UserRoleDB(SQLModel, table=True):
+    __tablename__ = "user_roles"
+
+    user_id: str = Field(foreign_key="users.user_id", primary_key=True)
+    role: str = Field(primary_key=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PaperTakedownState(SQLModel, table=True):
@@ -37,50 +40,16 @@ def _get_child_remixes(session, paper_id: str) -> list[PaperDB]:
 
 
 def init_admins():
-    raw = os.getenv("VALID_ADMIN_EMAILS", "")
-    emails = [e.strip() for e in raw.split(",") if e.strip()]
-    configured_passcodes = {
-        email.strip(): passcode.strip()
-        for item in os.getenv("ADMIN_PASSCODES", "").split(",")
-        if ":" in item
-        for email, passcode in [item.split(":", 1)]
-        if email.strip() and passcode.strip()
-    }
-
-    _admin_emails.clear()
-    _admin_passcodes.clear()
     _active_admins.clear()
+    print("  Admin roles loaded from public.user_roles.")
 
-    if not emails:
-        print("  No admin emails configured.")
-        return
 
-    if PRODUCTION:
-        missing = [email for email in emails if email not in configured_passcodes]
-        weak = [
-            email
-            for email in emails
-            if email in configured_passcodes and len(configured_passcodes[email]) < 32
-        ]
-        if missing or weak:
-            raise RuntimeError(
-                "ADMIN_PASSCODES must provide a passcode of at least 32 characters "
-                "for every VALID_ADMIN_EMAILS entry when PRODUCTION=1"
-            )
-
-        for email in emails:
-            _admin_emails.add(email)
-            _admin_passcodes[email] = configured_passcodes[email]
-        print(f"  Admin access configured for {len(emails)} email(s).")
-        return
-
-    print("  Admin passcodes (valid until shutdown):")
-    for email in emails:
-        passcode = secrets.token_hex(16)  # all admins get a unique one time password generated to access admin abilities
-        _admin_emails.add(email)
-        _admin_passcodes[email] = passcode
-        print(f"    {email}: {passcode}")
-    print()
+def has_admin_role(user_id: str | None) -> bool:
+    if not user_id:
+        return False
+    with get_session() as session:
+        role = session.get(UserRoleDB, (str(user_id), "admin"))
+        return role is not None
 
 
 def is_admin(user_id: str) -> bool:
@@ -93,8 +62,6 @@ def is_admin(user_id: str) -> bool:
 
 
 def teardown_admins():
-    _admin_emails.clear()
-    _admin_passcodes.clear()
     _active_admins.clear()
 
 
@@ -102,34 +69,25 @@ def teardown_admins():
 @supabase_auth_required(sync_user=True)
 def verify_admin():
     user_id = get_current_user_id()
-    claims = get_current_user_claims()
-    email = claims.get("email")
-
-    user = db.get_user_by_id(user_id, fields=["user_id", "email"])
-    if not user or not email or user["email"] != email or email not in _admin_emails:
-        return jsonify({"message": "Invalid credentials"}), 401
-
-    data = request.get_json()
-    if not data:
-        return jsonify({"message": "No data provided"}), 400
-
-    passcode = data.get("passcode")
-    if not passcode:
-        return jsonify({"message": "Passcode is required"}), 400
-
-    expected_passcode = _admin_passcodes.get(email)
-    if not expected_passcode or not secrets.compare_digest(expected_passcode, passcode):
-        return jsonify({"message": "Invalid credentials"}), 401
+    if not has_admin_role(user_id):
+        return jsonify({"message": "Admin role required"}), 403
 
     _active_admins.add(user_id)
-    return jsonify({"message": "Admin mode activated", "admin": True}), 200
+    return jsonify({
+        "message": "Admin mode activated",
+        "admin": True,
+        "admin_available": True,
+    }), 200
 
 
 @admin_bp.route("/api/admin/status", methods=["GET"])
 @supabase_auth_required()
 def admin_status():
     user_id = get_current_user_id()
-    return jsonify({"admin": is_admin(user_id)}), 200
+    return jsonify({
+        "admin": is_admin(user_id),
+        "admin_available": has_admin_role(user_id),
+    }), 200
 
 
 @admin_bp.route("/api/admin/takedowns", methods=["GET"])

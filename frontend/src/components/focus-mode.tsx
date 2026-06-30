@@ -29,6 +29,7 @@ import {
     startAttempt,
     updateAttempt,
 } from "@/api/progress";
+import { clearActivePaperPresence, heartbeatPresence } from "@/api/social";
 
 type FocusSlide =
     | { kind: "cover"; paper: Paper }
@@ -496,6 +497,20 @@ export function FocusMode(
         };
     }, [user, paper.id]);
 
+    useEffect(() => {
+        if (!user) return;
+
+        heartbeatPresence(paper.id).catch(() => {});
+        const timer = window.setInterval(() => {
+            heartbeatPresence(paper.id).catch(() => {});
+        }, 30000);
+
+        return () => {
+            window.clearInterval(timer);
+            clearActivePaperPresence().catch(() => {});
+        };
+    }, [paper.id, user]);
+
     // Track when each slide is entered + its key.
     useEffect(() => {
         slideEnteredAtRef.current = Date.now();
@@ -593,7 +608,9 @@ export function FocusMode(
                         reveal_count: b.revealCount,
                         views: b.views,
                     })),
-                }).catch(() => {});
+                }).finally(() => {
+                    clearActivePaperPresence().catch(() => {});
+                });
             } else {
                 updateAttempt(attemptId, payload).catch(() => {});
             }

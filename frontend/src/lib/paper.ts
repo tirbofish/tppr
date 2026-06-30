@@ -11,10 +11,15 @@ export interface StoredAsset {
 export interface NewPaperInput {
     title: string;
     subject: string;
+    syllabus_id?: string | null;
     course_level?: CourseLevel | null;
     year?: number | null;
     source?: PaperSource | null;
+    school?: string | null;
+    topics?: string[];
+    outcomes?: string[];
     visibility: Visibility;
+    duration_minutes?: number | null;
 }
 
 const DB_NAME = "tppr";
@@ -107,12 +112,17 @@ export async function createLocalPaper(input: NewPaperInput, authorId: string): 
         title: input.title,
         author_id: authorId,
         subject: input.subject,
+        syllabus_id: input.syllabus_id || undefined,
         course_level: input.course_level ?? undefined,
         year: input.year ?? undefined,
         source: input.source ?? undefined,
+        school: input.school || undefined,
+        topics: input.topics ?? [],
+        outcomes: input.outcomes ?? [],
         visibility: input.visibility,
         question_count: 0,
         total_marks: 0,
+        duration_minutes: input.duration_minutes ?? undefined,
         created_at: now,
         updated_at: now,
         questions: [],

@@ -1,6 +1,7 @@
 from flask import Blueprint, current_app, jsonify, request
-from settings import SHOW_ERROR_CAUSES
+from settings import SHOW_ERROR_CAUSES, SUPABASE_QUESTION_ASSET_BUCKET
 from auth.supabase import get_current_user_id, supabase_auth_required
+from storage import delete_object, storage_configured
 
 from .avatar_storage import (
     ALLOWED_AVATAR_MIME,
@@ -9,6 +10,7 @@ from .avatar_storage import (
     store_avatar,
 )
 from .db import AuthenticationDB
+from .supabase_admin import delete_supabase_auth_user
 
 management_bp = Blueprint("tppr-account-management", __name__)
 db = AuthenticationDB()
@@ -19,6 +21,13 @@ def error_body(message: str, error: Exception | None = None) -> dict[str, str]:
     if error is not None and SHOW_ERROR_CAUSES:
         body["cause"] = str(error)
     return body
+
+
+def delete_authored_question_assets(user_id: str) -> None:
+    if not storage_configured():
+        return
+    for path in db.list_authored_asset_paths(user_id):
+        delete_object(SUPABASE_QUESTION_ASSET_BUCKET, path)
 
 
 @management_bp.route("/api/whotf", methods=["GET"])
@@ -85,14 +94,38 @@ def delete_account():
     user_id = get_current_user_id()
 
     try:
+        existing_row = db.get_user_by_id(user_id, fields=["avatar_url"])
+        if not existing_row:
+            return jsonify({"message": "User not found"}), 404
+
+        delete_avatar(user_id, existing_row.get("avatar_url"))
+        delete_authored_question_assets(user_id)
+        delete_supabase_auth_user(user_id)
         deleted = db.delete_user(user_id)
         if not deleted:
             return jsonify({"message": "User not found"}), 404
 
-        return jsonify({"message": "Local account deleted"}), 200
+        return jsonify({"message": "Account deleted"}), 200
     except Exception as e:
         current_app.logger.error(f"Error deleting account: {e}")
         return jsonify(error_body("Failed to delete account", e)), 500
+
+
+@management_bp.route("/api/account/data", methods=["DELETE"])
+@supabase_auth_required(sync_user=True)
+def reset_account_data():
+    """Delete the authenticated user's app data without deleting the account."""
+    user_id = get_current_user_id()
+
+    try:
+        delete_authored_question_assets(user_id)
+        reset = db.reset_user_data(user_id)
+        if not reset:
+            return jsonify({"message": "User not found"}), 404
+        return jsonify({"message": "Account data reset"}), 200
+    except Exception as e:
+        current_app.logger.error(f"Error resetting account data: {e}")
+        return jsonify(error_body("Failed to reset account data", e)), 500
 
 
 @management_bp.route("/api/account/avatar", methods=["PUT"])

@@ -86,7 +86,7 @@ export function Footer() {
                         Copyright
                     </Link>
                     <a
-                        href="https://github.com/TempeHS/2026SE_MajorProject_Thribhu.K"
+                        href="https://github.com/tirbofish/tppr"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-foreground transition-colors"

@@ -131,6 +131,42 @@ def question_id_parameter():
     }
 
 
+def attempt_id_parameter():
+    return {
+        "name": "attempt_id",
+        "in": "path",
+        "required": True,
+        "schema": {"type": "string"},
+    }
+
+
+def friendship_id_parameter():
+    return {
+        "name": "friendship_id",
+        "in": "path",
+        "required": True,
+        "schema": {"type": "integer"},
+    }
+
+
+def user_id_path_parameter(name="user_id"):
+    return {
+        "name": name,
+        "in": "path",
+        "required": True,
+        "schema": {"type": "string"},
+    }
+
+
+def report_id_parameter():
+    return {
+        "name": "report_id",
+        "in": "path",
+        "required": True,
+        "schema": {"type": "integer"},
+    }
+
+
 def multipart_request_body(fields, required=None):
     required = required or []
     return {
@@ -176,6 +212,11 @@ def swagger_json():
                 {"name": "Papers", "description": "Past paper search, authoring, publishing, and remixing."},
                 {"name": "Assets", "description": "Paper image asset upload and retrieval."},
                 {"name": "Admin", "description": "Admin verification and takedown moderation."},
+                {"name": "Progress", "description": "Study attempts, question timing, and completion stats."},
+                {"name": "Stats", "description": "Student stats for dashboards and admin views."},
+                {"name": "Social", "description": "Presence, friends, profiles, and leaderboards."},
+                {"name": "Stars", "description": "Saved papers and per-paper star status."},
+                {"name": "Reports", "description": "Paper reports and admin report review."},
             ],
             "components": {
                 "securitySchemes": {
@@ -205,6 +246,7 @@ def swagger_json():
                             "user_id": {"type": "string"},
                             "username": {"type": "string"},
                             "email": {"type": "string", "format": "email"},
+                            "avatar_url": {"type": "string", "nullable": True},
                         },
                         "required": ["user_id", "username", "email"],
                     },
@@ -213,10 +255,19 @@ def swagger_json():
                             ref("User"),
                             {
                                 "type": "object",
-                                "properties": {"totp_enabled": {"type": "boolean"}},
-                                "required": ["totp_enabled"],
+                                "properties": {
+                                    "totp_enabled": {"type": "boolean"},
+                                    "admin": {"type": "boolean"},
+                                    "admin_available": {"type": "boolean"},
+                                },
+                                "required": ["totp_enabled", "admin", "admin_available"],
                             },
                         ]
+                    },
+                    "AvatarUpdateResult": {
+                        "type": "object",
+                        "properties": {"avatar_url": {"type": "string"}},
+                        "required": ["avatar_url"],
                     },
                     "AuthSuccess": {
                         "type": "object",
@@ -478,6 +529,7 @@ def swagger_json():
                             "title": {"type": "string"},
                             "author_id": {"type": "string"},
                             "subject": {"type": "string"},
+                            "syllabus_id": {"type": "string", "nullable": True},
                             "year": {"type": "integer", "nullable": True},
                             "source": {
                                 "type": "string",
@@ -496,6 +548,11 @@ def swagger_json():
                             "question_count": {"type": "integer"},
                             "total_marks": {"type": "integer"},
                             "duration_minutes": {"type": "integer", "nullable": True},
+                            "verified": {"type": "boolean"},
+                            "verified_source_name": {"type": "string", "nullable": True},
+                            "verified_source_url": {"type": "string", "nullable": True},
+                            "verified_at": {"type": "string", "format": "date-time", "nullable": True},
+                            "verified_by": {"type": "string", "nullable": True},
                             "created_at": {"type": "string", "format": "date-time"},
                             "updated_at": {"type": "string", "format": "date-time"},
                             "remixed": {"type": "string", "nullable": True},
@@ -510,6 +567,7 @@ def swagger_json():
                             "visibility",
                             "question_count",
                             "total_marks",
+                            "verified",
                             "created_at",
                             "updated_at",
                         ],
@@ -556,17 +614,13 @@ def swagger_json():
                         },
                         "required": ["target_paper_id"],
                     },
-                    "AdminVerifyRequest": {
-                        "type": "object",
-                        "properties": {
-                            "passcode": {"type": "string", "format": "password"},
-                        },
-                        "required": ["passcode"],
-                    },
                     "AdminStatus": {
                         "type": "object",
-                        "properties": {"admin": {"type": "boolean"}},
-                        "required": ["admin"],
+                        "properties": {
+                            "admin": {"type": "boolean"},
+                            "admin_available": {"type": "boolean"},
+                        },
+                        "required": ["admin", "admin_available"],
                     },
                     "AdminTakedownResult": {
                         "type": "object",
@@ -576,6 +630,319 @@ def swagger_json():
                             "restored": {"type": "array", "items": {"type": "string"}},
                         },
                         "required": ["message"],
+                    },
+                    "PaperVerificationUpdate": {
+                        "type": "object",
+                        "properties": {
+                            "verified": {"type": "boolean", "default": False},
+                            "source_name": {"type": "string", "maxLength": 160},
+                            "source_url": {"type": "string", "format": "uri", "maxLength": 500},
+                        },
+                    },
+                    "PaperStar": {
+                        "type": "object",
+                        "properties": {
+                            "paper": ref("PaperMeta"),
+                            "starred_at": {"type": "string", "format": "date-time", "nullable": True},
+                        },
+                        "required": ["paper", "starred_at"],
+                    },
+                    "StarStatus": {
+                        "type": "object",
+                        "properties": {
+                            "starred": {"type": "boolean"},
+                            "starred_at": {"type": "string", "format": "date-time", "nullable": True},
+                        },
+                        "required": ["starred"],
+                    },
+                    "PaperReport": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "integer"},
+                            "paper_id": {"type": "string"},
+                            "reporter_id": {"type": "string"},
+                            "reason": {
+                                "type": "string",
+                                "enum": [
+                                    "false_information",
+                                    "copyright",
+                                    "inappropriate",
+                                    "broken_content",
+                                    "spam",
+                                    "other",
+                                ],
+                            },
+                            "details": {"type": "string", "nullable": True},
+                            "status": {
+                                "type": "string",
+                                "enum": ["open", "reviewing", "resolved", "dismissed"],
+                            },
+                            "created_at": {"type": "string", "format": "date-time", "nullable": True},
+                            "updated_at": {"type": "string", "format": "date-time", "nullable": True},
+                            "paper": {"allOf": [ref("PaperMeta")], "nullable": True},
+                        },
+                        "required": [
+                            "id",
+                            "paper_id",
+                            "reporter_id",
+                            "reason",
+                            "status",
+                            "created_at",
+                            "updated_at",
+                        ],
+                    },
+                    "PaperReportCreate": {
+                        "type": "object",
+                        "properties": {
+                            "reason": {
+                                "type": "string",
+                                "enum": [
+                                    "false_information",
+                                    "copyright",
+                                    "inappropriate",
+                                    "broken_content",
+                                    "spam",
+                                    "other",
+                                ],
+                            },
+                            "details": {"type": "string", "maxLength": 2000},
+                        },
+                        "required": ["reason"],
+                    },
+                    "PaperReportUpdate": {
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "type": "string",
+                                "enum": ["open", "reviewing", "resolved", "dismissed"],
+                            }
+                        },
+                        "required": ["status"],
+                    },
+                    "PaperReportList": {
+                        "type": "object",
+                        "properties": {
+                            "reports": {"type": "array", "items": ref("PaperReport")},
+                            "total": {"type": "integer"},
+                            "page": {"type": "integer"},
+                            "per_page": {"type": "integer"},
+                        },
+                        "required": ["reports", "total", "page", "per_page"],
+                    },
+                    "PresencePaper": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"},
+                            "title": {"type": "string"},
+                            "subject": {"type": "string"},
+                            "visibility": {"type": "string", "enum": ["public"]},
+                        },
+                        "required": ["id", "title", "subject", "visibility"],
+                    },
+                    "Presence": {
+                        "type": "object",
+                        "properties": {
+                            "online": {"type": "boolean"},
+                            "session_started_at": {"type": "string", "format": "date-time", "nullable": True},
+                            "last_seen_at": {"type": "string", "format": "date-time", "nullable": True},
+                            "seconds_on_site": {"type": "integer"},
+                            "active_paper": {"allOf": [ref("PresencePaper")], "nullable": True},
+                            "active_seconds": {"type": "integer"},
+                        },
+                        "required": [
+                            "online",
+                            "session_started_at",
+                            "last_seen_at",
+                            "seconds_on_site",
+                            "active_paper",
+                            "active_seconds",
+                        ],
+                    },
+                    "FriendUser": {
+                        "type": "object",
+                        "properties": {
+                            "user_id": {"type": "string"},
+                            "username": {"type": "string"},
+                            "avatar_url": {"type": "string", "nullable": True},
+                        },
+                        "required": ["user_id", "username"],
+                    },
+                    "FriendRequest": {
+                        "type": "object",
+                        "additionalProperties": True,
+                        "properties": {
+                            "id": {"type": "integer"},
+                            "status": {"type": "string"},
+                            "created_at": {"type": "string", "format": "date-time", "nullable": True},
+                            "updated_at": {"type": "string", "format": "date-time", "nullable": True},
+                            "user": {"allOf": [ref("FriendUser")], "nullable": True},
+                            "from_user": {"allOf": [ref("FriendUser")], "nullable": True},
+                            "to_user": {"allOf": [ref("FriendUser")], "nullable": True},
+                        },
+                    },
+                    "FriendRequests": {
+                        "type": "object",
+                        "properties": {"requests": {"type": "array", "items": ref("FriendRequest")}},
+                        "required": ["requests"],
+                    },
+                    "Friends": {
+                        "type": "object",
+                        "properties": {"friends": {"type": "array", "items": ref("FriendUser")}},
+                        "required": ["friends"],
+                    },
+                    "AttemptPaperMeta": {
+                        "type": "object",
+                        "nullable": True,
+                        "properties": {
+                            "title": {"type": "string"},
+                            "subject": {"type": "string"},
+                            "visibility": {"type": "string"},
+                            "question_count": {"type": "integer"},
+                            "total_marks": {"type": "integer"},
+                            "duration_minutes": {"type": "integer", "nullable": True},
+                            "available": {"type": "boolean"},
+                        },
+                    },
+                    "QuestionAttempt": {
+                        "type": "object",
+                        "properties": {
+                            "question_id": {"type": "string"},
+                            "part_path": {"type": "string", "nullable": True},
+                            "seconds": {"type": "integer"},
+                            "revealed_answer": {"type": "boolean"},
+                            "reveal_count": {"type": "integer"},
+                            "views": {"type": "integer"},
+                        },
+                        "required": [
+                            "question_id",
+                            "part_path",
+                            "seconds",
+                            "revealed_answer",
+                            "reveal_count",
+                            "views",
+                        ],
+                    },
+                    "Attempt": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"},
+                            "paper_id": {"type": "string"},
+                            "paper": ref("AttemptPaperMeta"),
+                            "started_at": {"type": "string", "format": "date-time", "nullable": True},
+                            "last_active_at": {"type": "string", "format": "date-time", "nullable": True},
+                            "completed_at": {"type": "string", "format": "date-time", "nullable": True},
+                            "elapsed_seconds": {"type": "integer"},
+                            "completed": {"type": "boolean"},
+                            "questions_seen": {"type": "integer"},
+                            "questions_answered": {"type": "integer"},
+                            "reveal_count": {"type": "integer"},
+                            "max_slide": {"type": "integer"},
+                        },
+                        "required": [
+                            "id",
+                            "paper_id",
+                            "paper",
+                            "started_at",
+                            "last_active_at",
+                            "completed_at",
+                            "elapsed_seconds",
+                            "completed",
+                            "questions_seen",
+                            "questions_answered",
+                            "reveal_count",
+                            "max_slide",
+                        ],
+                    },
+                    "AttemptDetail": {
+                        "allOf": [
+                            ref("Attempt"),
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "question_times": {"type": "array", "items": ref("QuestionAttempt")}
+                                },
+                                "required": ["question_times"],
+                            },
+                        ]
+                    },
+                    "AttemptList": {
+                        "type": "object",
+                        "properties": {
+                            "attempts": {"type": "array", "items": ref("Attempt")},
+                            "total": {"type": "integer"},
+                            "page": {"type": "integer"},
+                            "per_page": {"type": "integer"},
+                        },
+                        "required": ["attempts", "total", "page", "per_page"],
+                    },
+                    "StudentStats": {
+                        "type": "object",
+                        "additionalProperties": True,
+                        "properties": {
+                            "attempts_count": {"type": "integer"},
+                            "papers_attempted": {"type": "integer"},
+                            "papers_completed": {"type": "integer"},
+                            "questions_answered": {"type": "integer"},
+                            "total_study_seconds": {"type": "integer"},
+                            "reveal_count": {"type": "integer"},
+                            "current_streak": {"type": "integer"},
+                            "longest_streak": {"type": "integer"},
+                            "last_active_at": {"type": "string", "format": "date-time", "nullable": True},
+                        },
+                    },
+                    "StudentStatsUser": {
+                        "allOf": [
+                            ref("StudentStats"),
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "user_id": {"type": "string"},
+                                    "username": {"type": "string"},
+                                    "avatar_url": {"type": "string", "nullable": True},
+                                    "joined_at": {"type": "string", "format": "date-time", "nullable": True},
+                                },
+                                "required": ["user_id", "username"],
+                            },
+                        ]
+                    },
+                    "MyStats": {
+                        "allOf": [
+                            ref("StudentStatsUser"),
+                            {
+                                "type": "object",
+                                "properties": {"recent_attempts": {"type": "array", "items": ref("Attempt")}},
+                                "required": ["recent_attempts"],
+                            },
+                        ]
+                    },
+                    "LeaderboardEntry": {
+                        "allOf": [
+                            ref("StudentStatsUser"),
+                            {
+                                "type": "object",
+                                "properties": {"rank": {"type": "integer"}},
+                                "required": ["rank"],
+                            },
+                        ]
+                    },
+                    "UserProfile": {
+                        "type": "object",
+                        "properties": {
+                            "user": {
+                                "type": "object",
+                                "properties": {
+                                    "user_id": {"type": "string"},
+                                    "username": {"type": "string"},
+                                    "avatar_url": {"type": "string", "nullable": True},
+                                    "created_at": {"type": "string", "format": "date-time", "nullable": True},
+                                },
+                                "required": ["user_id", "username", "avatar_url", "created_at"],
+                            },
+                            "stats": ref("StudentStats"),
+                            "presence": {"allOf": [ref("Presence")], "nullable": True},
+                            "public_papers": {"type": "array", "items": ref("PaperMeta")},
+                        },
+                        "required": ["user", "stats", "presence", "public_papers"],
                     },
                 },
             },
@@ -692,6 +1059,48 @@ def swagger_json():
                             "500": error_response("Failed to delete account"),
                         },
                     }
+                },
+                "/api/account/data": {
+                    "delete": {
+                        "tags": ["Account"],
+                        "summary": "Reset account data",
+                        "description": "Deletes the authenticated user's app data while preserving the Supabase Auth user and local users row.",
+                        "security": [{"bearerAuth": []}],
+                        "responses": {
+                            "200": message_response("Account data reset"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "404": error_response("User not found"),
+                            "500": error_response("Failed to reset account data"),
+                        },
+                    }
+                },
+                "/api/account/avatar": {
+                    "put": {
+                        "tags": ["Account"],
+                        "summary": "Upload or replace avatar",
+                        "security": [{"bearerAuth": []}],
+                        "requestBody": multipart_request_body(
+                            {"file": {"type": "string", "format": "binary"}},
+                            ["file"],
+                        ),
+                        "responses": {
+                            "200": response("Avatar URL updated", ref("AvatarUpdateResult")),
+                            "400": error_response("Missing file, unsupported image type, or invalid image"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "500": error_response("Failed to update avatar"),
+                        },
+                    },
+                    "delete": {
+                        "tags": ["Account"],
+                        "summary": "Remove avatar",
+                        "security": [{"bearerAuth": []}],
+                        "responses": {
+                            "200": message_response("Avatar removed"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "404": error_response("User not found"),
+                            "500": error_response("Failed to remove avatar"),
+                        },
+                    },
                 },
                 "/api/account/enable_2fa": {
                     "post": {
@@ -915,13 +1324,12 @@ def swagger_json():
                     "post": {
                         "tags": ["Admin"],
                         "summary": "Activate admin mode",
-                        "description": "Validates the authenticated user's configured admin email and passcode.",
+                        "description": "Activates admin mode for authenticated users with an admin row in public.user_roles.",
                         "security": [{"bearerAuth": []}],
-                        "requestBody": json_request_body(ref("AdminVerifyRequest")),
                         "responses": {
                             "200": response("Admin mode activated", ref("AdminStatus")),
-                            "400": error_response("Missing request body or passcode"),
-                            "401": error_response("Invalid credentials or Supabase token"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Admin role required"),
                         },
                     }
                 },
@@ -933,6 +1341,23 @@ def swagger_json():
                         "responses": {
                             "200": response("Current admin status", ref("AdminStatus")),
                             "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    }
+                },
+                "/api/admin/papers/{paper_id}/verification": {
+                    "patch": {
+                        "tags": ["Admin"],
+                        "summary": "Update paper verification",
+                        "description": "Sets or clears the public verification checkmark and optional source metadata for a paper.",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [paper_id_parameter()],
+                        "requestBody": json_request_body(ref("PaperVerificationUpdate")),
+                        "responses": {
+                            "200": response("Updated paper metadata", ref("PaperMeta")),
+                            "400": error_response("Invalid verification source metadata"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user is not an active admin"),
+                            "404": error_response("Paper not found"),
                         },
                     }
                 },
@@ -980,6 +1405,461 @@ def swagger_json():
                             "409": error_response("Paper is not taken down"),
                         },
                     },
+                },
+                "/api/stars": {
+                    "get": {
+                        "tags": ["Stars"],
+                        "summary": "List starred papers",
+                        "security": [{"bearerAuth": []}],
+                        "responses": {
+                            "200": response(
+                                "Starred papers",
+                                {
+                                    "type": "object",
+                                    "properties": {"stars": {"type": "array", "items": ref("PaperStar")}},
+                                    "required": ["stars"],
+                                },
+                            ),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    }
+                },
+                "/api/papers/{paper_id}/star": {
+                    "get": {
+                        "tags": ["Stars"],
+                        "summary": "Get paper star status",
+                        "security": [{"bearerAuth": []}, {}],
+                        "parameters": [paper_id_parameter()],
+                        "responses": {"200": response("Star status", ref("StarStatus"))},
+                    },
+                    "post": {
+                        "tags": ["Stars"],
+                        "summary": "Star a paper",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [paper_id_parameter()],
+                        "responses": {
+                            "200": response("Paper starred", ref("StarStatus")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "404": error_response("Paper not found"),
+                        },
+                    },
+                    "delete": {
+                        "tags": ["Stars"],
+                        "summary": "Unstar a paper",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [paper_id_parameter()],
+                        "responses": {
+                            "200": response("Paper unstarred", ref("StarStatus")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    },
+                },
+                "/api/papers/{paper_id}/reports": {
+                    "post": {
+                        "tags": ["Reports"],
+                        "summary": "Report a paper",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [paper_id_parameter()],
+                        "requestBody": json_request_body(ref("PaperReportCreate")),
+                        "responses": {
+                            "201": response("Paper report created", ref("PaperReport")),
+                            "400": error_response("Invalid report reason or details"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "404": error_response("Paper not found"),
+                        },
+                    }
+                },
+                "/api/admin/reports": {
+                    "get": {
+                        "tags": ["Reports"],
+                        "summary": "List paper reports",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [
+                            {
+                                "name": "status",
+                                "in": "query",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": ["open", "reviewing", "resolved", "dismissed", "all"],
+                                    "default": "open",
+                                },
+                            },
+                            {"name": "paper_id", "in": "query", "schema": {"type": "string"}},
+                            {"name": "page", "in": "query", "schema": {"type": "integer", "minimum": 1, "default": 1}},
+                            {"name": "per_page", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20}},
+                        ],
+                        "responses": {
+                            "200": response("Paper reports", ref("PaperReportList")),
+                            "400": error_response("Invalid report status"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user is not an active admin"),
+                        },
+                    }
+                },
+                "/api/admin/reports/{report_id}": {
+                    "patch": {
+                        "tags": ["Reports"],
+                        "summary": "Update report status",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [report_id_parameter()],
+                        "requestBody": json_request_body(ref("PaperReportUpdate")),
+                        "responses": {
+                            "200": response("Updated paper report", ref("PaperReport")),
+                            "400": error_response("Invalid report status"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user is not an active admin"),
+                            "404": error_response("Report not found"),
+                        },
+                    }
+                },
+                "/api/presence": {
+                    "post": {
+                        "tags": ["Social"],
+                        "summary": "Record presence heartbeat",
+                        "security": [{"bearerAuth": []}],
+                        "requestBody": json_request_body(
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "paper_id": {
+                                        "type": "string",
+                                        "nullable": True,
+                                        "description": "Omit to keep the current active paper, set to null or empty to clear it.",
+                                    }
+                                },
+                            },
+                            required=False,
+                        ),
+                        "responses": {
+                            "200": response("Presence state", ref("Presence")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "404": error_response("Paper not found"),
+                        },
+                    }
+                },
+                "/api/presence/active-paper": {
+                    "delete": {
+                        "tags": ["Social"],
+                        "summary": "Clear active paper presence",
+                        "security": [{"bearerAuth": []}],
+                        "responses": {
+                            "200": response("Presence state", ref("Presence")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    }
+                },
+                "/api/friends/requests": {
+                    "post": {
+                        "tags": ["Social"],
+                        "summary": "Send a friend request",
+                        "security": [{"bearerAuth": []}],
+                        "requestBody": json_request_body(
+                            {
+                                "type": "object",
+                                "properties": {"username": {"type": "string"}},
+                                "required": ["username"],
+                            }
+                        ),
+                        "responses": {
+                            "201": message_response("Friend request sent"),
+                            "400": error_response("Invalid request"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "404": error_response("No user with that username"),
+                        },
+                    }
+                },
+                "/api/friends/requests/incoming": {
+                    "get": {
+                        "tags": ["Social"],
+                        "summary": "List incoming friend requests",
+                        "security": [{"bearerAuth": []}],
+                        "responses": {
+                            "200": response("Incoming friend requests", ref("FriendRequests")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    }
+                },
+                "/api/friends/requests/outgoing": {
+                    "get": {
+                        "tags": ["Social"],
+                        "summary": "List outgoing friend requests",
+                        "security": [{"bearerAuth": []}],
+                        "responses": {
+                            "200": response("Outgoing friend requests", ref("FriendRequests")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    }
+                },
+                "/api/friends/requests/{friendship_id}/accept": {
+                    "post": {
+                        "tags": ["Social"],
+                        "summary": "Accept a friend request",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [friendship_id_parameter()],
+                        "responses": {
+                            "200": message_response("Friend request accepted"),
+                            "400": error_response("Invalid friend request action"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    }
+                },
+                "/api/friends/requests/{friendship_id}/decline": {
+                    "post": {
+                        "tags": ["Social"],
+                        "summary": "Decline a friend request",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [friendship_id_parameter()],
+                        "responses": {
+                            "200": message_response("Friend request declined"),
+                            "400": error_response("Invalid friend request action"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    }
+                },
+                "/api/friends/requests/{friendship_id}": {
+                    "delete": {
+                        "tags": ["Social"],
+                        "summary": "Cancel an outgoing friend request",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [friendship_id_parameter()],
+                        "responses": {
+                            "200": message_response("Friend request cancelled"),
+                            "400": error_response("Invalid friend request action"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    }
+                },
+                "/api/friends": {
+                    "get": {
+                        "tags": ["Social"],
+                        "summary": "List friends",
+                        "security": [{"bearerAuth": []}],
+                        "responses": {
+                            "200": response("Friends", ref("Friends")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    }
+                },
+                "/api/friends/{other_id}": {
+                    "delete": {
+                        "tags": ["Social"],
+                        "summary": "Remove a friend",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [user_id_path_parameter("other_id")],
+                        "responses": {
+                            "200": message_response("Friend removed"),
+                            "400": error_response("Invalid friend removal"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    }
+                },
+                "/api/users/{profile_user_id}/profile": {
+                    "get": {
+                        "tags": ["Social"],
+                        "summary": "Get a user profile",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [user_id_path_parameter("profile_user_id")],
+                        "responses": {
+                            "200": response("User profile", ref("UserProfile")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Profile is private to non-friends"),
+                            "404": error_response("User not found"),
+                        },
+                    }
+                },
+                "/api/leaderboard": {
+                    "get": {
+                        "tags": ["Social"],
+                        "summary": "Get leaderboard",
+                        "security": [{"bearerAuth": []}, {}],
+                        "parameters": [
+                            {
+                                "name": "scope",
+                                "in": "query",
+                                "schema": {"type": "string", "enum": ["global", "friends"]},
+                            }
+                        ],
+                        "responses": {
+                            "200": response(
+                                "Leaderboard entries",
+                                {
+                                    "type": "object",
+                                    "properties": {"entries": {"type": "array", "items": ref("LeaderboardEntry")}},
+                                    "required": ["entries"],
+                                },
+                            ),
+                            "401": error_response("Sign in to view the friends leaderboard"),
+                        },
+                    }
+                },
+                "/api/attempts": {
+                    "post": {
+                        "tags": ["Progress"],
+                        "summary": "Start a paper attempt",
+                        "security": [{"bearerAuth": []}],
+                        "requestBody": json_request_body(
+                            {
+                                "type": "object",
+                                "properties": {"paper_id": {"type": "string"}},
+                                "required": ["paper_id"],
+                            }
+                        ),
+                        "responses": {
+                            "201": response("Attempt created", ref("Attempt")),
+                            "400": error_response("paper_id is required"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    },
+                    "get": {
+                        "tags": ["Progress"],
+                        "summary": "List paper attempts",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [
+                            {"name": "paper_id", "in": "query", "schema": {"type": "string"}},
+                            {"name": "completed", "in": "query", "schema": {"type": "boolean"}},
+                            {"name": "page", "in": "query", "schema": {"type": "integer", "minimum": 1, "default": 1}},
+                            {"name": "per_page", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20}},
+                        ],
+                        "responses": {
+                            "200": response("Paper attempts", ref("AttemptList")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    },
+                },
+                "/api/attempts/{attempt_id}": {
+                    "get": {
+                        "tags": ["Progress"],
+                        "summary": "Get a paper attempt",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [attempt_id_parameter()],
+                        "responses": {
+                            "200": response("Attempt details", ref("AttemptDetail")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user does not own this attempt"),
+                            "404": error_response("Attempt not found"),
+                        },
+                    },
+                    "patch": {
+                        "tags": ["Progress"],
+                        "summary": "Update attempt progress",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [attempt_id_parameter()],
+                        "requestBody": json_request_body(
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "elapsed_seconds": {"type": "integer", "minimum": 0},
+                                    "questions_seen": {"type": "integer", "minimum": 0},
+                                    "questions_answered": {"type": "integer", "minimum": 0},
+                                    "reveal_count": {"type": "integer", "minimum": 0},
+                                    "max_slide": {"type": "integer", "minimum": 0},
+                                },
+                            }
+                        ),
+                        "responses": {
+                            "200": response("Attempt updated", ref("Attempt")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user does not own this attempt"),
+                            "404": error_response("Attempt not found"),
+                        },
+                    },
+                    "delete": {
+                        "tags": ["Progress"],
+                        "summary": "Delete a paper attempt",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [attempt_id_parameter()],
+                        "responses": {
+                            "200": message_response("Attempt deleted"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user does not own this attempt"),
+                            "404": error_response("Attempt not found"),
+                        },
+                    },
+                },
+                "/api/attempts/{attempt_id}/questions": {
+                    "post": {
+                        "tags": ["Progress"],
+                        "summary": "Record question attempt timing",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [attempt_id_parameter()],
+                        "requestBody": json_request_body(ref("QuestionAttempt")),
+                        "responses": {
+                            "200": response("Question timing", ref("QuestionAttempt")),
+                            "400": error_response("question_id is required"),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user does not own this attempt"),
+                            "404": error_response("Attempt not found"),
+                        },
+                    }
+                },
+                "/api/attempts/{attempt_id}/complete": {
+                    "post": {
+                        "tags": ["Progress"],
+                        "summary": "Complete a paper attempt",
+                        "security": [{"bearerAuth": []}],
+                        "parameters": [attempt_id_parameter()],
+                        "requestBody": json_request_body(
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "elapsed_seconds": {"type": "integer", "minimum": 0},
+                                    "questions_seen": {"type": "integer", "minimum": 0},
+                                    "questions_answered": {"type": "integer", "minimum": 0},
+                                    "reveal_count": {"type": "integer", "minimum": 0},
+                                    "max_slide": {"type": "integer", "minimum": 0},
+                                    "question_times": {"type": "array", "items": ref("QuestionAttempt")},
+                                },
+                            }
+                        ),
+                        "responses": {
+                            "200": response("Completed attempt", ref("AttemptDetail")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user does not own this attempt"),
+                            "404": error_response("Attempt not found"),
+                        },
+                    }
+                },
+                "/api/attempts/stats": {
+                    "get": {
+                        "tags": ["Progress"],
+                        "summary": "Get current user's attempt stats",
+                        "security": [{"bearerAuth": []}],
+                        "responses": {
+                            "200": response("Attempt stats", ref("StudentStats")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                        },
+                    }
+                },
+                "/api/stats/me": {
+                    "get": {
+                        "tags": ["Stats"],
+                        "summary": "Get current user's student stats",
+                        "security": [{"bearerAuth": []}],
+                        "responses": {
+                            "200": response("Current user's stats", ref("MyStats")),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "404": error_response("User not found"),
+                        },
+                    }
+                },
+                "/api/stats/users": {
+                    "get": {
+                        "tags": ["Stats"],
+                        "summary": "List all user stats",
+                        "security": [{"bearerAuth": []}],
+                        "responses": {
+                            "200": response(
+                                "All user stats",
+                                {
+                                    "type": "object",
+                                    "properties": {"users": {"type": "array", "items": ref("StudentStatsUser")}},
+                                    "required": ["users"],
+                                },
+                            ),
+                            "401": error_response("Missing or invalid Supabase token"),
+                            "403": error_response("Authenticated user is not an active admin"),
+                        },
+                    }
                 },
             },
         }

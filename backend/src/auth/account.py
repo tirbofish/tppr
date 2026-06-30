@@ -29,6 +29,8 @@ def whoami():
         if not user:
             return jsonify({"message": "User not found"}), 404
 
+        from admin import has_admin_role, is_admin
+
         return (
             jsonify(
                 {
@@ -37,6 +39,8 @@ def whoami():
                     "email": user["email"],
                     "totp_enabled": bool(user["totp_enabled"]),
                     "avatar_url": user.get("avatar_url"),
+                    "admin": is_admin(user["user_id"]),
+                    "admin_available": has_admin_role(user["user_id"]),
                 }
             ),
             200,

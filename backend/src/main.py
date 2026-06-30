@@ -24,6 +24,7 @@ from social import social_bp
 from stats import stats_bp
 from progress import progress_bp
 from stars import stars_bp
+from reports import reports_bp
 
 assets_dir = settings.ASSETS_DIR
 frontend_dist_dir = settings.FRONTEND_DIST_DIR
@@ -227,6 +228,7 @@ app.register_blueprint(social_bp)
 app.register_blueprint(stats_bp)
 app.register_blueprint(progress_bp)
 app.register_blueprint(stars_bp)
+app.register_blueprint(reports_bp)
 
 for endpoint, limit in PUBLIC_ENDPOINT_RATE_LIMITS.items():
     view = app.view_functions.get(endpoint)

@@ -19,6 +19,7 @@ import type { PaperMeta } from "@/types/tppr-paper";
 import { PaperSettings } from "./paper-settings";
 import { useState } from "react";
 import { StarPaperButton } from "@/components/star-paper-button";
+import { PaperVerifiedBadge } from "@/components/paper-verified-badge";
 
 interface PaperCardProps {
     paper: PaperMeta;
@@ -49,13 +50,16 @@ export function PaperCard({ paper, onOpen, onEdit, onDelete }: PaperCardProps) {
                             <CardTitle className="line-clamp-2">
                                 {paper.title}
                             </CardTitle>
-                            {paper.visibility === "public"
-                                ? (
-                                    <Globe className="size-4 shrink-0 text-muted-foreground" />
-                                )
-                                : (
-                                    <Lock className="size-4 shrink-0 text-muted-foreground" />
-                                )}
+                            <div className="flex shrink-0 items-center gap-1">
+                                <PaperVerifiedBadge paper={paper} />
+                                {paper.visibility === "public"
+                                    ? (
+                                        <Globe className="size-4 text-muted-foreground" />
+                                    )
+                                    : (
+                                        <Lock className="size-4 text-muted-foreground" />
+                                    )}
+                            </div>
                         </div>
                         <CardDescription>
                             {paper.subject}
@@ -89,6 +93,29 @@ export function PaperCard({ paper, onOpen, onEdit, onDelete }: PaperCardProps) {
                                 </Badge>
                             )
                             : null}
+                        {paper.topics?.slice(0, 3).map((topic) => (
+                            <Badge key={`topic-${topic}`} variant="outline">
+                                {topic}
+                            </Badge>
+                        ))}
+                        {paper.topics && paper.topics.length > 3 && (
+                            <Badge variant="outline">
+                                +{paper.topics.length - 3} topics
+                            </Badge>
+                        )}
+                        {paper.outcomes?.slice(0, 2).map((outcome) => (
+                            <Badge
+                                key={`outcome-${outcome}`}
+                                variant="secondary"
+                            >
+                                {outcome}
+                            </Badge>
+                        ))}
+                        {paper.outcomes && paper.outcomes.length > 2 && (
+                            <Badge variant="secondary">
+                                +{paper.outcomes.length - 2} outcomes
+                            </Badge>
+                        )}
                     </CardContent>
 
                     <CardFooter className="justify-end gap-1">

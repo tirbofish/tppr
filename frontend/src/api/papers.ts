@@ -41,3 +41,23 @@ export async function remixQuestionIntoPaper(
     if (!res.ok) throw new Error(`Failed to remix question: ${res.status}`);
     return res.json();
 }
+
+export async function updatePaperVerification(
+    paperId: string,
+    data: {
+        verified: boolean;
+        source_name?: string;
+        source_url?: string;
+    },
+): Promise<PaperMeta> {
+    const res = await apiFetch(`/api/admin/papers/${paperId}/verification`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? "Failed to update verification");
+    }
+    return res.json();
+}

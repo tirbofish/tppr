@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 
 from sqlalchemy import or_
@@ -6,8 +6,12 @@ from sqlmodel import Session, select
 
 from auth.db import UserDB
 from questions.db import engine
+from questions.types import PaperDB
 
-from .models import FriendshipDB
+from .models import FriendshipDB, UserPresenceDB
+from .time import as_utc
+
+ONLINE_WINDOW = timedelta(seconds=90)
 
 
 def _public_user_dict(user: UserDB, since: Optional[datetime] = None) -> dict:
@@ -18,6 +22,55 @@ def _public_user_dict(user: UserDB, since: Optional[datetime] = None) -> dict:
     }
     if since is not None:
         body["since"] = since.isoformat() if since else None
+    return body
+
+
+def _presence_dict(
+    presence: UserPresenceDB | None,
+    paper: PaperDB | None,
+    *,
+    now: datetime,
+) -> dict | None:
+    if not presence:
+        return None
+
+    last_seen_at = as_utc(presence.last_seen_at)
+    session_started_at = as_utc(presence.session_started_at)
+    active_paper_started_at = as_utc(presence.active_paper_started_at)
+    is_online = now - last_seen_at <= ONLINE_WINDOW if last_seen_at else False
+    body = {
+        "online": is_online,
+        "session_started_at": session_started_at.isoformat()
+        if session_started_at
+        else None,
+        "last_seen_at": last_seen_at.isoformat()
+        if last_seen_at
+        else None,
+        "seconds_on_site": max(
+            0,
+            int((now - session_started_at).total_seconds()),
+        )
+        if is_online and session_started_at
+        else 0,
+        "active_paper": None,
+        "active_seconds": 0,
+    }
+    if (
+        is_online
+        and paper
+        and paper.visibility == "public"
+        and active_paper_started_at
+    ):
+        body["active_paper"] = {
+            "id": paper.id,
+            "title": paper.title,
+            "subject": paper.subject,
+            "visibility": paper.visibility,
+        }
+        body["active_seconds"] = max(
+            0,
+            int((now - active_paper_started_at).total_seconds()),
+        )
     return body
 
 
@@ -159,6 +212,7 @@ class SocialDB:
 
     def list_friends(self, user_id: str) -> list[dict]:
         with Session(engine) as session:
+            now = datetime.now(UTC)
             rows = session.exec(
                 select(FriendshipDB)
                 .where(FriendshipDB.status == "accepted")
@@ -177,7 +231,15 @@ class SocialDB:
                 other = session.get(UserDB, other_id)
                 if not other:
                     continue
-                result.append(_public_user_dict(other, since=f.updated_at))
+                body = _public_user_dict(other, since=f.updated_at)
+                presence = session.get(UserPresenceDB, other_id)
+                paper = (
+                    session.get(PaperDB, presence.active_paper_id)
+                    if presence and presence.active_paper_id
+                    else None
+                )
+                body["presence"] = _presence_dict(presence, paper, now=now)
+                result.append(body)
             return result
 
     def list_friend_user_ids(self, user_id: str) -> list[str]:

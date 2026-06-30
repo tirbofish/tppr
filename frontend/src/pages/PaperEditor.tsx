@@ -77,6 +77,8 @@ import { Takendown } from "./errors/Takendown";
 import { GenericError } from "./errors/GenericError";
 import { FocusMode } from "@/components/focus-mode";
 import { StarPaperButton } from "@/components/star-paper-button";
+import { ReportPaperButton } from "@/components/report-paper-button";
+import { PaperVerifiedBadge } from "@/components/paper-verified-badge";
 
 const EDITOR_MIN_WIDTH = 384;
 const EDITOR_DEFAULT_WIDTH = 448;
@@ -550,38 +552,66 @@ export default function PaperEditor() {
             <main className="mx-auto w-full max-w-3xl px-6 py-8">
                 {/** paper toolbar */}
 
-                <div className="mb-6 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={handleBack}
                             disabled={syncing}
                             aria-label="Back to papers"
+                            className="shrink-0"
                         >
                             <ArrowLeft />
                         </Button>
-                        <div>
-                            <h1 className="text-2xl font-bold">
+                        <div className="min-w-0 flex-1">
+                            <h1 className="break-words text-2xl font-bold leading-tight">
                                 {paper.title}
                             </h1>
+                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                                {!isOwner && authorName && (
+                                    <>
+                                        <span className="min-w-0 break-words">
+                                            by {authorName}
+                                        </span>
+                                        <span aria-hidden="true">·</span>
+                                    </>
+                                )}
+                                <span>
+                                    {paper.question_count}{" "}
+                                    question{paper.question_count === 1
+                                        ? ""
+                                        : "s"}
+                                </span>
+                                <span aria-hidden="true">·</span>
+                                <span>
+                                    {paper.total_marks}{" "}
+                                    mark{paper.total_marks === 1 ? "" : "s"}
+                                </span>
+                            </div>
                             {paper.remixed && (
                                 <Link
                                     to={`/papers/${paper.remixed}`}
-                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:underline"
+                                    className="mt-1 inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground hover:underline"
                                 >
-                                    <Shell className="size-3" /> Remixed from "
-                                    {remixSource
-                                        ? `${remixSource.author}/${remixSource.title}`
-                                        : "…"}
-                                    "
+                                    <Shell className="size-3 shrink-0" />
+                                    <span className="min-w-0 truncate">
+                                        Remixed from "
+                                        {remixSource
+                                            ? `${remixSource.author}/${remixSource.title}`
+                                            : "…"}
+                                        "
+                                    </span>
                                 </Link>
                             )}
                         </div>
-                        {isOwner && (
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center gap-1 sm:justify-end">
+                        {(isOwner || user?.admin) && (
                             <PaperSettings
                                 paper={paper}
                                 onSave={handleSettingsSave}
+                                canEditMetadata={isOwner}
                             />
                         )}
 
@@ -594,6 +624,8 @@ export default function PaperEditor() {
                             <Glasses className="size-4" />
                         </Button>
                         <StarPaperButton paperId={paper.id} />
+                        <PaperVerifiedBadge paper={paper} />
+                        {!isOwner && <ReportPaperButton paperId={paper.id} />}
 
                         {isOwner && (
                             <Popover
@@ -681,13 +713,6 @@ export default function PaperEditor() {
                                     )
                             )}
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                        {!isOwner && authorName && <>by {authorName} ·</>}
-                        {paper.question_count}{" "}
-                        question{paper.question_count === 1 ? "" : "s"} ·{" "}
-                        {paper.total_marks}{" "}
-                        mark{paper.total_marks === 1 ? "" : "s"}
-                    </span>
                 </div>
 
                 {paper.questions.length === 0
@@ -897,6 +922,8 @@ export default function PaperEditor() {
             <AdminSidebar
                 paperId={id!}
                 isTakenDown={paper.visibility === "removed"}
+                paper={paper}
+                onPaperUpdate={handleSettingsSave}
             />
             {focusMode && paper && (
                 <FocusMode

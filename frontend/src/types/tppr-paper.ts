@@ -166,6 +166,8 @@ export interface PaperMeta {
     author_id: string;
     /** e.g. "Physics", "Mathematics" */
     subject: string;
+    /** Primary syllabus this paper targets (e.g. "hsc-physics-2025"). */
+    syllabus_id?: string;
     year?: number;
     source?: PaperSource;
     /** School name, relevant for trial/internal papers. */
@@ -174,6 +176,8 @@ export interface PaperMeta {
     course_level?: CourseLevel;
     /** Aggregate topic tags across all questions. */
     topics?: string[];
+    /** Paper-level outcome tags/codes. */
+    outcomes?: string[];
     visibility: Visibility;
     question_count: number;
     total_marks: number;
@@ -181,6 +185,11 @@ export interface PaperMeta {
     created_at: string;
     updated_at: string;
     remixed?: string;
+    verified?: boolean;
+    verified_source_name?: string | null;
+    verified_source_url?: string | null;
+    verified_at?: string | null;
+    verified_by?: string | null;
 }
 
 // ---------- Full paper (tppr-paper.json) ----------
@@ -194,6 +203,7 @@ export interface Paper {
     /** Primary syllabus this paper targets (e.g. "hsc-physics-2025"). */
     syllabus_id?: string;
     topics?: string[];
+    outcomes?: string[];
     visibility: Visibility;
     question_count: number;
     total_marks: number;
@@ -205,6 +215,11 @@ export interface Paper {
     course_level?: CourseLevel;
     school?: string;
     remixed?: string;
+    verified?: boolean;
+    verified_source_name?: string | null;
+    verified_source_url?: string | null;
+    verified_at?: string | null;
+    verified_by?: string | null;
     /** Full ordered list of questions in the paper. */
     questions: Question[];
 }
