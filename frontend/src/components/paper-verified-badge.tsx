@@ -26,10 +26,10 @@ export function PaperVerifiedBadge({ paper }: PaperVerifiedBadgeProps) {
             <PopoverTrigger asChild>
                 <Button
                     type="button"
-                    variant="ghost"
+                    variant="default"
                     size="icon"
                     aria-label="Verified paper"
-                    className="text-primary"
+                    className="size-8 border border-primary bg-primary text-primary-foreground shadow-sm"
                     onClick={(event) => event.stopPropagation()}
                 >
                     <CheckCircle2 />

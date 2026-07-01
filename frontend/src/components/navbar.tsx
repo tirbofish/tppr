@@ -343,6 +343,12 @@ export default function NavBar() {
                               Takedowns
                             </Link>
                           </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/admin/verification-requests">
+                              <ShieldCheck />
+                              Verification requests
+                            </Link>
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                         </>
                       )}

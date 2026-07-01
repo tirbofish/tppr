@@ -35,7 +35,7 @@ export function withFirstText(blocks: ContentBlock[] | undefined, text: string):
     return next;
 }
 
-type AnswerValue = string | QuestionAnswer | undefined;
+type AnswerValue = string | QuestionAnswer | null | undefined;
 
 function hasBlocks(blocks?: ContentBlock[]): boolean {
     return !!blocks?.some((block) =>
@@ -65,7 +65,9 @@ function compactAnswer(answer: QuestionAnswer): QuestionAnswer | undefined {
 }
 
 export function answerOptionLabel(answer: AnswerValue): string {
-    return typeof answer === "object" ? answer.option_label ?? "" : "";
+    return typeof answer === "object" && answer != null
+        ? answer.option_label ?? ""
+        : "";
 }
 
 export function answerSummary(answer: AnswerValue): string {

@@ -24,6 +24,7 @@ import threading
 import time
 import urllib.request
 import zipfile
+import json
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -58,6 +59,8 @@ PAPER_UTILS = os.path.join(ROOT, "tppr-paper-utils")
 UV_CACHE_DIR = os.path.join(ROOT, ".uv-cache")
 GCLOUD_CACHE_DIR = os.path.join(ROOT, ".gcloud-sdk")
 GCLOUD_SDK_DIR = os.path.join(GCLOUD_CACHE_DIR, "google-cloud-sdk")
+DOCTL_CACHE_DIR = os.path.join(ROOT, ".doctl")
+DOCTL_BIN_DIR = os.path.join(DOCTL_CACHE_DIR, "bin")
 POSTGRES_CACHE_DIR = os.path.join(ROOT, ".postgresql")
 POSTGRES_INSTALL_DIR = os.path.join(POSTGRES_CACHE_DIR, "pgsql")
 POSTGRES_DATA_DIR = os.path.join(POSTGRES_CACHE_DIR, "data")
@@ -235,6 +238,188 @@ def find_or_install_gcloud():
 
     warn("gcloud was not found on PATH; installing a cached Google Cloud CLI.")
     return install_cached_gcloud()
+
+
+def cached_doctl_command():
+    executable = "doctl.exe" if platform.system().lower() == "windows" else "doctl"
+    path = os.path.join(DOCTL_BIN_DIR, executable)
+    return path if os.path.exists(path) else None
+
+
+def doctl_latest_version():
+    configured = os.getenv("DOCTL_VERSION", "").strip()
+    if configured:
+        return configured if configured.startswith("v") else f"v{configured}"
+
+    url = "https://api.github.com/repos/digitalocean/doctl/releases/latest"
+    try:
+        with urllib.request.urlopen(url, timeout=30) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except OSError as e:
+        fatal(
+            "Could not resolve the latest doctl version",
+            f"{url}\n\nSet DOCTL_VERSION in .env to bypass this lookup.\n\n{e}",
+        )
+
+    tag = str(data.get("tag_name") or "").strip()
+    if not tag:
+        fatal(
+            "Could not resolve the latest doctl version",
+            "GitHub did not return a release tag. Set DOCTL_VERSION in .env.",
+        )
+    return tag
+
+
+def doctl_archive_name(version):
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    normalized_version = version[1:] if version.startswith("v") else version
+
+    if machine in {"amd64", "x86_64"}:
+        arch = "amd64"
+    elif machine in {"arm64", "aarch64"}:
+        arch = "arm64"
+    else:
+        fatal(
+            "Could not install doctl automatically",
+            f"Unsupported CPU architecture for cached doctl install: {machine}.",
+        )
+
+    if system == "windows":
+        return f"doctl-{normalized_version}-windows-{arch}.zip"
+    if system == "linux":
+        return f"doctl-{normalized_version}-linux-{arch}.tar.gz"
+    if system == "darwin":
+        return f"doctl-{normalized_version}-darwin-{arch}.tar.gz"
+
+    fatal(
+        "Could not install doctl automatically",
+        f"Unsupported platform for cached doctl install: {system}/{machine}.",
+    )
+
+
+def install_cached_doctl():
+    cached = cached_doctl_command()
+    if cached:
+        return cached
+
+    version = doctl_latest_version()
+    archive_name = doctl_archive_name(version)
+    archive_url = (
+        "https://github.com/digitalocean/doctl/releases/download/"
+        f"{version}/{archive_name}"
+    )
+    archive_path = os.path.join(DOCTL_CACHE_DIR, archive_name)
+    os.makedirs(DOCTL_CACHE_DIR, exist_ok=True)
+
+    if not os.path.exists(archive_path):
+        log(f"Downloading DigitalOcean doctl {version} for cached deploy tooling")
+        try:
+            download_file(archive_url, archive_path)
+        except OSError as e:
+            fatal("Could not download doctl", f"{archive_url}\n\n{e}")
+    else:
+        log("Using cached DigitalOcean doctl archive")
+
+    log("Installing cached DigitalOcean doctl")
+    with tempfile.TemporaryDirectory(prefix="doctl-extract-", dir=DOCTL_CACHE_DIR) as extract_dir:
+        try:
+            shutil.unpack_archive(archive_path, extract_dir)
+        except (shutil.ReadError, tarfile.TarError, zipfile.BadZipFile) as e:
+            fatal("Could not extract doctl archive", str(e))
+
+        executable = "doctl.exe" if platform.system().lower() == "windows" else "doctl"
+        extracted = None
+        for dirpath, _, filenames in os.walk(extract_dir):
+            if executable in filenames:
+                extracted = os.path.join(dirpath, executable)
+                break
+            if platform.system().lower() != "windows" and "doctl" in filenames:
+                extracted = os.path.join(dirpath, "doctl")
+                break
+        if not extracted:
+            fatal(
+                "Could not install doctl",
+                "The downloaded archive did not contain the doctl executable.",
+            )
+
+        os.makedirs(DOCTL_BIN_DIR, exist_ok=True)
+        target = os.path.join(DOCTL_BIN_DIR, executable)
+        if os.path.exists(target):
+            os.unlink(target)
+        shutil.move(extracted, target)
+        if platform.system().lower() != "windows":
+            os.chmod(target, 0o755)
+
+    cached = cached_doctl_command()
+    if not cached:
+        fatal(
+            "Could not install doctl",
+            "The cached install is missing the doctl executable.",
+        )
+    return cached
+
+
+def find_or_install_doctl():
+    doctl = find_command("doctl")
+    if doctl:
+        return doctl
+
+    cached = cached_doctl_command()
+    if cached:
+        return cached
+
+    warn("doctl was not found on PATH; installing a cached DigitalOcean CLI.")
+    return install_cached_doctl()
+
+
+def doctl_process_env():
+    env = os.environ.copy()
+    token = (
+        os.getenv("DIGITALOCEAN_ACCESS_TOKEN")
+        or os.getenv("DO_ACCESS_TOKEN")
+        or os.getenv("DO_TOKEN")
+    )
+    if token:
+        env["DIGITALOCEAN_ACCESS_TOKEN"] = token
+    return env
+
+
+def ensure_doctl_auth(doctl, env):
+    auth_check = subprocess.run(
+        [doctl, "account", "get"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    if auth_check.returncode == 0:
+        return
+
+    if env.get("DIGITALOCEAN_ACCESS_TOKEN"):
+        output = "\n".join(
+            part for part in [auth_check.stdout, auth_check.stderr] if part
+        ).strip()
+        fatal(
+            "DigitalOcean token was provided but doctl could not authenticate",
+            output or "Check DIGITALOCEAN_ACCESS_TOKEN in .env.",
+        )
+
+    if sys.stdin.isatty():
+        warn("doctl is not authenticated; starting `doctl auth init`.")
+        run_streamed(
+            [doctl, "auth", "init"],
+            ROOT,
+            "Authenticating doctl",
+            env=env,
+        )
+        return
+
+    fatal(
+        "doctl is not authenticated",
+        "Set DIGITALOCEAN_ACCESS_TOKEN in .env or run `doctl auth init`, "
+        "then deploy again.",
+    )
 
 
 def postgres_executable(name):
@@ -871,9 +1056,20 @@ def cloud_run_database_env():
         "SUPABASE_URL": supabase_url,
         "VITE_SUPABASE_URL": supabase_url,
     }
-    anon_key = (os.getenv("VITE_SUPABASE_ANON_KEY") or "").strip()
-    if anon_key:
-        env_vars["VITE_SUPABASE_ANON_KEY"] = anon_key
+    secret_key = (os.getenv("SECRET_KEY") or "").strip()
+    if secret_key:
+        env_vars["SECRET_KEY"] = secret_key
+    publishable_key = (
+        os.getenv("VITE_SUPABASE_PUBLISHABLE_KEY")
+        or os.getenv("VITE_SUPABASE_ANON_KEY")
+        or ""
+    ).strip()
+    if publishable_key:
+        env_vars["VITE_SUPABASE_PUBLISHABLE_KEY"] = publishable_key
+        env_vars["VITE_SUPABASE_ANON_KEY"] = publishable_key
+    supabase_secret_key = (os.getenv("SUPABASE_SECRET_KEY") or "").strip()
+    if supabase_secret_key:
+        env_vars["SUPABASE_SECRET_KEY"] = supabase_secret_key
     return env_vars
 
 
@@ -1092,25 +1288,22 @@ def run_gcp_deploy():
 
 def check_do_deploy_tools():
     git = find_command("git")
-    doctl = find_command("doctl")
-    bun = find_command("bun")
+    doctl = find_or_install_doctl()
     missing = [
         name
-        for name, cmd in [("git", git), ("doctl", doctl), ("bun", bun)]
+        for name, cmd in [("git", git)]
         if not cmd
     ]
     if missing:
         fatal(
             "Missing deploy tools: " + ", ".join(missing),
-            "Install the missing command(s); doctl from "
-            "https://docs.digitalocean.com/reference/doctl/how-to/install/, "
-            "then run `uv run launch.py --deploy do` again.",
+            "Install the missing command(s), then run `uv run launch.py --deploy do` again.",
         )
-    return {"git": git, "doctl": doctl, "js": bun}
+    return {"git": git, "doctl": doctl, "doctl_env": doctl_process_env()}
 
 
 # ponytail: hand-emit the flat App Platform spec instead of adding a yaml dep
-def do_app_spec(name, region, repo, branch, run_command, env_vars):
+def do_app_spec(name, region, repo, branch, env_vars):
     def q(value):
         return "'" + str(value).replace("'", "''") + "'"
     lines = [
@@ -1118,18 +1311,46 @@ def do_app_spec(name, region, repo, branch, run_command, env_vars):
         f"region: {region}",
         "services:",
         "- name: web",
-        "  environment_slug: python",
         "  github:",
         f"    branch: {branch}",
         "    deploy_on_push: true",
         f"    repo: {repo}",
-        f"  run_command: {run_command}",
+        "  dockerfile_path: deploy/Dockerfile.digitalocean",
+        "  http_port: 5000",
         "  health_check:",
         "    http_path: /ping",
-        "  env_vars:",
+        "  envs:",
     ]
     for key, value in env_vars.items():
         lines.append(f"  - key: {key}")
+        lines.append("    scope: RUN_AND_BUILD_TIME")
+        lines.append("    type: GENERAL")
+        lines.append(f"    value: {q(value)}")
+    return "\n".join(lines) + "\n"
+
+
+def do_image_app_spec(name, region, registry, repository, tag, env_vars):
+    def q(value):
+        return "'" + str(value).replace("'", "''") + "'"
+    lines = [
+        f"name: {name}",
+        f"region: {region}",
+        "services:",
+        "- name: web",
+        "  image:",
+        "    registry_type: DOCR",
+        f"    registry: {registry}",
+        f"    repository: {repository}",
+        f"    tag: {tag}",
+        "  http_port: 5000",
+        "  health_check:",
+        "    http_path: /ping",
+        "  envs:",
+    ]
+    for key, value in env_vars.items():
+        lines.append(f"  - key: {key}")
+        lines.append("    scope: RUN_AND_BUILD_TIME")
+        lines.append("    type: GENERAL")
         lines.append(f"    value: {q(value)}")
     return "\n".join(lines) + "\n"
 
@@ -1151,20 +1372,175 @@ def github_owner_repo(git):
     return None
 
 
+def docker_command():
+    if platform.system().lower() == "windows":
+        return shutil.which("docker.exe") or shutil.which("docker")
+    return shutil.which("docker")
+
+
+def sanitize_docr_name(value):
+    cleaned = []
+    for char in value.lower():
+        if char.isalnum() or char == "-":
+            cleaned.append(char)
+        elif char in {"_", ".", "/"}:
+            cleaned.append("-")
+    name = "".join(cleaned).strip("-")
+    return name or "tppr"
+
+
+def current_docr_registry(doctl, env):
+    proc = subprocess.run(
+        [doctl, "registry", "get", "--format", "Name", "--no-header"],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        return ""
+    return proc.stdout.strip().splitlines()[0].strip() if proc.stdout.strip() else ""
+
+
+def ensure_docr_registry(doctl, env, app_name):
+    existing = current_docr_registry(doctl, env)
+    if existing:
+        return existing
+
+    registry_name = sanitize_docr_name(os.getenv("DO_REGISTRY_NAME", app_name))
+    registry_region = os.getenv("DO_REGISTRY_REGION", "syd1")
+    tier = os.getenv("DO_REGISTRY_TIER", "basic")
+    run_streamed(
+        [
+            doctl,
+            "registry",
+            "create",
+            registry_name,
+            "--region",
+            registry_region,
+            "--subscription-tier",
+            tier,
+        ],
+        ROOT,
+        f"Creating DigitalOcean Container Registry {registry_name}",
+        env=env,
+    )
+    return registry_name
+
+
+def run_do_image_deploy(tools):
+    git = tools["git"]
+    doctl = tools["doctl"]
+    doctl_env = tools["doctl_env"]
+    docker = docker_command()
+    if not docker:
+        fatal(
+            "Docker is required for DigitalOcean image deploy mode",
+            "Install Docker Desktop, start it, then run `uv run launch.py --deploy do` again. "
+            "Alternatively set DO_DEPLOY_MODE=github after connecting GitHub in DigitalOcean.",
+        )
+
+    commit = run_capture(
+        [git, "rev-parse", "--short=12", "HEAD"],
+        ROOT,
+        "Could not resolve the latest git commit",
+    )
+    status = run_capture(
+        [git, "status", "--short"], ROOT, "Could not inspect git status"
+    )
+    if status:
+        warn("Working tree has uncommitted changes; building the current local files.")
+
+    app_name = os.getenv("DO_APP_NAME", "tppr")
+    region = os.getenv("DO_REGION", "syd")
+    registry = ensure_docr_registry(doctl, doctl_env, app_name)
+    repository = sanitize_docr_name(os.getenv("DO_IMAGE_REPOSITORY", app_name))
+    tag = sanitize_docr_name(os.getenv("DO_IMAGE_TAG", commit))
+    image = f"registry.digitalocean.com/{registry}/{repository}:{tag}"
+    env_vars = cloud_run_database_env()
+    env_vars["PRODUCTION"] = "true"
+
+    table = Table(title="DigitalOcean App Platform image deploy", box=box.SIMPLE_HEAVY)
+    table.add_column("Setting", style="bold")
+    table.add_column("Value", overflow="fold")
+    table.add_row("App", app_name)
+    table.add_row("Region", region)
+    table.add_row("Registry", registry)
+    table.add_row("Image", image)
+    table.add_row("Dockerfile", "deploy/Dockerfile.digitalocean")
+    table.add_row("Database", os.getenv("DB_HOST", "(DATABASE_URL)"))
+    table.add_row("Commit", commit)
+    console.print(table)
+
+    run_streamed(
+        [doctl, "registry", "login"],
+        ROOT,
+        "Logging Docker into DigitalOcean Container Registry",
+        env=doctl_env,
+    )
+    run_streamed(
+        [
+            docker,
+            "build",
+            "-f",
+            os.path.join("deploy", "Dockerfile.digitalocean"),
+            "-t",
+            image,
+            ".",
+        ],
+        ROOT,
+        f"Building Docker image {image}",
+    )
+    run_streamed(
+        [docker, "push", image],
+        ROOT,
+        f"Pushing Docker image {image}",
+    )
+
+    with tempfile.TemporaryDirectory(prefix=f"tppr-do-image-{commit}-") as spec_dir:
+        spec_path = os.path.join(spec_dir, "app.yaml")
+        with open(spec_path, "w", encoding="utf-8") as fh:
+            fh.write(
+                do_image_app_spec(
+                    app_name,
+                    region,
+                    registry,
+                    repository,
+                    tag,
+                    env_vars,
+                )
+            )
+        run_streamed(
+            [doctl, "apps", "spec", "validate", spec_path],
+            ROOT,
+            "Validating DigitalOcean App Platform image spec",
+            env=doctl_env,
+        )
+        run_streamed(
+            [doctl, "apps", "create", "--upsert", "--spec", spec_path, "--wait"],
+            ROOT,
+            f"Deploying {app_name} image to DigitalOcean App Platform",
+            env=doctl_env,
+        )
+
+
 def run_do_deploy():
     load_project_env()
     tools = check_do_deploy_tools()
     git = tools["git"]
     doctl = tools["doctl"]
+    doctl_env = tools["doctl_env"]
+    ensure_doctl_auth(doctl, doctl_env)
 
-    auth_check = subprocess.run(
-        [doctl, "account", "get"], capture_output=True, text=True
-    )
-    if auth_check.returncode != 0:
+    mode = os.getenv("DO_DEPLOY_MODE", "image").strip().lower()
+    if mode not in {"image", "github"}:
         fatal(
-            "doctl is not authenticated",
-            "Run `doctl auth init` with an API token, then deploy again.",
+            "Unsupported DigitalOcean deploy mode",
+            "Set DO_DEPLOY_MODE=image or DO_DEPLOY_MODE=github.",
         )
+    if mode == "image":
+        run_do_image_deploy(tools)
+        return
 
     commit = run_capture(
         [git, "rev-parse", "--short=12", "HEAD"],
@@ -1196,15 +1572,8 @@ def run_do_deploy():
 
     app_name = os.getenv("DO_APP_NAME", "tppr")
     region = os.getenv("DO_REGION", "syd")
-    run_command = os.getenv("DO_RUN_COMMAND", "python src/main.py")
     env_vars = cloud_run_database_env()
     env_vars["PRODUCTION"] = "true"
-
-    if not os.path.isfile(os.path.join(BACKEND, "assets", "site", "index.html")):
-        warn(
-            "backend/assets/site has no built frontend; App Platform won't build it. "
-            "Build it locally and commit, or switch the spec to a Dockerfile component."
-        )
 
     table = Table(title="DigitalOcean App Platform deploy", box=box.SIMPLE_HEAVY)
     table.add_column("Setting", style="bold")
@@ -1213,7 +1582,7 @@ def run_do_deploy():
     table.add_row("Region", region)
     table.add_row("Repo", repo)
     table.add_row("Branch", branch)
-    table.add_row("Run", run_command)
+    table.add_row("Dockerfile", "deploy/Dockerfile.digitalocean")
     table.add_row("Database", os.getenv("DB_HOST", "(DATABASE_URL)"))
     table.add_row("Commit", commit)
     console.print(table)
@@ -1222,13 +1591,226 @@ def run_do_deploy():
         spec_path = os.path.join(spec_dir, "app.yaml")
         with open(spec_path, "w", encoding="utf-8") as fh:
             fh.write(
-                do_app_spec(app_name, region, repo, branch, run_command, env_vars)
+                do_app_spec(app_name, region, repo, branch, env_vars)
             )
+        run_streamed(
+            [doctl, "apps", "spec", "validate", spec_path],
+            ROOT,
+            "Validating DigitalOcean App Platform spec",
+            env=doctl_env,
+        )
         run_streamed(
             [doctl, "apps", "create", "--upsert", "--spec", spec_path, "--wait"],
             ROOT,
             f"Deploying {app_name} to DigitalOcean App Platform",
+            env=doctl_env,
         )
+
+
+# ---------------------------------------------------------------------------
+# DigitalOcean Functions (serverless) deploy
+# ---------------------------------------------------------------------------
+FUNCTIONS_SOURCE_DIR = os.path.join(ROOT, "deploy", "functions")
+EXTRACTOR_DIR = os.path.join(ROOT, "tppr-paper-extractor")
+
+
+def _fn_env_flag(name):
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def ensure_do_functions_runtime(doctl, env):
+    proc = subprocess.run(
+        [doctl, "serverless", "status"],
+        cwd=ROOT, env=env, text=True, capture_output=True,
+    )
+    out = ((proc.stdout or "") + (proc.stderr or "")).lower()
+    if "not installed" in out:
+        run_streamed(
+            [doctl, "serverless", "install"], ROOT,
+            "Installing DigitalOcean serverless support", env=env,
+        )
+
+    proc = subprocess.run(
+        [doctl, "serverless", "status"],
+        cwd=ROOT, env=env, text=True, capture_output=True,
+    )
+    out = ((proc.stdout or "") + (proc.stderr or "")).lower()
+    if "not connected" in out or proc.returncode != 0:
+        run_streamed(
+            [doctl, "serverless", "connect"], ROOT,
+            "Connecting to a DigitalOcean functions namespace", env=env,
+        )
+
+
+def do_functions_env_vars():
+    supabase_url = (
+        os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or ""
+    ).strip().rstrip("/")
+    if not supabase_url:
+        fatal(
+            "Supabase URL is missing",
+            "Set SUPABASE_URL or VITE_SUPABASE_URL in .env before deploying.",
+        )
+    env_vars = {
+        "PRODUCTION": "true",
+        "DATABASE_URL": build_supabase_database_url(),
+        "SUPABASE_URL": supabase_url,
+        "RATELIMIT_STORAGE_URI": "memory://",
+    }
+    for key in (
+        "SECRET_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_JWT_SECRET",
+        "SUPABASE_AVATAR_BUCKET", "SUPABASE_QUESTION_ASSET_BUCKET",
+        "VALID_ADMIN_EMAILS", "BACKEND_ALLOWED_ORIGINS",
+    ):
+        value = (os.getenv(key) or "").strip()
+        if value:
+            env_vars[key] = value
+    return env_vars
+
+
+def write_functions_env_file(path, env_vars):
+    lines = []
+    for key, value in env_vars.items():
+        if any(ch in value for ch in (" ", "#", "\n")) and not value.startswith('"'):
+            value = '"' + value.replace('"', '\\"') + '"'
+        lines.append(f"{key}={value}")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+def _patch_project_runtime(staged, runtime):
+    spec_path = os.path.join(staged, "project.yml")
+    with open(spec_path, "r", encoding="utf-8") as fh:
+        spec = fh.read()
+    spec = spec.replace("runtime: python:default", f"runtime: {runtime}")
+    with open(spec_path, "w", encoding="utf-8") as fh:
+        fh.write(spec)
+
+
+def stage_functions_project():
+    source = FUNCTIONS_SOURCE_DIR
+    if not os.path.isfile(os.path.join(source, "project.yml")):
+        fatal(
+            "Functions project not found",
+            f"Expected {source}/project.yml. Run from the tppr repo root.",
+        )
+    if not os.path.isdir(os.path.join(EXTRACTOR_DIR, "src", "tppr_paper_extractor")):
+        fatal(
+            "tppr-paper-extractor source not found",
+            f"Expected {EXTRACTOR_DIR}/src/tppr_paper_extractor.",
+        )
+
+    staged = tempfile.mkdtemp(prefix="tppr-do-fns-")
+    func_dir = os.path.join(staged, "packages", "tppr", "api")
+    os.makedirs(func_dir, exist_ok=True)
+    ignore = shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache")
+
+    # backend source -> function/backend_src (provides settings, main, auth, ...)
+    shutil.copytree(
+        os.path.join(BACKEND, "src"),
+        os.path.join(func_dir, "backend_src"),
+        ignore=ignore,
+    )
+    # backend assets -> function/assets (matches settings.ASSETS_DIR resolution)
+    shutil.copytree(
+        os.path.join(BACKEND, "assets"),
+        os.path.join(func_dir, "assets"),
+        ignore=ignore,
+    )
+    # vendored extractor (pure python, no runtime deps)
+    shutil.copytree(
+        os.path.join(EXTRACTOR_DIR, "src", "tppr_paper_extractor"),
+        os.path.join(func_dir, "tppr_paper_extractor"),
+        ignore=ignore,
+    )
+
+    if _fn_env_flag("DO_FN_SERVE_FRONTEND"):
+        dist = os.path.join(FRONTEND, "dist")
+        if os.path.isfile(os.path.join(dist, "index.html")):
+            shutil.copytree(
+                dist,
+                os.path.join(func_dir, "assets", "site"),
+                ignore=ignore,
+            )
+            success("Bundled frontend/dist into the function (SPA served from the function).")
+        else:
+            warn("DO_FN_SERVE_FRONTEND set but frontend/dist is not built; skipping SPA bundle.")
+
+    shutil.copy2(os.path.join(source, "project.yml"), os.path.join(staged, "project.yml"))
+    shutil.copy2(
+        os.path.join(source, "packages", "tppr", "api", "api.py"),
+        os.path.join(func_dir, "api.py"),
+    )
+    shutil.copy2(
+        os.path.join(source, "packages", "tppr", "api", "requirements.txt"),
+        os.path.join(func_dir, "requirements.txt"),
+    )
+    return staged
+
+
+def run_do_functions_deploy():
+    load_project_env()
+    tools = check_do_deploy_tools()
+    doctl = tools["doctl"]
+    doctl_env = tools["doctl_env"]
+    ensure_doctl_auth(doctl, doctl_env)
+    ensure_do_functions_runtime(doctl, doctl_env)
+
+    serve_frontend = _fn_env_flag("DO_FN_SERVE_FRONTEND")
+    runtime = os.getenv("DO_FN_RUNTIME", "").strip()
+
+    env_vars = do_functions_env_vars()
+    if not env_vars.get("SECRET_KEY") or len(env_vars["SECRET_KEY"]) < 32:
+        fatal(
+            "SECRET_KEY is required for a production deploy",
+            "Set a strong SECRET_KEY (>= 32 chars) in .env before running "
+            "`uv run launch.py --deploy do-fns`.",
+        )
+    if not env_vars.get("BACKEND_ALLOWED_ORIGINS"):
+        warn(
+            "BACKEND_ALLOWED_ORIGINS is unset; CORS will reject browser API "
+            "calls in production. Set it to your frontend https:// origin(s)."
+        )
+
+    staged = stage_functions_project()
+    if runtime:
+        _patch_project_runtime(staged, runtime)
+
+    env_file = os.path.join(staged, ".env.functions")
+    write_functions_env_file(env_file, env_vars)
+
+    table = Table(title="DigitalOcean Functions deploy", box=box.SIMPLE_HEAVY)
+    table.add_column("Setting", style="bold")
+    table.add_column("Value", overflow="fold")
+    table.add_row("Function", "tppr/api")
+    table.add_row("Runtime", runtime or "python:default")
+    table.add_row(
+        "Frontend",
+        "bundled in function" if serve_frontend else "external (host SPA separately)",
+    )
+    table.add_row("Database", os.getenv("DB_HOST", "(DATABASE_URL)"))
+    table.add_row("Remote build", "yes (--remote-build)")
+    console.print(table)
+
+    try:
+        run_streamed(
+            [
+                doctl, "serverless", "deploy", staged,
+                "--env", env_file, "--remote-build", "--verbose-build",
+            ],
+            ROOT,
+            "Deploying tppr to DigitalOcean Functions",
+            env=doctl_env,
+        )
+        success("tppr deployed to DigitalOcean Functions.")
+        log("Get the function URL:")
+        log("  doctl serverless functions get tppr/api --url", "cyan")
+        log("Point your frontend VITE_BACKEND_URL at the web action base:")
+        log("  https://<namespace>.<region>.functions.ondigitalocean.app/tppr/api", "cyan")
+        log("Note: requests are forwarded to Flask, so the /api prefix is kept.")
+    finally:
+        shutil.rmtree(staged, ignore_errors=True)
+
 
 
 def ensure_python_dependencies(tools, skip_install=False, tui=None, live=None):
@@ -1782,12 +2364,15 @@ def main():
         provider = sys.argv[deploy_index + 1] if deploy_index + 1 < len(sys.argv) else ""
         if provider in ("do", "do-app", "do-app-platform", "digitalocean"):
             deploy_fn = run_do_deploy
+        elif provider in ("do-fns", "do-functions", "do-serverless", "functions"):
+            deploy_fn = run_do_functions_deploy
         elif provider == "gcp":
             deploy_fn = run_gcp_deploy
         else:
             fatal(
                 "Unsupported deploy target",
-                "Use `uv run launch.py --deploy gcp` or `uv run launch.py --deploy do`.",
+                "Use `uv run launch.py --deploy gcp`, `--deploy do` (App Platform) "
+                "or `--deploy do-fns` (Functions).",
             )
         try:
             deploy_fn()

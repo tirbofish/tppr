@@ -29,15 +29,21 @@ import { toast } from "sonner";
 import type { CourseLevel, PaperSource, Visibility } from "@/types/tppr-paper";
 import { createLocalPaper } from "@/lib/paper";
 import { parseListField } from "@/lib/paper-fields";
-import { importPaperFromJsonFile } from "@/lib/paper-import";
+import { importPaperFromData, importPaperFromJsonFile } from "@/lib/paper-import";
 import { useAuth } from "@/api/auth";
 import { useNavigate } from "react-router-dom";
-import { FileJson, FilePlus2 } from "lucide-react";
+import { Bell, FileJson, FilePlus2, FileText } from "lucide-react";
+import {
+    convertMistralOcrWithMistralChat,
+    ocrPdfWithMistral,
+} from "@/api/mistral-ocr";
+import { getStoredMistralApiKey } from "@/lib/mistral-settings";
 
 export function CreatePaperDialog({ onCreated }: { onCreated?: () => void }) {
     const { user } = useAuth();
     const navigate = useNavigate();
     const importInputRef = useRef<HTMLInputElement>(null);
+    const pdfInputRef = useRef<HTMLInputElement>(null);
     
     const [mode, setMode] = useState<"choose" | "create">("choose");
     const [subject, setSubject] = useState("");
@@ -46,7 +52,30 @@ export function CreatePaperDialog({ onCreated }: { onCreated?: () => void }) {
     const [visibility, setVisibility] = useState("private");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
+    const [progressText, setProgressText] = useState("");
+    const [notifyArmed, setNotifyArmed] = useState(false);
+    const notifyWhenDoneRef = useRef(false);
     const showCourseLevel = subject === "Mathematics" || subject === "English";
+
+    async function armDoneNotification() {
+        notifyWhenDoneRef.current = true;
+        setNotifyArmed(true);
+        if (!("Notification" in window)) {
+            toast.info("I'll notify you here when the import finishes.");
+            return;
+        }
+        if (Notification.permission === "default") {
+            await Notification.requestPermission();
+        }
+        toast.info("I'll notify you when the import finishes.");
+    }
+
+    function notifyImportDone(title: string, body: string) {
+        if (!notifyWhenDoneRef.current) return;
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification(title, { body });
+        }
+    }
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -59,6 +88,7 @@ export function CreatePaperDialog({ onCreated }: { onCreated?: () => void }) {
             return;
         }
         setError("");
+        setProgressText("");
         setSubmitting(true);
 
         const formData = new FormData(e.currentTarget);
@@ -99,6 +129,7 @@ export function CreatePaperDialog({ onCreated }: { onCreated?: () => void }) {
         }
 
         setError("");
+        setProgressText("");
         setSubmitting(true);
         try {
             const paper = await importPaperFromJsonFile(file, String(user.user_id));
@@ -113,6 +144,58 @@ export function CreatePaperDialog({ onCreated }: { onCreated?: () => void }) {
             toast.error(message);
         } finally {
             setSubmitting(false);
+        }
+    }
+
+    async function handleImportPdf(file: File | undefined) {
+        if (!file) return;
+        if (!user) {
+            setError("You gotta be logged in to import a paper");
+            return;
+        }
+
+        const apiKey = getStoredMistralApiKey();
+        if (!apiKey) {
+            const message = "Add your Mistral API key in Settings before importing a PDF.";
+            setError(message);
+            toast.error(message);
+            return;
+        }
+
+        setError("");
+        setProgressText("Preparing PDF");
+        setSubmitting(true);
+        setNotifyArmed(false);
+        notifyWhenDoneRef.current = false;
+        try {
+            const ocrDocument = await ocrPdfWithMistral(file, {
+                apiKey,
+                onStatus: setProgressText,
+            });
+            const converted = await convertMistralOcrWithMistralChat(
+                ocrDocument,
+                {
+                    apiKey,
+                    onStatus: setProgressText,
+                },
+            );
+            setProgressText("Saving paper");
+            const paper = await importPaperFromData(converted, String(user.user_id));
+            toast.success(`Imported "${paper.title}"`);
+            notifyImportDone("TPPR import complete", `"${paper.title}" is ready.`);
+            onCreated?.();
+            navigate(`/papers/${paper.id}`);
+        } catch (error) {
+            const message = error instanceof Error
+                ? error.message
+                : "Failed to import PDF";
+            setError(message);
+            toast.error(message);
+            notifyImportDone("TPPR import failed", message);
+        } finally {
+            setProgressText("");
+            setSubmitting(false);
+            setNotifyArmed(false);
         }
     }
 
@@ -137,8 +220,31 @@ export function CreatePaperDialog({ onCreated }: { onCreated?: () => void }) {
                             e.target.value = "";
                         }}
                     />
+                    <input
+                        ref={pdfInputRef}
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                            void handleImportPdf(e.target.files?.[0]);
+                            e.target.value = "";
+                        }}
+                    />
 
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="h-auto flex-col items-start gap-2 p-4 text-left whitespace-normal"
+                            disabled={submitting}
+                            onClick={() => pdfInputRef.current?.click()}
+                        >
+                            <FileText data-icon="inline-start" />
+                            <span className="font-medium">Import PDF</span>
+                            <span className="text-sm font-normal text-muted-foreground">
+                                Upload directly to Mistral OCR.
+                            </span>
+                        </Button>
                         <Button
                             type="button"
                             variant="outline"
@@ -171,6 +277,27 @@ export function CreatePaperDialog({ onCreated }: { onCreated?: () => void }) {
                         <p className="text-sm text-destructive">
                             {error}
                         </p>
+                    )}
+                    {progressText && (
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                            <span>{progressText}...</span>
+                            {progressText === "Converting OCR with Mistral chat" && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={notifyArmed}
+                                    onClick={() => {
+                                        void armDoneNotification();
+                                    }}
+                                >
+                                    <Bell data-icon="inline-start" />
+                                    {notifyArmed
+                                        ? "Notification set"
+                                        : "Notify me when it's done!"}
+                                </Button>
+                            )}
+                        </div>
                     )}
                 </>
             )}

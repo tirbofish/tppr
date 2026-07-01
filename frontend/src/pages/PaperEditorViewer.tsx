@@ -22,6 +22,9 @@ export function PapersViewer() {
     const importInputRef = useRef<HTMLInputElement>(null);
     const { user, loading: authLoading } = useAuth();
     const [importing, setImporting] = useState(false);
+    const [deletingIds, setDeletingIds] = useState<Set<string>>(
+        () => new Set(),
+    );
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -112,14 +115,29 @@ export function PapersViewer() {
     );
 
     async function handleDelete(paper: ListedPaper) {
+        setDeletingIds((prev) => new Set(prev).add(paper.id));
         try {
-            await paperStore.deletePaper(paper.id).catch(() => {});
-            await deletePaper(paper.id).catch(() => {});
+            const [localDelete, remoteDelete] = await Promise.allSettled([
+                paperStore.deletePaper(paper.id),
+                deletePaper(paper.id),
+            ]);
+            if (
+                localDelete.status === "rejected" &&
+                remoteDelete.status === "rejected"
+            ) {
+                throw new Error("Both local and remote deletion failed");
+            }
 
             setPapers((prev) => prev.filter((p) => p.id !== paper.id));
             toast.success("Paper deleted");
         } catch {
             toast.error("Failed to delete paper");
+        } finally {
+            setDeletingIds((prev) => {
+                const next = new Set(prev);
+                next.delete(paper.id);
+                return next;
+            });
         }
     }
 
@@ -205,6 +223,7 @@ export function PapersViewer() {
                                         void handleEdit(updated);
                                     }}
                                     onDelete={() => handleDelete(paper)}
+                                    deleting={deletingIds.has(paper.id)}
                                 />
                             ))}
                         </div>

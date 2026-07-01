@@ -25,6 +25,8 @@ import { useWindowSize } from "react-use";
 import { useAuth } from "@/api/auth";
 import {
     completeAttempt,
+    getPaperFocusStats,
+    type PaperFocusStats,
     recordQuestionTime,
     startAttempt,
     updateAttempt,
@@ -100,6 +102,14 @@ function slideKey(slide: FocusSlide | undefined): string | null {
     if (!slide || slide.kind !== "question") return null;
     const path = slide.partPath?.join(".") ?? "";
     return `${slide.question.id}:${path}`;
+}
+
+function hasAnswerGuide(question: QuestionData, partPath?: number[]): boolean {
+    const leaf = partPath ? partAt(question, partPath) : undefined;
+    const answer = leaf?.answer ?? question.answer;
+    const rubric = leaf?.rubric ?? question.rubric;
+    const guidelines = leaf?.guidelines ?? question.guidelines;
+    return Boolean(answer || rubric?.criteria.length || guidelines?.length);
 }
 
 interface QuestionBucket {
@@ -190,7 +200,11 @@ function CompletionSlide(
 }
 
 function FocusDataPanel(
-    { paper, metrics }: { paper: Paper; metrics: FocusMetrics },
+    { paper, metrics, focusStats }: {
+        paper: Paper;
+        metrics: FocusMetrics;
+        focusStats: PaperFocusStats | null | undefined;
+    },
 ) {
     const cards = [
         { label: "Elapsed", value: formatElapsed(metrics.elapsedSeconds) },
@@ -238,6 +252,158 @@ function FocusDataPanel(
                     </div>
                 </CardContent>
             </Card>
+            {paper.visibility === "public" && (
+                <ComparisonGraph
+                    metrics={metrics}
+                    focusStats={focusStats}
+                />
+            )}
+        </div>
+    );
+}
+
+function ComparisonGraph(
+    { metrics, focusStats }: {
+        metrics: FocusMetrics;
+        focusStats: PaperFocusStats | null | undefined;
+    },
+) {
+    if (focusStats === undefined) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">Compared with others</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                        Loading public paper stats...
+                    </p>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (focusStats === null) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">Compared with others</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                        Public comparison stats are unavailable right now.
+                    </p>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (focusStats.attempt_count === 0) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">Compared with others</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                        No public attempt data yet.
+                    </p>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    const rows = [
+        {
+            label: "Time",
+            you: metrics.elapsedSeconds,
+            others: focusStats.median_completed_seconds,
+            format: formatElapsed,
+            lowerIsBetter: true,
+        },
+        {
+            label: "Answer reveals",
+            you: metrics.revealCount,
+            others: focusStats.average_reveal_count,
+            format: (value: number) => value.toFixed(value % 1 ? 1 : 0),
+            lowerIsBetter: true,
+        },
+        {
+            label: "Questions seen",
+            you: metrics.questionsSeen,
+            others: focusStats.average_questions_seen,
+            format: (value: number) => value.toFixed(value % 1 ? 1 : 0),
+            lowerIsBetter: false,
+        },
+    ].filter((row) => row.others != null);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base">Compared with others</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+                {rows.length === 0
+                    ? (
+                        <p className="text-sm text-muted-foreground">
+                            Public attempts exist, but there is not enough comparable data yet.
+                        </p>
+                    )
+                    : rows.map((row) => {
+                        const others = Number(row.others ?? 0);
+                        const max = Math.max(row.you, others, 1);
+                        const youWidth = Math.max(4, (row.you / max) * 100);
+                        const othersWidth = Math.max(4, (others / max) * 100);
+                        return (
+                            <div key={row.label} className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between gap-3 text-sm">
+                                    <span className="font-medium">{row.label}</span>
+                                    <span className="text-muted-foreground">
+                                        {focusStats.attempt_count} attempt{focusStats.attempt_count === 1 ? "" : "s"}
+                                    </span>
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                    <MetricBar
+                                        label="You"
+                                        value={row.format(row.you)}
+                                        width={youWidth}
+                                        primary
+                                    />
+                                    <MetricBar
+                                        label="Others"
+                                        value={row.format(others)}
+                                        width={othersWidth}
+                                    />
+                                </div>
+                            </div>
+                        );
+                    })}
+                <div className="text-xs text-muted-foreground">
+                    Completion rate: {Math.round(focusStats.completion_rate * 100)}%
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+function MetricBar(
+    { label, value, width, primary = false }: {
+        label: string;
+        value: string;
+        width: number;
+        primary?: boolean;
+    },
+) {
+    return (
+        <div className="grid grid-cols-[4rem_1fr_5rem] items-center gap-2 text-xs">
+            <span className="text-muted-foreground">{label}</span>
+            <div className="h-2 rounded-full bg-muted">
+                <div
+                    className={primary ? "h-2 rounded-full bg-primary" : "h-2 rounded-full bg-muted-foreground/40"}
+                    style={{ width: `${width}%` }}
+                />
+            </div>
+            <span className="text-right tabular-nums">{value}</span>
         </div>
     );
 }
@@ -449,6 +615,9 @@ export function FocusMode(
         null,
     );
     const [showAnswer, setShowAnswer] = useState(false);
+    const [focusStats, setFocusStats] = useState<
+        PaperFocusStats | null | undefined
+    >(undefined);
     const { width, height } = useWindowSize();
 
     // --- Progress tracking refs -------------------------------------------
@@ -510,6 +679,22 @@ export function FocusMode(
             clearActivePaperPresence().catch(() => {});
         };
     }, [paper.id, user]);
+
+    useEffect(() => {
+        if (paper.visibility !== "public") return;
+        let cancelled = false;
+        setFocusStats(undefined);
+        getPaperFocusStats(paper.id)
+            .then((stats) => {
+                if (!cancelled) setFocusStats(stats);
+            })
+            .catch(() => {
+                if (!cancelled) setFocusStats(null);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [paper.id, paper.visibility]);
 
     // Track when each slide is entered + its key.
     useEffect(() => {
@@ -669,6 +854,13 @@ export function FocusMode(
             if (e.key === "ArrowRight") goNext();
             if (e.key === "ArrowLeft") goPrev();
             if (e.key === " " && viewTab === "paper") {
+                const currentSlide = slides[indexRef.current];
+                if (
+                    currentSlide?.kind !== "question" ||
+                    !hasAnswerGuide(currentSlide.question, currentSlide.partPath)
+                ) {
+                    return;
+                }
                 e.preventDefault();
                 const next = !showAnswerRef.current;
                 setShowAnswer(next);
@@ -688,6 +880,8 @@ export function FocusMode(
     ]);
 
     const slide = slides[index];
+    const canRevealAnswer = slide.kind === "question" &&
+        hasAnswerGuide(slide.question, slide.partPath);
     const questionCount = paper.questions.length;
     const isCompleteSlide = slide.kind === "complete";
     const currentQuestionIdx = isCompleteSlide
@@ -826,7 +1020,13 @@ export function FocusMode(
             <div className="relative flex-1 overflow-y-auto px-8 py-6">
                 <div className="mx-auto flex min-h-full max-w-3xl items-center justify-center">
                     {viewTab === "data"
-                        ? <FocusDataPanel paper={paper} metrics={metrics} />
+                        ? (
+                            <FocusDataPanel
+                                paper={paper}
+                                metrics={metrics}
+                                focusStats={focusStats}
+                            />
+                        )
                         : (
                             <>
                                 {slide.kind === "cover" && (
@@ -880,7 +1080,7 @@ export function FocusMode(
                 >
                     <ArrowRight className="size-5" />
                 </Button>
-                {slide.kind === "question" && (
+                {canRevealAnswer && (
                     <span className="ml-4 text-xs text-muted-foreground">
                         <kbd className="rounded border px-1.5 py-0.5 font-mono text-xs">
                             Space

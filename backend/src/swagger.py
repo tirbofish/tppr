@@ -471,6 +471,7 @@ def swagger_json():
                                     "topics": {"type": "array", "items": {"type": "string"}},
                                     "outcomes": {"type": "array", "items": {"type": "string"}},
                                     "syllabus_points": array_of("SyllabusPoint"),
+                                    "verified_changed": {"type": "boolean", "default": False},
                                     "created_at": {"type": "string", "format": "date-time"},
                                     "updated_at": {"type": "string", "format": "date-time"},
                                 },

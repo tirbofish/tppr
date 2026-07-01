@@ -45,4 +45,5 @@ output.*
 output/
 paper-assets/
 .gcloud-sdk
+.doctl
 .postgresql

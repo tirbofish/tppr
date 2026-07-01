@@ -44,6 +44,24 @@ export default function Search() {
         searchParams.get("course_level") ?? "all",
     );
     const [year, setYear] = useState(searchParams.get("year") ?? "");
+    const [verified, setVerified] = useState(
+        searchParams.get("verified") ?? "all",
+    );
+    const [school, setSchool] = useState(searchParams.get("school") ?? "");
+    const [topic, setTopic] = useState(searchParams.get("topic") ?? "");
+    const [outcome, setOutcome] = useState(searchParams.get("outcome") ?? "");
+    const [minMarks, setMinMarks] = useState(
+        searchParams.get("min_marks") ?? "",
+    );
+    const [maxMarks, setMaxMarks] = useState(
+        searchParams.get("max_marks") ?? "",
+    );
+    const [minDuration, setMinDuration] = useState(
+        searchParams.get("min_duration") ?? "",
+    );
+    const [maxDuration, setMaxDuration] = useState(
+        searchParams.get("max_duration") ?? "",
+    );
 
     const [papers, setPapers] = useState<PaperMeta[]>([]);
     const [total, setTotal] = useState(0);
@@ -65,6 +83,14 @@ export default function Search() {
                 ? courseLevel
                 : undefined,
             year: year || undefined,
+            verified: verified !== "all" ? verified : undefined,
+            school: school || undefined,
+            topic: topic || undefined,
+            outcome: outcome || undefined,
+            min_marks: minMarks || undefined,
+            max_marks: maxMarks || undefined,
+            min_duration: minDuration || undefined,
+            max_duration: maxDuration || undefined,
             page: pageNum,
             per_page: 20,
         };
@@ -97,6 +123,14 @@ export default function Search() {
             setSource(searchParams.get("source") ?? "all");
             setCourseLevel(searchParams.get("course_level") ?? "all");
             setYear(searchParams.get("year") ?? "");
+            setVerified(searchParams.get("verified") ?? "all");
+            setSchool(searchParams.get("school") ?? "");
+            setTopic(searchParams.get("topic") ?? "");
+            setOutcome(searchParams.get("outcome") ?? "");
+            setMinMarks(searchParams.get("min_marks") ?? "");
+            setMaxMarks(searchParams.get("max_marks") ?? "");
+            setMinDuration(searchParams.get("min_duration") ?? "");
+            setMaxDuration(searchParams.get("max_duration") ?? "");
             doSearch(Number(searchParams.get("page")) || 1);
         }
     }, [searchParams.toString()]);
@@ -112,7 +146,19 @@ export default function Search() {
         setSource("all");
         setCourseLevel("all");
         setYear("");
+        setVerified("all");
+        setSchool("");
+        setTopic("");
+        setOutcome("");
+        setMinMarks("");
+        setMaxMarks("");
+        setMinDuration("");
+        setMaxDuration("");
     }
+
+    const hasActiveFilters = subject !== "all" || source !== "all" ||
+        courseLevel !== "all" || year || verified !== "all" || school ||
+        topic || outcome || minMarks || maxMarks || minDuration || maxDuration;
 
     return (
         <>
@@ -120,7 +166,7 @@ export default function Search() {
             <main className="mx-auto w-full max-w-6xl px-6 py-8">
                 <h1 className="mb-6 text-2xl font-bold">Search Papers</h1>
 
-                <form onSubmit={handleSubmit} className="mb-8 space-y-4">
+                <form onSubmit={handleSubmit} className="mb-8 flex flex-col gap-4">
                     <div className="flex gap-2">
                         <Input
                             placeholder="Search by title or subject…"
@@ -134,16 +180,9 @@ export default function Search() {
                         </Button>
                     </div>
 
-                    {
-                        /*
-                        this ui is fucked (it looks uneven)
-
-                        TODO: fix this up
-                    */
-                    }
-                    <div className="flex flex-wrap gap-3">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <Select value={subject} onValueChange={setSubject}>
-                            <SelectTrigger className="w-48">
+                            <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Subject" />
                             </SelectTrigger>
                             <SelectContent>
@@ -157,7 +196,7 @@ export default function Search() {
                                 value={courseLevel}
                                 onValueChange={setCourseLevel}
                             >
-                                <SelectTrigger className="w-40">
+                                <SelectTrigger className="w-full">
                                     <SelectValue placeholder="Level" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -181,7 +220,7 @@ export default function Search() {
                         )}
 
                         <Select value={source} onValueChange={setSource}>
-                            <SelectTrigger className="w-36">
+                            <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Source" />
                             </SelectTrigger>
                             <SelectContent>
@@ -204,11 +243,68 @@ export default function Search() {
                             value={year}
                             onChange={(e) => setYear(e.target.value)}
                             min={2000}
-                            className="w-28"
+                        />
+                        <Select value={verified} onValueChange={setVerified}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Verification" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">
+                                    Any verification
+                                </SelectItem>
+                                <SelectItem value="true">Verified</SelectItem>
+                                <SelectItem value="false">Unverified</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Input
+                            placeholder="School"
+                            value={school}
+                            onChange={(e) => setSchool(e.target.value)}
+                        />
+                        <Input
+                            placeholder="Topic"
+                            value={topic}
+                            onChange={(e) => setTopic(e.target.value)}
+                        />
+                        <Input
+                            placeholder="Outcome"
+                            value={outcome}
+                            onChange={(e) => setOutcome(e.target.value)}
                         />
                     </div>
 
-                    {(subject || source || courseLevel || year) && (
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <Input
+                            type="number"
+                            placeholder="Min marks"
+                            value={minMarks}
+                            onChange={(e) => setMinMarks(e.target.value)}
+                            min={0}
+                        />
+                        <Input
+                            type="number"
+                            placeholder="Max marks"
+                            value={maxMarks}
+                            onChange={(e) => setMaxMarks(e.target.value)}
+                            min={0}
+                        />
+                        <Input
+                            type="number"
+                            placeholder="Min duration"
+                            value={minDuration}
+                            onChange={(e) => setMinDuration(e.target.value)}
+                            min={0}
+                        />
+                        <Input
+                            type="number"
+                            placeholder="Max duration"
+                            value={maxDuration}
+                            onChange={(e) => setMaxDuration(e.target.value)}
+                            min={0}
+                        />
+                    </div>
+
+                    {hasActiveFilters && (
                         <Button
                             type="button"
                             variant="ghost"

@@ -38,6 +38,14 @@ export async function importPaperFromJsonFile(
         throw new Error(`Invalid JSON: ${message}`, { cause: error });
     }
 
+    return importPaperFromData(data, authorId, existingPapers);
+}
+
+export async function importPaperFromData(
+    data: unknown,
+    authorId: string,
+    existingPapers: Pick<Paper, "title" | "subject">[] = [],
+): Promise<Paper> {
     if (!isValidTpprPaper(data)) {
         throw new Error("Invalid file - does not match the TPPR paper format.");
     }
@@ -57,8 +65,9 @@ export async function importPaperFromJsonFile(
         visibility: "private",
         created_at: now,
         updated_at: now,
-        questions: data.questions.map((question) => ({
+        questions: data.questions.map((question, index) => ({
             ...question,
+            number: index + 1,
             author_id: authorId,
             paper_id: "",
         })),

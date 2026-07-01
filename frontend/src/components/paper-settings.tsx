@@ -26,19 +26,24 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AllNESASubjectsList } from "@/lib/subjects";
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import type {
     CourseLevel,
     PaperMeta,
     PaperSource,
+    PaperVerificationRequest,
     Visibility,
 } from "@/types/tppr-paper";
-import { CheckCircle2, Settings } from "lucide-react";
+import { CheckCircle2, Clock, Send, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { syncService } from "@/lib/cloud";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/api/auth";
-import { updatePaperVerification } from "@/api/papers";
+import {
+    getPaperVerificationRequest,
+    submitPaperVerificationRequest,
+    updatePaperVerification,
+} from "@/api/papers";
 import { formatListField, parseListField } from "@/lib/paper-fields";
 
 interface PaperSettingsProps {
@@ -99,9 +104,15 @@ export const PaperSettings = memo(function PaperSettings(
         paper.verified_source_url ?? "",
     );
     const [verificationSaving, setVerificationSaving] = useState(false);
+    const [verificationRequest, setVerificationRequest] =
+        useState<PaperVerificationRequest | null>(null);
+    const [requestNote, setRequestNote] = useState("");
+    const [requestLoading, setRequestLoading] = useState(false);
+    const [requestSaving, setRequestSaving] = useState(false);
 
     const showCourseLevel = subject === "Mathematics" || subject === "English";
     const canVerify = Boolean(user?.admin);
+    const canRequestVerification = canEditMetadata && !canVerify;
 
     function handleOpen(isOpen: boolean) {
         if (isOpen) {
@@ -118,6 +129,7 @@ export const PaperSettings = memo(function PaperSettings(
             setOutcomes(formatListField(paper.outcomes));
             setVerificationSourceName(paper.verified_source_name ?? "");
             setVerificationSourceUrl(paper.verified_source_url ?? "");
+            setRequestNote("");
         }
         setShowPublishWarning(false);
         setShowUnpublishWarning(false);
@@ -183,6 +195,25 @@ export const PaperSettings = memo(function PaperSettings(
         setOpen(false);
     }
 
+    useEffect(() => {
+        if (!open || !canRequestVerification || paper.verified) return;
+        let cancelled = false;
+        setRequestLoading(true);
+        getPaperVerificationRequest(paper.id)
+            .then((request) => {
+                if (!cancelled) setVerificationRequest(request);
+            })
+            .catch(() => {
+                if (!cancelled) setVerificationRequest(null);
+            })
+            .finally(() => {
+                if (!cancelled) setRequestLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [canRequestVerification, open, paper.id, paper.verified]);
+
     async function handleVerification(verified: boolean) {
         setVerificationSaving(true);
         try {
@@ -203,6 +234,27 @@ export const PaperSettings = memo(function PaperSettings(
             );
         } finally {
             setVerificationSaving(false);
+        }
+    }
+
+    async function handleVerificationRequest() {
+        setRequestSaving(true);
+        try {
+            const request = await submitPaperVerificationRequest(paper.id, {
+                source_name: verificationSourceName.trim(),
+                source_url: verificationSourceUrl.trim() || undefined,
+                note: requestNote.trim() || undefined,
+            });
+            setVerificationRequest(request);
+            toast.success("Paper submitted for verification");
+        } catch (error) {
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Failed to submit verification request",
+            );
+        } finally {
+            setRequestSaving(false);
         }
     }
 
@@ -300,6 +352,117 @@ export const PaperSettings = memo(function PaperSettings(
                                         Verified papers display a checkmark in
                                         search, cards, and the editor.
                                     </FieldDescription>
+                                </Field>
+                            )}
+
+                            {canRequestVerification && (
+                                <Field>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex min-w-0 items-center gap-2">
+                                            <CheckCircle2 data-icon="inline-start" />
+                                            <FieldLabel>
+                                                Verification request
+                                            </FieldLabel>
+                                            {paper.verified
+                                                ? (
+                                                    <Badge variant="secondary">
+                                                        Verified
+                                                    </Badge>
+                                                )
+                                                : verificationRequest && (
+                                                    <Badge variant="outline">
+                                                        {verificationRequest.status}
+                                                    </Badge>
+                                                )}
+                                        </div>
+                                    </div>
+                                    {paper.verified
+                                        ? (
+                                            <FieldDescription>
+                                                This paper is already verified.
+                                            </FieldDescription>
+                                        )
+                                        : verificationRequest?.status === "pending"
+                                        ? (
+                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                <Clock data-icon="inline-start" />
+                                                Submitted for verification.
+                                            </div>
+                                        )
+                                        : (
+                                            <>
+                                                {verificationRequest?.status ===
+                                                        "rejected" && (
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Previous request was rejected{verificationRequest.admin_note
+                                                            ? `: ${verificationRequest.admin_note}`
+                                                            : "."}
+                                                    </p>
+                                                )}
+                                                <div className="grid gap-4 sm:grid-cols-2">
+                                                    <Field>
+                                                        <FieldLabel htmlFor="verification-request-source-name">
+                                                            Source name
+                                                        </FieldLabel>
+                                                        <Input
+                                                            id="verification-request-source-name"
+                                                            value={verificationSourceName}
+                                                            onChange={(e) =>
+                                                                setVerificationSourceName(
+                                                                    e.target.value,
+                                                                )}
+                                                            placeholder="e.g. NESA"
+                                                            disabled={requestSaving}
+                                                        />
+                                                    </Field>
+                                                    <Field>
+                                                        <FieldLabel htmlFor="verification-request-source-url">
+                                                            Source URL
+                                                        </FieldLabel>
+                                                        <Input
+                                                            id="verification-request-source-url"
+                                                            value={verificationSourceUrl}
+                                                            onChange={(e) =>
+                                                                setVerificationSourceUrl(
+                                                                    e.target.value,
+                                                                )}
+                                                            placeholder="https://..."
+                                                            disabled={requestSaving}
+                                                        />
+                                                    </Field>
+                                                </div>
+                                                <Field>
+                                                    <FieldLabel htmlFor="verification-request-note">
+                                                        Note
+                                                    </FieldLabel>
+                                                    <Textarea
+                                                        id="verification-request-note"
+                                                        value={requestNote}
+                                                        onChange={(e) =>
+                                                            setRequestNote(
+                                                                e.target.value,
+                                                            )}
+                                                        rows={3}
+                                                        disabled={requestSaving}
+                                                        placeholder="Anything an admin should know before checking this paper."
+                                                    />
+                                                </Field>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    disabled={requestLoading ||
+                                                        requestSaving ||
+                                                        !verificationSourceName
+                                                            .trim()}
+                                                    onClick={handleVerificationRequest}
+                                                >
+                                                    <Send data-icon="inline-start" />
+                                                    {requestSaving
+                                                        ? "Submitting..."
+                                                        : "Submit for verification"}
+                                                </Button>
+                                            </>
+                                        )}
                                 </Field>
                             )}
 

@@ -45,6 +45,20 @@ export interface AttemptListResponse {
     per_page: number;
 }
 
+export interface PaperFocusStats {
+    paper_id: string;
+    attempt_count: number;
+    completed_attempt_count: number;
+    completion_rate: number;
+    average_completed_seconds: number | null;
+    median_completed_seconds: number | null;
+    average_reveal_count: number | null;
+    average_questions_seen: number | null;
+    user_best_completed_seconds: number | null;
+    user_average_reveal_count: number | null;
+    user_average_questions_seen: number | null;
+}
+
 async function jsonOrThrow<T>(res: Response, fallback: string): Promise<T> {
     if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -150,4 +164,10 @@ export function deleteAttempt(id: string): Promise<void> {
     return apiFetch(`/api/attempts/${id}`, { method: "DELETE" }).then((r) => {
         if (!r.ok) throw new Error("Failed to delete attempt");
     });
+}
+
+export function getPaperFocusStats(paperId: string): Promise<PaperFocusStats> {
+    return apiFetch(`/api/papers/${paperId}/focus-stats`).then((r) =>
+        jsonOrThrow(r, "Failed to load focus stats")
+    );
 }

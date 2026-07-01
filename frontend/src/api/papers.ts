@@ -1,4 +1,8 @@
-import type { Paper, PaperMeta } from "@/types/tppr-paper";
+import type {
+    Paper,
+    PaperMeta,
+    PaperVerificationRequest,
+} from "@/types/tppr-paper";
 import { apiFetch } from "./client";
 
 interface PapersListResponse {
@@ -58,6 +62,54 @@ export async function updatePaperVerification(
     if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.message ?? "Failed to update verification");
+    }
+    return res.json();
+}
+
+export async function getPaperVerificationRequest(
+    paperId: string,
+): Promise<PaperVerificationRequest | null> {
+    const res = await apiFetch(`/api/papers/${paperId}/verification-request`);
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? "Failed to load verification request");
+    }
+    const data = await res.json() as { request: PaperVerificationRequest | null };
+    return data.request;
+}
+
+export async function submitPaperVerificationRequest(
+    paperId: string,
+    data: {
+        source_name: string;
+        source_url?: string;
+        note?: string;
+    },
+): Promise<PaperVerificationRequest> {
+    const res = await apiFetch(`/api/papers/${paperId}/verification-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? "Failed to submit verification request");
+    }
+    const body = await res.json() as { request: PaperVerificationRequest };
+    return body.request;
+}
+
+export async function convertMistralOcrToTpprPaper(
+    mistralOcrDocument: unknown,
+): Promise<Paper> {
+    const res = await apiFetch("/api/papers/import/mistral-ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ document: mistralOcrDocument }),
+    });
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? `Conversion failed: ${res.status}`);
     }
     return res.json();
 }

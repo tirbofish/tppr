@@ -3,6 +3,40 @@ import { Avatar as AvatarPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+const avatarObjectUrlCache = new Map<string, string>()
+const avatarFetchCache = new Map<string, Promise<string>>()
+
+function shouldCacheAvatar(src: string | undefined): src is string {
+  return !!src && /^https?:\/\//i.test(src)
+}
+
+function cachedAvatarSrc(src: string): Promise<string> {
+  const cached = avatarObjectUrlCache.get(src)
+  if (cached) return Promise.resolve(cached)
+
+  const pending = avatarFetchCache.get(src)
+  if (pending) return pending
+
+  const request = fetch(src)
+    .then((res) => {
+      if (!res.ok) throw new Error("Avatar request failed")
+      return res.blob()
+    })
+    .then((blob) => {
+      const objectUrl = URL.createObjectURL(blob)
+      avatarObjectUrlCache.set(src, objectUrl)
+      avatarFetchCache.delete(src)
+      return objectUrl
+    })
+    .catch(() => {
+      avatarFetchCache.delete(src)
+      return src
+    })
+
+  avatarFetchCache.set(src, request)
+  return request
+}
+
 function Avatar({
   className,
   size = "default",
@@ -25,11 +59,31 @@ function Avatar({
 
 function AvatarImage({
   className,
+  src,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+  const [resolvedSrc, setResolvedSrc] = React.useState(src)
+
+  React.useEffect(() => {
+    if (!shouldCacheAvatar(src)) {
+      setResolvedSrc(src)
+      return
+    }
+
+    let active = true
+    cachedAvatarSrc(src).then((nextSrc) => {
+      if (active) setResolvedSrc(nextSrc)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [src])
+
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
+      src={resolvedSrc}
       className={cn(
         "aspect-square size-full rounded-full object-cover",
         className

@@ -71,6 +71,7 @@ PUBLIC_API_ENDPOINTS = {
     "tppr-questions.get_asset",
     "tppr-questions.search_papers",
     "tppr-questions.get_paper",
+    "tppr-progress.paper_focus_stats",
     "tppr-social.leaderboard",
 }
 
@@ -89,6 +90,7 @@ PUBLIC_ENDPOINT_RATE_LIMITS = {
     "tppr-questions.search_papers": "60 per minute",
     "tppr-questions.get_paper": "120 per minute",
     "tppr-questions.get_asset": "120 per minute",
+    "tppr-progress.paper_focus_stats": "60 per minute",
     "tppr-admin.verify_admin": "5 per minute",
     "tppr-social.leaderboard": "60 per minute",
 }
@@ -121,6 +123,9 @@ def set_security_headers(response):
 
     if response.content_type.startswith("text/html"):
         script_src = "'self'"
+        connect_sources = ["'self'", "https://api.mistral.ai"]
+        if settings.SUPABASE_URL:
+            connect_sources.append(settings.SUPABASE_URL)
         if request.path.startswith("/api/docs"):
             body = response.get_data(as_text=True)
             script_hashes = [
@@ -142,7 +147,7 @@ def set_security_headers(response):
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob:; "
             "font-src 'self' data:; "
-            f"connect-src 'self' {settings.SUPABASE_URL}" if settings.SUPABASE_URL else "connect-src 'self'"
+            f"connect-src {' '.join(connect_sources)}; "
         )
 
     if settings.PRODUCTION:

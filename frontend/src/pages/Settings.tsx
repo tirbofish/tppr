@@ -22,6 +22,10 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "@/api/client";
 import {
+    getStoredMistralApiKey,
+    setStoredMistralApiKey,
+} from "@/lib/mistral-settings";
+import {
     Dialog,
     DialogClose,
     DialogContent,
@@ -39,6 +43,9 @@ export default function Settings() {
     const [username, setUsername] = useState(user?.username ?? "");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [mistralApiKey, setMistralApiKey] = useState(() =>
+        getStoredMistralApiKey()
+    );
     const [avatarSaving, setAvatarSaving] = useState(false);
     const [resetDataOpen, setResetDataOpen] = useState(false);
     const [resettingData, setResettingData] = useState(false);
@@ -215,6 +222,16 @@ export default function Settings() {
         }
     }
 
+    function handleSaveMistralApiKey() {
+        setStoredMistralApiKey(mistralApiKey);
+        setMistralApiKey(getStoredMistralApiKey());
+        toast.success(
+            mistralApiKey.trim()
+                ? "Mistral API key saved in this browser"
+                : "Mistral API key removed",
+        );
+    }
+
     async function handleResetData() {
         setResettingData(true);
         try {
@@ -367,6 +384,56 @@ export default function Settings() {
                             <Button onClick={handleChangePassword} size="sm">
                                 Update Password
                             </Button>
+                        </FieldGroup>
+                    </CardContent>
+                </Card>
+
+                {/* OCR */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Mistral OCR</CardTitle>
+                        <CardDescription>
+                            Used for importing PDFs. Your API key is saved in
+                            this browser and is not stored by tppr.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <FieldGroup>
+                            <Field>
+                                <FieldLabel htmlFor="mistral-api-key">
+                                    Mistral API Key
+                                </FieldLabel>
+                                <Input
+                                    id="mistral-api-key"
+                                    type="password"
+                                    value={mistralApiKey}
+                                    onChange={(e) =>
+                                        setMistralApiKey(e.target.value)}
+                                    placeholder="mistral API key"
+                                    autoComplete="off"
+                                />
+                            </Field>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    type="button"
+                                    onClick={handleSaveMistralApiKey}
+                                    size="sm"
+                                >
+                                    Save API Key
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setMistralApiKey("");
+                                        setStoredMistralApiKey("");
+                                        toast.success("Mistral API key removed");
+                                    }}
+                                    size="sm"
+                                >
+                                    Remove
+                                </Button>
+                            </div>
                         </FieldGroup>
                     </CardContent>
                 </Card>

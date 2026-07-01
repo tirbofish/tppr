@@ -8,6 +8,8 @@ setup.
 """
 
 import base64
+import time
+from urllib.parse import urlsplit
 
 import settings
 from storage import (
@@ -53,7 +55,7 @@ def store_avatar(user_id: str, mime: str, data: bytes) -> str:
     if storage_configured():
         path = _object_path(user_id, mime)
         upload_object(settings.SUPABASE_AVATAR_BUCKET, path, mime, data)
-        return _public_url(path)
+        return f"{_public_url(path)}?v={time.time_ns()}"
     return _data_url(mime, data)
 
 
@@ -64,8 +66,10 @@ def delete_avatar(user_id: str, stored_url: str | None) -> None:
     # Only Storage URLs map back to a deletable object; data URLs are inline and
     # cleared simply by nulling the column.
     prefix = _public_url("")  # ".../object/public/<bucket>/"
-    if not stored_url.startswith(prefix):
+    parsed = urlsplit(stored_url)
+    clean_url = parsed._replace(query="", fragment="").geturl()
+    if not clean_url.startswith(prefix):
         return
-    path = stored_url[len(prefix):]
+    path = clean_url[len(prefix):]
     if path:
         delete_object(settings.SUPABASE_AVATAR_BUCKET, path)

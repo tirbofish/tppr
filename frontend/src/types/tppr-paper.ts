@@ -13,6 +13,8 @@ export type CourseLevel =
 
 export type Visibility = "private" | "public" | "removed";
 
+export type VerificationRequestStatus = "pending" | "approved" | "rejected";
+
 export type QuestionType = "multiple_choice" | "short_answer" | "long_answer";
 
 export type Difficulty = "easy" | "medium" | "hard";
@@ -112,7 +114,7 @@ export interface QuestionPart {
     /** True if this part stands alone from the previous part's context. */
     is_independent?: boolean;
     /** Answer material for this sub-part (only meaningful on leaves). */
-    answer?: string | QuestionAnswer;
+    answer?: string | QuestionAnswer | null;
     /** Mark allocation and criteria for this sub-part. */
     rubric?: QuestionRubric;
     /** General marking guidelines, feedback, common errors or comments. */
@@ -140,7 +142,7 @@ export interface Question {
     /** Answer choices (for multiple_choice type). */
     options?: ChoiceOption[];
     /** Correct answer, answer key or worked solution material (author-only). */
-    answer?: string | QuestionAnswer;
+    answer?: string | QuestionAnswer | null;
     /** Mark allocation and criteria for this question. */
     rubric?: QuestionRubric;
     /** General marking guidelines, feedback, common errors or comments. */
@@ -153,6 +155,8 @@ export interface Question {
     source_question_id?: string;
     source_paper_id?: string;
     source_removed?: boolean;
+    /** True when this verified paper's current question differs from its verified snapshot. */
+    verified_changed?: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -222,4 +226,19 @@ export interface Paper {
     verified_by?: string | null;
     /** Full ordered list of questions in the paper. */
     questions: Question[];
+}
+
+export interface PaperVerificationRequest {
+    id: string;
+    paper_id: string;
+    requester_id: string;
+    source_name: string;
+    source_url?: string | null;
+    note?: string | null;
+    status: VerificationRequestStatus;
+    created_at: string;
+    updated_at: string;
+    resolved_at?: string | null;
+    resolved_by?: string | null;
+    admin_note?: string | null;
 }

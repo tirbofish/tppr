@@ -16,6 +16,8 @@ from questions.types import (
     PaperCreate,
     PaperDB,
     PaperOutcome,
+    PaperVerificationRequestDB,
+    PaperVerificationRequestRead,
     PaperUpdate,
     QuestionDB,
     QuestionOutcome,
@@ -23,6 +25,7 @@ from questions.types import (
     paper_db_to_meta_read,
     paper_db_to_read,
     question_db_to_read,
+    question_verified_fingerprint,
 )
 from questions.utils import _build_question_db
 from admin import is_admin
@@ -42,6 +45,19 @@ def _normalised_codes(values) -> list[str]:
         if str(value).strip()
     ]
     return list(dict.fromkeys(codes))
+
+
+def _renumber_questions(questions) -> list[dict]:
+    if not isinstance(questions, list):
+        return []
+    return [
+        {
+            **question,
+            "number": index,
+        }
+        for index, question in enumerate(questions, start=1)
+        if isinstance(question, dict)
+    ]
 
 
 def _replace_paper_outcomes(session, paper_id: str, outcomes) -> None:
@@ -113,6 +129,7 @@ def _paper_read_for_viewer(session, paper: PaperDB, user_id: str | None):
             question_db_to_read(
                 q,
                 source_removed=source_removed and owner_viewer and not admin_viewer,
+                paper_verified=paper.verified,
             )
         )
     
@@ -158,6 +175,22 @@ def _clone_question_for_remix(
         source_paper_id=source.source_paper_id or source.paper_id,
         created_at=now,
         updated_at=now,
+    )
+
+
+def _stamp_verified_question_fingerprints(paper: PaperDB) -> None:
+    for question in paper.questions:
+        question.verified_fingerprint = question_verified_fingerprint(question)
+
+
+def _clear_verified_question_fingerprints(paper: PaperDB) -> None:
+    for question in paper.questions:
+        question.verified_fingerprint = None
+
+
+def _verification_request_read(request_row: PaperVerificationRequestDB) -> dict:
+    return PaperVerificationRequestRead.model_validate(request_row).model_dump(
+        mode="json"
     )
 
 
@@ -277,6 +310,33 @@ def get_asset(asset_id):
 
 # --- Papers ---
 
+@q_bp.route("/api/papers/import/mistral-ocr", methods=["POST"])
+@supabase_auth_required()
+def convert_mistral_ocr():
+    data = request.get_json(silent=True) or {}
+    document = data.get("document")
+    if not isinstance(document, dict):
+        return jsonify({"message": "Mistral OCR document is required"}), 400
+
+    try:
+        from tppr_paper_extractor import extract_paper, validate_paper
+    except ImportError:
+        return jsonify({"message": "tppr-paper-extractor is not installed"}), 500
+
+    try:
+        paper = extract_paper(document)
+        errors = validate_paper(paper)
+    except Exception as exc:
+        return jsonify({"message": "Failed to convert Mistral OCR output", "cause": str(exc)}), 422
+
+    if errors:
+        return jsonify({
+            "message": "Converted paper did not match the TPPR paper format",
+            "errors": errors,
+        }), 422
+
+    return jsonify(paper), 200
+
 @q_bp.route("/api/papers/search", methods=["GET"])
 def search_papers():
     q = request.args.get("q")
@@ -284,6 +344,14 @@ def search_papers():
     source = request.args.get("source")
     course_level = request.args.get("course_level")
     year = request.args.get("year")
+    verified = request.args.get("verified")
+    school = request.args.get("school")
+    topic = request.args.get("topic")
+    outcome = request.args.get("outcome")
+    min_marks = request.args.get("min_marks")
+    max_marks = request.args.get("max_marks")
+    min_duration = request.args.get("min_duration")
+    max_duration = request.args.get("max_duration")
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 20))
 
@@ -302,6 +370,26 @@ def search_papers():
             statement = statement.where(PaperDB.course_level == course_level)
         if year:
             statement = statement.where(PaperDB.year == int(year))
+        if verified == "true":
+            statement = statement.where(PaperDB.verified.is_(True))
+        elif verified == "false":
+            statement = statement.where(PaperDB.verified.is_(False))
+        if school:
+            statement = statement.where(col(PaperDB.school).contains(school))
+        if topic:
+            statement = statement.where(col(PaperDB.topics_json).contains(topic))
+        if outcome:
+            statement = statement.join(PaperOutcome).where(
+                col(PaperOutcome.outcome_code).contains(outcome)
+            )
+        if min_marks:
+            statement = statement.where(PaperDB.total_marks >= int(min_marks))
+        if max_marks:
+            statement = statement.where(PaperDB.total_marks <= int(max_marks))
+        if min_duration:
+            statement = statement.where(PaperDB.duration_minutes >= int(min_duration))
+        if max_duration:
+            statement = statement.where(PaperDB.duration_minutes <= int(max_duration))
 
         total = len(session.exec(statement).all())
         statement = statement.offset((page - 1) * per_page).limit(per_page)
@@ -315,6 +403,81 @@ def search_papers():
                 "per_page": per_page,
             }
         )
+
+
+@q_bp.route("/api/papers/<string:paper_id>/verification-request", methods=["GET"])
+@supabase_auth_required()
+def get_paper_verification_request(paper_id):
+    user_id = str(get_current_user_id())
+
+    with get_session() as session:
+        paper = session.get(PaperDB, paper_id)
+        if not paper:
+            return jsonify({"message": "Paper not found"}), 404
+        if paper.visibility == "removed":
+            return _removed_response()
+        if paper.author_id != user_id and not is_admin(user_id):
+            return jsonify({"message": "Forbidden"}), 403
+
+        rows = session.exec(
+            select(PaperVerificationRequestDB)
+            .where(PaperVerificationRequestDB.paper_id == paper_id)
+            .order_by(col(PaperVerificationRequestDB.created_at).desc())
+            .limit(1)
+        ).all()
+        if not rows:
+            return jsonify({"request": None}), 200
+        return jsonify({"request": _verification_request_read(rows[0])}), 200
+
+
+@q_bp.route("/api/papers/<string:paper_id>/verification-request", methods=["POST"])
+@supabase_auth_required()
+def submit_paper_verification_request(paper_id):
+    user_id = str(get_current_user_id())
+    data = request.get_json(silent=True) or {}
+    source_name = str(data.get("source_name") or "").strip()
+    source_url = str(data.get("source_url") or "").strip() or None
+    note = str(data.get("note") or "").strip() or None
+
+    if not source_name:
+        return jsonify({"message": "source_name is required"}), 400
+    if source_url and not _valid_source_url(source_url):
+        return jsonify({"message": "source_url must be an http(s) URL"}), 400
+
+    with get_session() as session:
+        paper = session.get(PaperDB, paper_id)
+        if not paper:
+            return jsonify({"message": "Paper not found"}), 404
+        if paper.visibility == "removed":
+            return _removed_response()
+        if paper.author_id != user_id:
+            return jsonify({"message": "Forbidden"}), 403
+        if paper.verified:
+            return jsonify({"message": "Paper is already verified"}), 409
+
+        existing = session.exec(
+            select(PaperVerificationRequestDB)
+            .where(PaperVerificationRequestDB.paper_id == paper_id)
+            .where(PaperVerificationRequestDB.status == "pending")
+        ).first()
+        if existing:
+            return jsonify({"request": _verification_request_read(existing)}), 200
+
+        now = datetime.now(UTC)
+        request_row = PaperVerificationRequestDB(
+            id=str(uuid4()),
+            paper_id=paper_id,
+            requester_id=user_id,
+            source_name=source_name,
+            source_url=source_url,
+            note=note,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(request_row)
+        session.commit()
+        session.refresh(request_row)
+        return jsonify({"request": _verification_request_read(request_row)}), 201
 
 @q_bp.route("/api/papers", methods=["GET"])
 @supabase_auth_required()
@@ -431,7 +594,7 @@ def create_paper():
         session.add(paper)
         _replace_paper_outcomes(session, paper.id, data.get("outcomes"))
 
-        for q_data in data.get("questions", []):
+        for q_data in _renumber_questions(data.get("questions", [])):
             q = _build_question_db(q_data, paper.id, str(user_id), preserve_id=False)
             session.add(q)
 
@@ -488,12 +651,18 @@ def update_paper(paper_id):
         paper.updated_at = datetime.now(UTC)
 
         if "questions" in data:
+            verified_fingerprints = {
+                q.id: q.verified_fingerprint
+                for q in paper.questions
+            }
             paper.questions.clear()
             session.flush()
 
             new_questions = []
-            for q_data in data["questions"]:
+            for q_data in _renumber_questions(data["questions"]):
                 q = _build_question_db(q_data, paper_id, str(user_id))
+                if paper.verified:
+                    q.verified_fingerprint = verified_fingerprints.get(q.id, "")
                 new_questions.append(q)
             paper.questions = new_questions
 
@@ -578,6 +747,10 @@ def update_paper_verification(paper_id):
         paper.verified_at = now if verified else None
         paper.verified_by = user_id if verified else None
         paper.updated_at = now
+        if verified:
+            _stamp_verified_question_fingerprints(paper)
+        else:
+            _clear_verified_question_fingerprints(paper)
 
         session.add(paper)
         session.commit()

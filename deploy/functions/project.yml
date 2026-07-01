@@ -1,0 +1,31 @@
+# THIS FILE IS AI GENERATED.
+#
+# DigitalOcean Functions project spec for tppr.
+# Deployed with:  uv run launch.py --deploy do-fns
+#
+# The function `api` (package `tppr`) is a single HTTP web action that proxies
+# all requests through the Flask WSGI app. Runtime config/secrets are injected
+# at deploy time via `doctl serverless deploy --env <file>` (never commit them).
+#
+# Runtime: `python:default` maps to the current DO Functions Python runtime.
+# Run `doctl serverless status --languages` (after connecting) to see all
+# runtimes, then override with DO_FN_RUNTIME if you need a specific version.
+parameters: {}
+environment: {}
+packages:
+    - name: tppr
+      shared: false
+      environment: {}
+      parameters: {}
+      annotations: {}
+      functions:
+        - name: api
+          binary: false
+          main: ""
+          runtime: python:default
+          web: true
+          webSecure: false
+          parameters: {}
+          environment: {}
+          annotations: {}
+          limits: {}

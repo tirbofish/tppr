@@ -1,4 +1,4 @@
-import { ImageIcon, Plus, X } from "lucide-react";
+import { ImageIcon, MoreVertical, Plus, X } from "lucide-react";
 import type { ContentBlock, Question, QuestionPart } from "@/types/tppr-paper";
 import { Button } from "../ui/button";
 import { Field, FieldLabel } from "../ui/field";
@@ -20,6 +20,13 @@ import {
     TooltipTrigger,
 } from "../ui/tooltip";
 import { FileUpload, FileUploadDropzone } from "../ui/file-upload";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { paperStore } from "@/lib/paper";
 import { syncService } from "@/lib/cloud";
 import {
@@ -251,15 +258,37 @@ function PartEditor({
                 <span className="text-sm font-semibold">
                     {depth === 1 ? "Part" : "Sub-part"} ({label})
                 </span>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    disabled={!canRemove}
-                    onClick={() => onRemove(path)}
-                >
-                    <X />
-                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Actions for part ${label}`}
+                        >
+                            <MoreVertical />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuGroup>
+                            <DropdownMenuItem
+                                disabled={!canAddChild}
+                                onClick={() => onAddChild(path)}
+                            >
+                                <Plus />
+                                Add sub-part
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                disabled={!canRemove}
+                                variant="destructive"
+                                onClick={() => onRemove(path)}
+                            >
+                                <X />
+                                Remove part
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
 
             <PartStimulusField
@@ -367,15 +396,11 @@ function PartEditor({
                 </div>
             )}
 
-            <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!canAddChild}
-                onClick={() => onAddChild(path)}
-            >
-                <Plus /> Add sub-part
-            </Button>
+            {!canAddChild && (
+                <p className="text-xs text-muted-foreground">
+                    This part has the maximum number of sub-parts.
+                </p>
+            )}
         </div>
     );
 }

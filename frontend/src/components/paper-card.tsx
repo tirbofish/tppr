@@ -20,15 +20,20 @@ import { PaperSettings } from "./paper-settings";
 import { useState } from "react";
 import { StarPaperButton } from "@/components/star-paper-button";
 import { PaperVerifiedBadge } from "@/components/paper-verified-badge";
+import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 
 interface PaperCardProps {
     paper: PaperMeta;
     onOpen: () => void;
     onEdit: (updated: PaperMeta) => void;
     onDelete: () => void;
+    deleting?: boolean;
 }
 
-export function PaperCard({ paper, onOpen, onEdit, onDelete }: PaperCardProps) {
+export function PaperCard(
+    { paper, onOpen, onEdit, onDelete, deleting = false }: PaperCardProps,
+) {
     const [hoverOpen, setHoverOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -42,9 +47,22 @@ export function PaperCard({ paper, onOpen, onEdit, onDelete }: PaperCardProps) {
         >
             <HoverCardTrigger asChild>
                 <Card
-                    className="cursor-pointer transition-shadow hover:shadow-md"
-                    onClick={onOpen}
+                    className={cn(
+                        "relative cursor-pointer transition-shadow hover:shadow-md",
+                        deleting && "pointer-events-none opacity-70",
+                    )}
+                    onClick={() => {
+                        if (!deleting) onOpen();
+                    }}
                 >
+                    {deleting && (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/70 backdrop-blur-sm">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                                <Spinner className="size-4" />
+                                Deleting...
+                            </div>
+                        </div>
+                    )}
                     <CardHeader>
                         <div className="flex items-start justify-between gap-2">
                             <CardTitle className="line-clamp-2">
@@ -131,6 +149,7 @@ export function PaperCard({ paper, onOpen, onEdit, onDelete }: PaperCardProps) {
                             variant="ghost"
                             size="icon"
                             className="size-8 text-destructive hover:text-destructive"
+                            disabled={deleting}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onDelete();

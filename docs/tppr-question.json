@@ -292,6 +292,10 @@
       "enum": ["easy", "medium", "hard"],
       "description": "Approximate difficulty rating."
     },
+    "verified_changed": {
+      "type": "boolean",
+      "description": "True when this question differs from the verified snapshot for its paper."
+    },
     "created_at": {
       "type": "string",
       "format": "date-time"

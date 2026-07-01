@@ -759,6 +759,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "qrcode", extra = ["pil"] },
     { name = "sqlmodel" },
+    { name = "tppr-paper-extractor" },
     { name = "werkzeug" },
 ]
 
@@ -779,6 +780,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "qrcode", extras = ["pil"], specifier = ">=8.2" },
     { name = "sqlmodel", specifier = ">=0.0.38" },
+    { name = "tppr-paper-extractor", editable = "tppr-paper-extractor" },
     { name = "werkzeug", specifier = ">=3.1.8" },
 ]
 

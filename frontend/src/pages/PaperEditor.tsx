@@ -409,17 +409,32 @@ export default function PaperEditor() {
     }
 
     const addQuestion = useCallback(() => {
-        updatePaper((current) => ({
-            ...current,
-            questions: [...current.questions, createQuestion(current)],
-        }));
+        updatePaper((current) => {
+            const question = createQuestion(current);
+            return {
+                ...current,
+                questions: [
+                    ...current.questions,
+                    current.verified
+                        ? { ...question, verified_changed: true }
+                        : question,
+                ],
+            };
+        });
     }, [updatePaper]);
 
     const handleQuestionChange = useCallback((updated: QuestionData) => {
         updatePaper((current) => ({
             ...current,
             questions: current.questions.map((q) =>
-                q.id === updated.id ? updated : q
+                q.id === updated.id
+                    ? {
+                        ...updated,
+                        verified_changed: current.verified
+                            ? true
+                            : updated.verified_changed,
+                    }
+                    : q
             ),
         }));
     }, [updatePaper]);
@@ -441,6 +456,9 @@ export default function PaperEditor() {
             const clone: QuestionData = {
                 ...structuredClone(source),
                 id: crypto.randomUUID(),
+                verified_changed: current.verified
+                    ? true
+                    : source.verified_changed,
             };
             const questions = [...current.questions];
             questions.splice(idx + 1, 0, clone);
@@ -472,7 +490,20 @@ export default function PaperEditor() {
     }, [updatePaper]);
 
     const handleSettingsSave = useCallback((meta: PaperMeta) => {
-        updatePaper((current) => ({ ...current, ...meta }));
+        updatePaper((current) => {
+            const verificationChanged = meta.verified !== current.verified ||
+                meta.verified_at !== current.verified_at;
+            return {
+                ...current,
+                ...meta,
+                questions: verificationChanged
+                    ? current.questions.map((q) => ({
+                        ...q,
+                        verified_changed: false,
+                    }))
+                    : current.questions,
+            };
+        });
     }, [updatePaper]);
 
     const handleQuestionEdit = useCallback((qid: string) => {

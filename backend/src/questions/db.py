@@ -69,6 +69,12 @@ _INDEX_DDL = [
     "CREATE INDEX IF NOT EXISTS ix_questions_author_id ON questions (author_id)",
     "CREATE INDEX IF NOT EXISTS ix_question_syllabus_points_question_id "
     "ON question_syllabus_points (question_id)",
+    "CREATE INDEX IF NOT EXISTS ix_paper_verification_requests_paper_id "
+    "ON paper_verification_requests (paper_id)",
+    "CREATE INDEX IF NOT EXISTS ix_paper_verification_requests_status "
+    "ON paper_verification_requests (status)",
+    "CREATE INDEX IF NOT EXISTS ix_paper_verification_requests_created_at "
+    "ON paper_verification_requests (created_at)",
 ]
 
 _SCHEMA_DDL = [
@@ -77,6 +83,7 @@ _SCHEMA_DDL = [
     "ALTER TABLE papers ADD COLUMN IF NOT EXISTS verified_source_url text",
     "ALTER TABLE papers ADD COLUMN IF NOT EXISTS verified_at timestamp with time zone",
     "ALTER TABLE papers ADD COLUMN IF NOT EXISTS verified_by text",
+    "ALTER TABLE questions ADD COLUMN IF NOT EXISTS verified_fingerprint text",
     """
 DO $$
 BEGIN

@@ -1,3 +1,4 @@
+import hashlib
 import json
 from datetime import UTC, datetime
 from typing import Annotated, Any, Literal, Optional
@@ -15,6 +16,8 @@ from sqlmodel import Field, Relationship, SQLModel
 # ---------------------------------------------------------------------------
 
 Visibility = Literal["private", "public", "removed"]
+
+VerificationRequestStatus = Literal["pending", "approved", "rejected"]
 
 QuestionType = Literal[
     "multiple_choice",
@@ -335,6 +338,30 @@ class PaperDB(SQLModel, table=True):
             self.topics_json = json.dumps(topics)
 
 
+class PaperVerificationRequestDB(SQLModel, table=True):
+    """Owner-submitted request for an admin to verify a paper."""
+
+    __tablename__ = "paper_verification_requests"
+    __table_args__ = (
+        Index("ix_paper_verification_requests_paper_id", "paper_id"),
+        Index("ix_paper_verification_requests_status", "status"),
+        Index("ix_paper_verification_requests_created_at", "created_at"),
+    )
+
+    id: str = Field(primary_key=True)
+    paper_id: str = Field(foreign_key="papers.id")
+    requester_id: str
+    source_name: str
+    source_url: str | None = None
+    note: str | None = None
+    status: str = Field(default="pending")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    resolved_at: datetime | None = None
+    resolved_by: str | None = None
+    admin_note: str | None = None
+
+
 class QuestionDB(SQLModel, table=True):
     """The `questions` table."""
 
@@ -363,6 +390,7 @@ class QuestionDB(SQLModel, table=True):
     remixed_from: str | None = Field(default=None)
     source_question_id: str | None = Field(default=None)
     source_paper_id: str | None = Field(default=None)
+    verified_fingerprint: str | None = Field(default=None)
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -461,6 +489,7 @@ class QuestionRead(BaseModel):
     source_question_id: str | None = None
     source_paper_id: str | None = None
     source_removed: bool = False
+    verified_changed: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -501,6 +530,25 @@ class PaperRead(PaperMetaRead):
     syllabus_id: str | None = None
     remixed: str | None = Field(default=None)
     questions: list[QuestionRead] = []
+
+
+class PaperVerificationRequestRead(BaseModel):
+    """Verification request returned to paper owners and admins."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    paper_id: str
+    requester_id: str
+    source_name: str
+    source_url: str | None = None
+    note: str | None = None
+    status: VerificationRequestStatus = "pending"
+    created_at: datetime
+    updated_at: datetime
+    resolved_at: datetime | None = None
+    resolved_by: str | None = None
+    admin_note: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -603,8 +651,49 @@ def _dump_blocks(blocks: list[Any] | None) -> str | None:
     return json.dumps([b.model_dump() for b in blocks])
 
 
-def question_db_to_read(q: QuestionDB, *, source_removed: bool = False) -> QuestionRead:
+def _canonical_json_value(raw: str | None) -> Any:
+    if raw is None:
+        return None
+    try:
+        return json.loads(raw)
+    except Exception:
+        return raw
+
+
+def question_verified_fingerprint(q: QuestionDB) -> str:
+    """Stable fingerprint of the question fields covered by verification."""
+    payload = {
+        "type": q.type,
+        "marks": q.marks,
+        "stimulus": _canonical_json_value(q.stimulus_json),
+        "content": _canonical_json_value(q.content_json),
+        "parts": _canonical_json_value(q.parts_json),
+        "options": _canonical_json_value(q.options_json),
+        "topics": _canonical_json_value(q.topics_json),
+        "answer": _canonical_json_value(q.answer),
+        "difficulty": q.difficulty,
+    }
+    encoded = json.dumps(
+        payload,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def question_db_to_read(
+    q: QuestionDB,
+    *,
+    source_removed: bool = False,
+    paper_verified: bool = False,
+) -> QuestionRead:
     """Convert a QuestionDB row into a QuestionRead API model."""
+    verified_changed = (
+        paper_verified
+        and q.verified_fingerprint is not None
+        and q.verified_fingerprint != question_verified_fingerprint(q)
+    )
     return QuestionRead(
         id=q.id,
         paper_id=q.paper_id,
@@ -632,6 +721,7 @@ def question_db_to_read(q: QuestionDB, *, source_removed: bool = False) -> Quest
         source_question_id=q.source_question_id,
         source_paper_id=q.source_paper_id,
         source_removed=source_removed,
+        verified_changed=verified_changed,
         created_at=q.created_at,
         updated_at=q.updated_at,
     )
@@ -677,7 +767,7 @@ def paper_db_to_read(
     read_questions = (
         questions
         if questions is not None
-        else [question_db_to_read(q) for q in p.questions]
+        else [question_db_to_read(q, paper_verified=p.verified) for q in p.questions]
     )
     return PaperRead(
         id=p.id,

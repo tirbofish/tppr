@@ -23,6 +23,7 @@ import type {
     QuestionRubric,
 } from "@/types/tppr-paper";
 import {
+    AlertTriangle,
     Copy,
     Eye,
     EyeOff,
@@ -470,7 +471,7 @@ function hasContentBlocks(blocks?: ContentBlock[]): boolean {
     );
 }
 
-function hasAnswerValue(answer?: string | QuestionAnswer): boolean {
+function hasAnswerValue(answer?: string | QuestionAnswer | null): boolean {
     if (!answer) return false;
     if (typeof answer === "string") return answer.trim().length > 0;
     return !!(
@@ -485,7 +486,7 @@ function hasRubric(rubric?: QuestionRubric): boolean {
     return !!rubric?.criteria.length || hasContentBlocks(rubric?.notes);
 }
 
-function AnswerValue({ answer }: { answer?: string | QuestionAnswer }) {
+function AnswerValue({ answer }: { answer?: string | QuestionAnswer | null }) {
     if (!hasAnswerValue(answer)) return null;
     if (typeof answer === "string") {
         return (
@@ -729,6 +730,24 @@ export const Question = memo(function Question(
                                 Source
                             </a>
                         )}
+                        {question.verified_changed && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Badge
+                                            variant="outline"
+                                            className="border-amber-500/40 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+                                        >
+                                            <AlertTriangle data-icon="inline-start" />
+                                            Changed
+                                        </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        Changed since the verified version
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
                     </span>
                     <span className="flex items-center gap-1">
                         {question.difficulty && (
@@ -829,7 +848,8 @@ export const Question = memo(function Question(
                     <div className="grid gap-2 sm:grid-cols-2">
                         {question.options.map((opt) => {
                             const correctLabel =
-                                typeof question.answer === "object"
+                                typeof question.answer === "object" &&
+                                    question.answer
                                     ? question.answer?.option_label
                                     : typeof question.answer === "string"
                                     ? question.answer
@@ -855,7 +875,8 @@ export const Question = memo(function Question(
                                             // ctrl+click selects answer
                                             const answer =
                                                 typeof question.answer ===
-                                                        "object"
+                                                        "object" &&
+                                                        question.answer
                                                     ? {
                                                         ...question.answer,
                                                         option_label: opt.label,

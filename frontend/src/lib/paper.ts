@@ -164,6 +164,14 @@ export interface SearchFilters {
     source?: string;
     course_level?: string;
     year?: string;
+    verified?: string;
+    school?: string;
+    topic?: string;
+    outcome?: string;
+    min_marks?: string;
+    max_marks?: string;
+    min_duration?: string;
+    max_duration?: string;
     page?: number;
     per_page?: number;
 }

@@ -11,6 +11,7 @@ import Unauthorized from "./pages/errors/Unauthorised";
 import { GenericError } from "./pages/errors/GenericError";
 import Search from "./pages/Search";
 import AdminTakedowns from "./pages/AdminTakedowns";
+import AdminVerificationRequests from "./pages/AdminVerificationRequests";
 import Copyright from "./pages/legal/Copyright";
 import Privacy from "./pages/legal/Privacy";
 import { Footer } from "./components/footer";
@@ -57,6 +58,10 @@ function App() {
               <Route path="/users/:userId" element={<UserProfile />} />
 
               <Route path="/admin/takedowns" element={<AdminTakedowns />} />
+              <Route
+                path="/admin/verification-requests"
+                element={<AdminVerificationRequests />}
+              />
 
               <Route path="/legal/copyright" element={<Copyright />} />
               <Route path="/legal/privacy" element={<Privacy />} />

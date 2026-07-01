@@ -88,6 +88,16 @@ def _attempt_detail_dict(attempt: PaperAttemptDB, paper_meta: dict | None) -> di
     return data
 
 
+def _median(values: list[int]) -> int | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    mid = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[mid]
+    return round((ordered[mid - 1] + ordered[mid]) / 2)
+
+
 def _upsert_question_time(
     session: Session,
     attempt: PaperAttemptDB,
@@ -124,6 +134,72 @@ def _upsert_question_time(
     existing.reveal_count = max(existing.reveal_count, int(reveal_count))
     existing.views = max(existing.views, int(views))
     return existing
+
+
+@progress_bp.route("/api/papers/<string:paper_id>/focus-stats", methods=["GET"])
+@supabase_auth_required(optional=True)
+def paper_focus_stats(paper_id):
+    user_id = get_current_user_id()
+    with get_session() as session:
+        paper = session.get(PaperDB, paper_id)
+        if not paper:
+            return _error("Paper not found", 404)
+        if paper.visibility == "removed":
+            return _error("Paper has been removed", 410)
+        if paper.visibility != "public" and str(user_id or "") != paper.author_id:
+            return _error("Forbidden", 403)
+
+        attempts = session.exec(
+            select(PaperAttemptDB).where(PaperAttemptDB.paper_id == paper_id)
+        ).all()
+
+        def is_completed(attempt: PaperAttemptDB) -> bool:
+            return bool(attempt.completed) or attempt.max_slide >= paper.question_count + 1
+
+        completed = [attempt for attempt in attempts if is_completed(attempt)]
+        completed_seconds = [
+            int(attempt.elapsed_seconds)
+            for attempt in completed
+            if int(attempt.elapsed_seconds) > 0
+        ]
+        reveal_counts = [int(attempt.reveal_count) for attempt in attempts]
+        questions_seen = [int(attempt.questions_seen) for attempt in attempts]
+
+        user_attempts = [
+            attempt for attempt in attempts if user_id and attempt.user_id == str(user_id)
+        ]
+        user_completed = [attempt for attempt in user_attempts if is_completed(attempt)]
+        user_completed_seconds = [
+            int(attempt.elapsed_seconds)
+            for attempt in user_completed
+            if int(attempt.elapsed_seconds) > 0
+        ]
+
+        attempt_count = len(attempts)
+        payload = {
+            "paper_id": paper_id,
+            "attempt_count": attempt_count,
+            "completed_attempt_count": len(completed),
+            "completion_rate": (len(completed) / attempt_count) if attempt_count else 0,
+            "average_completed_seconds": round(sum(completed_seconds) / len(completed_seconds))
+            if completed_seconds else None,
+            "median_completed_seconds": _median(completed_seconds),
+            "average_reveal_count": round(sum(reveal_counts) / len(reveal_counts), 1)
+            if reveal_counts else None,
+            "average_questions_seen": round(sum(questions_seen) / len(questions_seen), 1)
+            if questions_seen else None,
+            "user_best_completed_seconds": min(user_completed_seconds)
+            if user_completed_seconds else None,
+            "user_average_reveal_count": round(
+                sum(int(a.reveal_count) for a in user_attempts) / len(user_attempts),
+                1,
+            ) if user_attempts else None,
+            "user_average_questions_seen": round(
+                sum(int(a.questions_seen) for a in user_attempts) / len(user_attempts),
+                1,
+            ) if user_attempts else None,
+        }
+        return jsonify(payload), 200
 
 
 @progress_bp.route("/api/attempts", methods=["POST"])
