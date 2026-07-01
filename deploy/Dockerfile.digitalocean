@@ -1,0 +1,43 @@
+FROM node:24-bookworm-slim AS frontend-build
+
+WORKDIR /app
+
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_BACKEND_URL
+ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL} \
+    VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY:-${VITE_SUPABASE_ANON_KEY}} \
+    VITE_BACKEND_URL=${VITE_BACKEND_URL}
+
+COPY package.json ./
+COPY frontend/package.json ./frontend/package.json
+RUN npm install
+
+COPY docs ./docs
+COPY frontend ./frontend
+RUN npm run build --workspace tppr-frontend
+
+FROM python:3.14-slim AS runtime
+
+ENV PRODUCTION=true \
+    BACKEND_HOST=0.0.0.0 \
+    PORT=5000 \
+    UV_CACHE_DIR=/tmp/uv-cache
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir uv
+
+COPY pyproject.toml uv.lock ./
+COPY backend ./backend
+COPY tppr-paper-extractor ./tppr-paper-extractor
+COPY --from=frontend-build /app/frontend/dist ./backend/assets/site
+
+RUN uv sync --all-packages --frozen --no-dev
+
+WORKDIR /app/backend
+
+EXPOSE 5000
+
+CMD ["uv", "run", "src/main.py"]
